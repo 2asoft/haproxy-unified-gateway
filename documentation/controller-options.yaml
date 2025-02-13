@@ -1,0 +1,9 @@
+GatewayClass:
+    name: GatewayClass
+    args:
+        - name: gatewayClass
+          type: string
+    comment: |
+        Host sets the host of the controller.
+
+        The host can be an IP address or a hostname.

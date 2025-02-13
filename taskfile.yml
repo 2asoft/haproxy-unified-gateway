@@ -1,0 +1,36 @@
+#https://taskfile.dev/
+version: '3'
+
+includes:
+  ci:
+    taskfile: taskfile-ci.yml
+    flatten: true
+  go:
+    taskfile: taskfile-go.yml
+    flatten: true
+
+tasks:
+
+  ci:
+    desc: 'do all the checks'
+    cmds:
+      - task: tidy
+      - task: format
+      - task: licenses
+      - task: generate
+      - task: lint
+      - task: test
+      - task: govulncheck
+
+  generate-doc-options:
+    internal: true
+    desc: 'run doc options generation'
+    dir: ./cmd/doc-options
+    cmds:
+      - go run .
+
+  generate:
+    desc: 'run generation'
+    cmds:
+      - go generate -x ./...
+      - task : generate-doc-options

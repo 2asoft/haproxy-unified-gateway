@@ -1,0 +1,164 @@
+package main
+
+import (
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/google/renameio/v2"
+	"gopkg.in/yaml.v3"
+)
+
+func main() {
+	documentation := make(map[string]docItem)
+
+	pkgPath := "../../controller/options"
+
+	fs := token.NewFileSet()
+
+	pkgs, err := parser.ParseDir(fs, pkgPath, nil, parser.ParseComments)
+	if err != nil {
+		log.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	// Iterate over the packages
+	for _, pkg := range pkgs {
+		// Iterate over the files in the package
+		for _, file := range pkg.Files {
+			// Iterate over the declarations in the file
+			for _, decl := range file.Decls {
+				// Check if the declaration is a function declaration
+				if funcDecl, ok := decl.(*ast.FuncDecl); ok {
+					// Check if the function is exported (starts with an uppercase letter)
+					if funcDecl.Name.IsExported() {
+						if strings.HasPrefix(funcDecl.Name.Name, "Test") {
+							continue
+						}
+						if funcDecl.Type.Results == nil || len(funcDecl.Type.Results.List) != 1 {
+							continue
+						}
+						if result, ok := funcDecl.Type.Results.List[0].Type.(*ast.StarExpr); ok {
+							if sel, ok := result.X.(*ast.SelectorExpr); ok {
+								if sel.Sel.Name == "Controller" && sel.X.(*ast.Ident).Name == "controller" {
+									continue
+								}
+							}
+						}
+
+						// fmt.Println("Exported function:", funcDecl.Name.Name)
+
+						args := make([]arguments, 0)
+						// Iterate over the parameters of the function
+						for _, param := range funcDecl.Type.Params.List {
+							// Handle different types of parameter types
+							switch t := param.Type.(type) {
+							case *ast.Ident:
+								// fmt.Println("  Parameter:", param.Names[0].Name, "-", t.Name)
+								args = append(args, arguments{Name: param.Names[0].Name, Type: t.Name})
+							case *ast.StarExpr:
+								if ident, ok := t.X.(*ast.Ident); ok {
+									log.Println("  Parameter:", param.Names[0].Name, "-", "*"+ident.Name)
+									args = append(args, arguments{Name: param.Names[0].Name, Type: "*" + ident.Name})
+								}
+							case *ast.SelectorExpr:
+								log.Println("  Parameter:", param.Names[0].Name, "-", t.X.(*ast.Ident).Name+"."+t.Sel.Name)
+								args = append(args, arguments{Name: param.Names[0].Name, Type: t.X.(*ast.Ident).Name + "." + t.Sel.Name})
+							default:
+								log.Println("  Parameter:", param.Names[0].Name, "-", fmt.Sprintf("%T", t))
+								args = append(args, arguments{Name: param.Names[0].Name, Type: fmt.Sprintf("%T", t)})
+							}
+						}
+
+						// print also the comments that are attached to the function
+						// for _, comment := range funcDecl.Doc.List {
+						// 	fmt.Println("  Comment:", comment.Text)
+						// }
+						documentation[funcDecl.Name.Name] = docItem{
+							Name:    funcDecl.Name.Name,
+							Args:    args,
+							Comment: funcDecl.Doc.Text(),
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// yaml marshall of documentation
+	result, err := yaml.Marshal(documentation) //nolint:musttag
+	if err != nil {
+		log.Println("Error:", err)
+		os.Exit(1)
+	}
+	err = renameio.WriteFile("../../documentation/controller-options.yaml", result, 0o644)
+	if err != nil {
+		log.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	// now also generate buff file
+	buff := strings.Builder{}
+	buff.WriteString(`# ![HAProxy](../assets/images/haproxy-weblogo-210x49.png "HAProxy")`)
+	buff.WriteRune('\n')
+	buff.WriteString(`## Kubernetes Controller`)
+	buff.WriteRune('\n')
+	buff.WriteRune('\n')
+	buff.WriteString(`## Options`)
+	buff.WriteRune('\n')
+	buff.WriteRune('\n')
+	buff.WriteString(`Multiple options can be combined`)
+	buff.WriteRune('\n')
+	buff.WriteRune('\n')
+	buff.WriteString("Example:\n```go\n")
+	buff.WriteString("import (\n")
+	buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller\n")
+	buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller/options\n")
+	buff.WriteString(")\n\n")
+	buff.WriteString("// multiple options can be combined\n")
+	buff.WriteString("controller, err := controller.New(opt.Option1(arg1), opt.Flag())\n```\n\n")
+	buff.WriteString("Available options:\n\n")
+
+	buff.WriteString("| Option | Arguments |\n")
+	buff.WriteString("| ---:|:--- |\n")
+
+	for _, item := range documentation {
+		buff.WriteString("| " + item.Name + " | ")
+		for index, arg := range item.Args {
+			if index > 0 {
+				buff.WriteString(", ")
+			}
+			buff.WriteString(fmt.Sprintf("`%s`(%s)", arg.Type, arg.Name))
+		}
+		buff.WriteString(" |\n")
+	}
+	buff.WriteRune('\n')
+	for _, item := range documentation {
+		buff.WriteString(fmt.Sprintf("### %s\n\n", item.Name))
+		buff.WriteString(item.Comment)
+		buff.WriteRune('\n')
+		buff.WriteString("Example:\n```go\n")
+		buff.WriteString("import (\n")
+		buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller\n")
+		buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller/options\n")
+		buff.WriteString(")\n\n")
+		buff.WriteString("controller, err := controller.New(opt." + item.Name + "(")
+		for index, arg := range item.Args {
+			if index > 0 {
+				buff.WriteString(", ")
+			}
+			buff.WriteString(arg.Name)
+		}
+		buff.WriteString("))\n```\n")
+		buff.WriteRune('\n')
+	}
+	err = renameio.WriteFile("../../documentation/controller-options.md", []byte(buff.String()), 0o644)
+	if err != nil {
+		log.Println("Error:", err)
+		os.Exit(1)
+	}
+}

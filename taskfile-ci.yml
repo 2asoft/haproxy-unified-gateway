@@ -1,0 +1,63 @@
+#https://taskfile.dev/
+version: '3'
+
+env:
+  GOLANGCI_LINT_VERSION: 1.64.4
+  TMP_DIR: /tmp
+
+tasks:
+  lint-check-latest-version:
+      desc: 'Check if golangci-lint is up to date'
+      silent: true
+      cmds:
+        - |
+          if [ "{{.LATEST_VERSION}}" != "v{{.CURRENT_VERSION}}" ]; then
+            echo "golangci-lint can be updated from v{{.CURRENT_VERSION}} to {{.LATEST_VERSION}}"
+          fi
+      vars:
+        LATEST_VERSION:
+          sh: curl --silent "https://api.github.com/repos/golangci/golangci-lint/releases/latest" | jq -r .tag_name
+        CURRENT_VERSION:
+          sh: "{{.TMP_DIR}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint --version | awk '{print $4}'"
+
+  lint-version:
+    deps:
+      - task: lint-check-latest-version
+    status:
+      - "{{.TMP_DIR}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint --version | grep -q '{{.GOLANGCI_LINT_VERSION}}'"
+    cmds:
+      - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b {{.TMP_DIR}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}} "v{{.GOLANGCI_LINT_VERSION}}"
+
+  tidy:
+    desc: 'run Go mod tidy'
+    cmds:
+      - go mod tidy
+
+  lint:
+    desc: 'run Go linters'
+    deps: [lint-version]
+    cmds:
+      - "{{.TMP_DIR}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint run --timeout 15m --color always --max-issues-per-linter 0 --max-same-issues 0"
+
+  format:
+    desc: 'formats the code'
+    cmds:
+      - go tool gofumpt -l -w .
+
+  licenses:
+    dir: cmd/controller
+    desc: 'check licenses'
+    cmds:
+      - |
+          PROJECT="$(go list -m)"
+          ALLOWED_LICENSES="$(<../../.allowed_license_types)"
+          go tool go-licenses report --ignore "$PROJECT" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
+          go tool go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/oktalz/present" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
+
+  check-commit:
+    cmds:
+      - go tool check-commit
+
+  govulncheck:
+    cmds:
+      - go tool govulncheck -show verbose ./...
