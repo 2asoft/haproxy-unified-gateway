@@ -4,6 +4,8 @@ GatewayClass:
         - name: gatewayClass
           type: string
     comment: |
-        Host sets the host of the controller.
-
-        The host can be an IP address or a hostname.
+        GatewayClass sets the GatewayClass of the controller.
+Logging:
+    name: Logging
+    args: []
+    comment: ""

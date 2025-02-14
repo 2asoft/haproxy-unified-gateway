@@ -18,15 +18,27 @@ controller, err := controller.New(opt.Option1(arg1), opt.Flag())
 
 Available options:
 
-| Option | Arguments |
+| Function | Arguments |
 | ---:|:--- |
-| GatewayClass | `string`(gatewayClass) |
+| GatewayClass | `gatewayClass`(string) |
+| Logging |  |
+
+### Logging
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/controller
+  github.com/haproxytech/kubernetes-controller/controller/options
+)
+
+controller, err := controller.New(opt.Logging())
+```
 
 ### GatewayClass
 
-Host sets the host of the controller.
-
-The host can be an IP address or a hostname.
+GatewayClass sets the GatewayClass of the controller.
 
 Example:
 ```go

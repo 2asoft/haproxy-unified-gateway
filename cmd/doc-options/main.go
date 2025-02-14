@@ -5,15 +5,38 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/renameio/v2"
+	"github.com/phuslu/log"
 	"gopkg.in/yaml.v3"
 )
 
 func main() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error().Err(fmt.Errorf("%v", err)).Msg("")
+		}
+		log.Info().Str("action", "end").Msg("")
+	}()
+	log.DefaultLogger = log.Logger{
+		Level:      log.PanicLevel,
+		TimeFormat: time.DateTime,
+		// Caller:     1,
+		Writer: &log.ConsoleWriter{
+			ColorOutput:    true,
+			QuoteString:    false,
+			EndWithMessage: true,
+		},
+	}
+	sublogger := log.DefaultLogger
+	sublogger.Context = log.NewContext(nil).Str("application", "doc-options").Value()
+	log.DefaultLogger = sublogger
+
+	log.Info().Str("action", "start").Msg("")
+
 	documentation := make(map[string]docItem)
 
 	pkgPath := "../../controller/options"
@@ -22,7 +45,7 @@ func main() {
 
 	pkgs, err := parser.ParseDir(fs, pkgPath, nil, parser.ParseComments)
 	if err != nil {
-		log.Println("Error:", err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 
@@ -62,14 +85,14 @@ func main() {
 								args = append(args, arguments{Name: param.Names[0].Name, Type: t.Name})
 							case *ast.StarExpr:
 								if ident, ok := t.X.(*ast.Ident); ok {
-									log.Println("  Parameter:", param.Names[0].Name, "-", "*"+ident.Name)
+									log.Info().Str("parameter", param.Names[0].Name).Str("value", "*"+ident.Name).Msg("")
 									args = append(args, arguments{Name: param.Names[0].Name, Type: "*" + ident.Name})
 								}
 							case *ast.SelectorExpr:
-								log.Println("  Parameter:", param.Names[0].Name, "-", t.X.(*ast.Ident).Name+"."+t.Sel.Name)
+								log.Info().Str("parameter", param.Names[0].Name).Str("value", t.X.(*ast.Ident).Name+"."+t.Sel.Name).Msg("")
 								args = append(args, arguments{Name: param.Names[0].Name, Type: t.X.(*ast.Ident).Name + "." + t.Sel.Name})
 							default:
-								log.Println("  Parameter:", param.Names[0].Name, "-", fmt.Sprintf("%T", t))
+								log.Info().Str("parameter", param.Names[0].Name).Str("value", fmt.Sprintf("%T", t)).Msg("")
 								args = append(args, arguments{Name: param.Names[0].Name, Type: fmt.Sprintf("%T", t)})
 							}
 						}
@@ -92,12 +115,12 @@ func main() {
 	// yaml marshall of documentation
 	result, err := yaml.Marshal(documentation) //nolint:musttag
 	if err != nil {
-		log.Println("Error:", err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 	err = renameio.WriteFile("../../documentation/controller-options.yaml", result, 0o644)
 	if err != nil {
-		log.Println("Error:", err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 
@@ -123,7 +146,7 @@ func main() {
 	buff.WriteString("controller, err := controller.New(opt.Option1(arg1), opt.Flag())\n```\n\n")
 	buff.WriteString("Available options:\n\n")
 
-	buff.WriteString("| Option | Arguments |\n")
+	buff.WriteString("| Function | Arguments |\n")
 	buff.WriteString("| ---:|:--- |\n")
 
 	for _, item := range documentation {
@@ -132,7 +155,7 @@ func main() {
 			if index > 0 {
 				buff.WriteString(", ")
 			}
-			buff.WriteString(fmt.Sprintf("`%s`(%s)", arg.Type, arg.Name))
+			buff.WriteString(fmt.Sprintf("`%s`(%s)", arg.Name, arg.Type))
 		}
 		buff.WriteString(" |\n")
 	}
@@ -158,7 +181,7 @@ func main() {
 	}
 	err = renameio.WriteFile("../../documentation/controller-options.md", []byte(buff.String()), 0o644)
 	if err != nil {
-		log.Println("Error:", err)
+		log.Error().Err(err).Msg("")
 		os.Exit(1)
 	}
 }
