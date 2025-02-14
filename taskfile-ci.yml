@@ -61,3 +61,9 @@ tasks:
   govulncheck:
     cmds:
       - go tool govulncheck -show verbose ./...
+
+  posthook:
+    cmds:
+      - echo '#!/bin/sh' > .git/hooks/post-commit
+      - echo 'task ci' >> .git/hooks/post-commit
+      - chmod +x .git/hooks/post-commit

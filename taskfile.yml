@@ -14,6 +14,7 @@ tasks:
   ci:
     desc: 'do all the checks'
     cmds:
+      - task: check-commit
       - task: tidy
       - task: format
       - task: licenses

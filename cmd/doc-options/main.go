@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"strings"
 	"time"
 
@@ -42,11 +41,9 @@ func main() {
 	pkgPath := "../../controller/options"
 
 	fs := token.NewFileSet()
-
 	pkgs, err := parser.ParseDir(fs, pkgPath, nil, parser.ParseComments)
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		log.Panic().Err(err).Msg("")
 	}
 
 	// Iterate over the packages
@@ -115,13 +112,11 @@ func main() {
 	// yaml marshall of documentation
 	result, err := yaml.Marshal(documentation) //nolint:musttag
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		log.Panic().Err(err).Msg("")
 	}
 	err = renameio.WriteFile("../../documentation/controller-options.yaml", result, 0o644)
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		log.Panic().Err(err).Msg("")
 	}
 
 	// now also generate buff file
@@ -181,7 +176,6 @@ func main() {
 	}
 	err = renameio.WriteFile("../../documentation/controller-options.md", []byte(buff.String()), 0o644)
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		os.Exit(1)
+		log.Panic().Err(err).Msg("")
 	}
 }
