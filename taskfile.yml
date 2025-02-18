@@ -1,13 +1,10 @@
 #https://taskfile.dev/
 version: '3'
 
+env:
+  TASK_INTERNAL: true
+
 includes:
-  ci:
-    taskfile: taskfile-ci.yml
-    flatten: true
-  go:
-    taskfile: taskfile-go.yml
-    flatten: true
   kind:
     taskfile: tools/kind.yml
     flatten: true
@@ -40,3 +37,47 @@ tasks:
       - task: lint
       - task: test
       - task: govulncheck
+
+  test:
+    desc: 'run Go tests'
+    cmds:
+      - go test -v ./...
+
+  tidy:
+    internal: true
+    desc: 'run Go mod tidy'
+    cmds:
+      - go mod tidy
+
+  lint:
+    desc: 'run Go linters'
+    deps: [lint-version]
+    cmds:
+      - "{{.TMP_DIR}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint run --timeout 15m --color always --max-issues-per-linter 0 --max-same-issues 0"
+
+  format:
+    internal: true
+    desc: 'formats the code'
+    cmds:
+      - go tool gofumpt -l -w .
+
+  licenses:
+    internal: true
+    dir: cmd/controller
+    desc: 'check licenses'
+    cmds:
+      - |
+          PROJECT="$(go list -m)"
+          ALLOWED_LICENSES="$(<../../.allowed_license_types)"
+          go tool go-licenses report --ignore "$PROJECT" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
+          go tool go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/oktalz/present" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
+
+  check-commit:
+    internal: true
+    cmds:
+      - go tool check-commit
+
+  govulncheck:
+    internal: true
+    cmds:
+      - go tool govulncheck -show verbose ./...
