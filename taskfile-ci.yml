@@ -2,8 +2,6 @@
 version: '3'
 
 env:
-  GOLANGCI_LINT_VERSION: 1.64.4
-  KUBECTL_VERSION: v1.32.2
   TMP_DIR: /tmp
 
 tasks:
