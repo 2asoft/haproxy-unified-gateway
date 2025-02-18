@@ -23,6 +23,9 @@ includes:
   generate:
     taskfile: tools/generate.yml
     flatten: true
+  haproxy:
+    taskfile: tools/haproxy.yml
+    flatten: true
 
 tasks:
 

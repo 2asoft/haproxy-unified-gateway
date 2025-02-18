@@ -146,7 +146,9 @@ func main() {
 	buff.WriteString("| Function | Arguments |\n")
 	buff.WriteString("| ---:|:--- |\n")
 
-	for _, item := range documentation {
+	keys := slices.Sorted(maps.Keys(documentation))
+	for _, key := range keys {
+		item := documentation[key]
 		buff.WriteString("| " + item.Name + " | ")
 		for index, arg := range item.Args {
 			if index > 0 {
@@ -157,7 +159,6 @@ func main() {
 		buff.WriteString(" |\n")
 	}
 	buff.WriteRune('\n')
-	keys := slices.Sorted(maps.Keys(documentation))
 	for _, key := range keys {
 		item := documentation[key]
 		buff.WriteString(fmt.Sprintf("### %s\n\n", item.Name))

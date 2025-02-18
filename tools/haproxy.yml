@@ -1,0 +1,10 @@
+#https://taskfile.dev/
+version: '3'
+
+tasks:
+
+  kind-build-haproxy-image:
+    desc: 'build haproxy image with s6 and dataplaneapi'
+    dir: ci/haproxy
+    cmds:
+      - docker build -t haproxytech/haproxy .

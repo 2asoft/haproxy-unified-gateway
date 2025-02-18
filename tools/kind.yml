@@ -6,7 +6,7 @@ env:
   DOCKER_FILE: "{{ default \"-build/Dockerfile\" .DOCKER_FILE}}"
 
 vars:
-  CONFIG_DIR: "{{.TASKFILE_DIR}}/ci/kind/manifests"
+  CONFIG_DIR: "ci/kind/manifests"
   K8S_VERSION: 1.32.2
   TMP_DIR: /tmp
 
@@ -35,7 +35,7 @@ tasks:
     desc: 'create a KinD cluster with controller'
     status:
       - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
-    dir: '{{.TASKFILE_DIR}}/ci/kind'
+    dir: 'ci/kind' # this file is imported so its fine
     cmds:
       - go tool kind delete cluster --name {{.CLUSTER_NAME}}
       - go tool kind create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml
@@ -45,7 +45,7 @@ tasks:
     internal: true
     dir: cmd/controller
     cmds:
-      - go build -o ../../build/kubernetes-controller .
+      - CGO_ENABLED=0 go build -o ../../build/kubernetes-controller .
 
   kind-build-controller-image:
     internal: true
@@ -107,7 +107,32 @@ tasks:
       - kubectl apply -f {{.CONFIG_DIR}}/echo/echo.yaml
       - docker pull haproxytech/haproxy-alpine:3.1
       - go tool kind load docker-image haproxytech/haproxy-alpine:3.1 --name={{.CLUSTER_NAME}}
+      - go tool kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
       - kubectl apply -f {{.CONFIG_DIR}}/haproxy/haproxy.yaml
       - task: delimiter
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy -n haproxy
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
+
+  kind-redeploy:
+    desc: 'redeploy a KinD cluster with IC'
+    silent: true
+    cmds:
+      - task: kind-build-controller-image
+      - task: delimiter
+      - cmd: go tool kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - task: delimiter
+      - echo "deploying Controller ..."
+      - kubectl apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
+      - kubectl apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - task: delimiter
+      - kubectl delete pods -l run=haproxy-controller -n haproxy-controller
+      - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
+
+  kind-redeploy-haproxy:
+    desc: 'redeploy a HAProxy'
+    silent: true
+    cmds:
+      - task: kind-build-haproxy-image
+      - go tool kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
+      - kubectl delete pods -l run=haproxy -n haproxy
+      - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy -n haproxy

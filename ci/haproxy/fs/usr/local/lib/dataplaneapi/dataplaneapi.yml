@@ -1,0 +1,18 @@
+config_version: 2
+dataplaneapi:
+  host: 0.0.0.0
+  port: 5555
+  user:
+  - name: admin
+    insecure: true
+    password: adminpwd
+  resources:
+    maps_dir: /usr/local/lib/haproxy/maps
+    ssl_certs_dir: /usr/local/lib/haproxy/ssl
+    spoe_dir: /usr/local/lib/haproxy/spoe
+    general_storage_dir: /usr/local/lib/haproxy/general
+haproxy:
+  config_file: /usr/local/lib/haproxy/haproxy.cfg
+  haproxy_bin: /usr/sbin/haproxy
+  reload:
+    reload_strategy: s6

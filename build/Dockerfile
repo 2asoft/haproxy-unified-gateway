@@ -16,9 +16,6 @@ FROM haproxytech/haproxy-alpine:3.1
 
 ARG TARGETPLATFORM
 
-ENV S6_USER=haproxy
-ENV S6_GROUP=haproxy
-
 #COPY /fs /
 
 RUN apk --no-cache add socat openssl util-linux htop tzdata curl libcap && \
@@ -28,5 +25,7 @@ RUN apk --no-cache add socat openssl util-linux htop tzdata curl libcap && \
 
 COPY kubernetes-controller  ./kubernetes-controller
 
-ENTRYPOINT ["./kubernetes-controller"]
+STOPSIGNAL SIGTERM
+
+ENTRYPOINT [ "./kubernetes-controller" ]
 CMD []

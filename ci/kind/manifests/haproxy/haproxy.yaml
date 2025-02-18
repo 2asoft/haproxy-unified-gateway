@@ -15,8 +15,14 @@ spec:
     spec:
       containers:
         - name: haproxy
-          image: "haproxytech/haproxy-alpine:3.1"
+          #image: "haproxytech/haproxy-alpine:3.1"
+          image: "haproxytech/haproxy"
           imagePullPolicy: Never
+          resources:
+            limits:
+              memory: 2560Mi
+            requests:
+              memory: 2048Mi
           ports:
             - name: http
               containerPort: 8888
