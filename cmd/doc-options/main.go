@@ -5,6 +5,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -155,7 +157,9 @@ func main() {
 		buff.WriteString(" |\n")
 	}
 	buff.WriteRune('\n')
-	for _, item := range documentation {
+	keys := slices.Sorted(maps.Keys(documentation))
+	for _, key := range keys {
+		item := documentation[key]
 		buff.WriteString(fmt.Sprintf("### %s\n\n", item.Name))
 		buff.WriteString(item.Comment)
 		buff.WriteRune('\n')
