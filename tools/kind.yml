@@ -1,0 +1,113 @@
+#https://taskfile.dev/
+version: '3'
+
+env:
+  CLUSTER_NAME: "{{ default \"dev-controller\" .CLUSTER_NAME}}"
+  DOCKER_FILE: "{{ default \"-build/Dockerfile\" .DOCKER_FILE}}"
+
+vars:
+  CONFIG_DIR: "{{.TASKFILE_DIR}}/ci/kind/manifests"
+  K8S_VERSION: 1.32.2
+  TMP_DIR: /tmp
+
+tasks:
+
+  check-if-gitlab-env:
+    internal: true
+    cmds:
+      - '[ -z "$GITLAB_CI" ] && exit 1 || exit 0'
+  check-if-ci-env:
+    internal: true
+    cmds:
+      - '[ -z "$CI_ENV" ]    && exit 1 || exit 0'
+  check-if-not-ci-env:
+    internal: true
+    cmds:
+      - '[ -z "$CI_ENV" ]    && exit 0 || exit 1'
+  delimiter:
+    internal: true
+    cmds:
+      - cmd: printf %80s |tr " " "="; echo ""
+        silent: true
+
+  kind-create-cluster:
+    internal: true
+    desc: 'create a KinD cluster with controller'
+    status:
+      - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
+    dir: '{{.TASKFILE_DIR}}/ci/kind'
+    cmds:
+      - go tool kind delete cluster --name {{.CLUSTER_NAME}}
+      - go tool kind create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml
+
+  kind-controller-build:
+    desc: ''
+    internal: true
+    dir: cmd/controller
+    cmds:
+      - go build -o ../../build/kubernetes-controller .
+
+  kind-build-controller-image:
+    internal: true
+    desc: 'build docker image of controller'
+    dir: build
+    deps:
+      - task: kind-controller-build
+    status:
+      - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
+    cmds:
+      - docker build -t haproxytech/kubernetes-controller .
+      - rm kubernetes-controller
+
+  kind-build-echo-image:
+    internal: true
+    desc: 'build docker image of echo service'
+    dir: ci/http-echo
+    status:
+      - docker images | grep haproxytech/http-echo
+    cmds:
+      - pwd
+      - docker build --build-arg TARGETPLATFORM={{.TARGETPLATFORM}} -t haproxytech/http-echo .
+
+  kind-delete:
+    desc: 'delete a KinD cluster'
+    silent: true
+    deps:
+      - task: kind-version
+    cmds:
+      - "go tool kind delete cluster --name {{.CLUSTER_NAME}}"
+
+  kind-create:
+    desc: 'create a KinD cluster with IC and one example app'
+    silent: true
+    cmds:
+      - task: delimiter
+      - task: kind-create-cluster
+      - task: delimiter
+      - task: kind-build-controller-image
+      - task: kind-build-echo-image
+      - task: delimiter
+      - cmd: go tool kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - cmd: go tool kind load docker-image haproxytech/http-echo:latest --name={{.CLUSTER_NAME}}
+      - task: delimiter
+      - echo "Create HAProxy namespace ..."
+      - kubectl apply -f {{.CONFIG_DIR}}/controller/namespace.yaml
+      - kubectl apply -f {{.CONFIG_DIR}}/haproxy/namespace.yaml
+      - task: delimiter
+      - echo "Install custom resource definitions ..."
+      #- kubectl apply -f {{.CONFIG_DIR}}/crd/rbac.yaml
+      #- kubectl apply -f {{.CONFIG_DIR}}/crd/job-crd.yaml
+      #- kubectl wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-controller
+      - task: delimiter
+      - echo "deploying Controller ..."
+      - kubectl apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
+      - kubectl apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - task: delimiter
+      - echo "deploying echo service ..."
+      - kubectl apply -f {{.CONFIG_DIR}}/echo/echo.yaml
+      - docker pull haproxytech/haproxy-alpine:3.1
+      - go tool kind load docker-image haproxytech/haproxy-alpine:3.1 --name={{.CLUSTER_NAME}}
+      - kubectl apply -f {{.CONFIG_DIR}}/haproxy/haproxy.yaml
+      - task: delimiter
+      - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy -n haproxy
+      - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller

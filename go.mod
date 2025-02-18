@@ -7,6 +7,7 @@ tool (
 	github.com/haproxytech/check-commit/v5
 	golang.org/x/vuln/cmd/govulncheck
 	mvdan.cc/gofumpt
+	sigs.k8s.io/kind
 )
 
 require (
@@ -16,8 +17,11 @@ require (
 )
 
 require (
+	al.essio.dev/pkg/shellescape v1.5.1 // indirect
+	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
+	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -26,17 +30,21 @@ require (
 	github.com/google/go-licenses v1.6.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/licenseclassifier v0.0.0-20210722185704-3043a050f148 // indirect
+	github.com/google/safetext v0.0.0-20220905092116-b49f7bc46da2 // indirect
 	github.com/haproxytech/check-commit/v5 v5.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/otiai10/copy v1.6.0 // indirect
+	github.com/pelletier/go-toml v1.9.5 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sergi/go-diff v1.3.1 // indirect
-	github.com/spf13/cobra v1.6.0 // indirect
+	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
@@ -58,4 +66,6 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	mvdan.cc/gofumpt v0.7.0 // indirect
+	sigs.k8s.io/kind v0.27.0 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )

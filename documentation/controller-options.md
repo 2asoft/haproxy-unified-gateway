@@ -23,6 +23,19 @@ Available options:
 | GatewayClass | `gatewayClass`(string) |
 | Logging |  |
 
+### Logging
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/controller
+  github.com/haproxytech/kubernetes-controller/controller/options
+)
+
+controller, err := controller.New(opt.Logging())
+```
+
 ### GatewayClass
 
 GatewayClass sets the GatewayClass of the controller.
@@ -35,18 +48,5 @@ import (
 )
 
 controller, err := controller.New(opt.GatewayClass(gatewayClass))
-```
-
-### Logging
-
-
-Example:
-```go
-import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
-)
-
-controller, err := controller.New(opt.Logging())
 ```
 

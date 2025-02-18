@@ -1,0 +1,36 @@
+#https://taskfile.dev/
+version: '3'
+
+env:
+  KUBECTL_VERSION: v1.32.2
+  TMP_DIR: /tmp
+
+tasks:
+
+  kubectl-check-latest-version:
+      desc: 'Check if kubectl is up to date'
+      internal: true
+      silent: true
+      cmds:
+        - |
+          if [ "{{.LATEST_VERSION}}" != "{{.KUBECTL_VERSION}}" ]; then
+            echo "kubectl can be updated from {{.KUBECTL_VERSION}} to {{.LATEST_VERSION}}"
+          fi
+      vars:
+        LATEST_VERSION:
+          sh: curl -L -s https://dl.k8s.io/release/stable.txt
+
+  kubectl-install:
+    internal: true
+    deps:
+      - task: check-latest-version
+    status:
+      - "/{{.TMP_DIR}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version | grep -q '{{.KUBECTL_VERSION}}'"
+    cmds:
+      - mkdir -p /{{.TMP_DIR}}/kubectl/{{.KUBECTL_VERSION}}
+      - cmd: curl -Lo /{{.TMP_DIR}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/amd64/kubectl"
+        platforms: [linux/amd64, darwin/amd64]
+      - cmd: curl -Lo /{{.TMP_DIR}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/arm64/kubectl"
+        platforms: [linux/arm64, darwin/arm64]
+      - cmd: chmod +x /{{.TMP_DIR}}/kubectl/{{.KUBECTL_VERSION}}/kubectl
+      - cmd: /{{.TMP_DIR}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version

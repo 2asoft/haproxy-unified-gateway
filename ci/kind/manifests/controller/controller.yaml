@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: haproxy-controller
+  name: haproxy-controller
+  namespace: haproxy-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: haproxy-controller
+  template:
+    metadata:
+      labels:
+        run: haproxy-controller
+    spec:
+      serviceAccountName: haproxy-kubernetes-controller
+      containers:
+        - name: haproxy-controller
+          image: haproxytech/kubernetes-controller:latest
+          imagePullPolicy: Never
+          resources:
+            limits:
+              memory: 2560Mi
+            requests:
+              memory: 2048Mi
+          args:
+            - --gateway.class=haproxy
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: stat
+              containerPort: 31024
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-kubernetes-controller
+  namespace: haproxy-controller
+spec:
+  selector:
+    run: haproxy-controller
+  ports:
+    - name: stat
+      port: 1024
+      targetPort: 1024

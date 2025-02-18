@@ -8,6 +8,21 @@ includes:
   go:
     taskfile: taskfile-go.yml
     flatten: true
+  kind:
+    taskfile: tools/kind.yml
+    flatten: true
+  kubectl:
+    taskfile: tools/kubectl.yml
+    flatten: true
+  git:
+    taskfile: tools/git.yml
+    flatten: true
+  lint:
+    taskfile: tools/golang-ci-lint.yml
+    flatten: true
+  generate:
+    taskfile: tools/generate.yml
+    flatten: true
 
 tasks:
 
@@ -22,16 +37,3 @@ tasks:
       - task: lint
       - task: test
       - task: govulncheck
-
-  generate-doc-options:
-    internal: true
-    desc: 'run doc options generation'
-    dir: ./cmd/doc-options
-    cmds:
-      - go run .
-
-  generate:
-    desc: 'run generation'
-    cmds:
-      - go generate -x ./...
-      - task : generate-doc-options
