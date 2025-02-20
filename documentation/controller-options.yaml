@@ -1,11 +1,39 @@
+ControllerName:
+    name: ControllerName
+    args:
+        - name: controllerName
+          type: string
+    comment: ""
+ControllerPodConfig:
+    name: ControllerPodConfig
+    args:
+        - name: controllerPodConfig
+          type: config.ControllerPodConfig
+    comment: ""
 GatewayClass:
     name: GatewayClass
     args:
         - name: gatewayClass
           type: string
-    comment: |
-        GatewayClass sets the GatewayClass of the controller.
+    comment: ""
+LeaderElectionConfig:
+    name: LeaderElectionConfig
+    args:
+        - name: leaderElection
+          type: config.LeaderElectionConfig
+    comment: ""
 Logging:
     name: Logging
+    args: []
+    comment: ""
+MetricsConfig:
+    name: MetricsConfig
+    args:
+        - name: metricsConfig
+          type: config.MetricsConfig
+    comment: |
+        ControllerPodConfig sets the ControllerPodConfig of the controller.
+RLogging:
+    name: RLogging
     args: []
     comment: ""

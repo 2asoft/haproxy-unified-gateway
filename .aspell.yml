@@ -34,3 +34,8 @@ allowed:
   - parallelize
   - maxconn
   - kubebuilder
+  - namespace
+  - leaderelection
+  - namespaces
+  - reconciler
+  - runtime

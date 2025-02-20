@@ -20,12 +20,42 @@ Available options:
 
 | Function | Arguments |
 | ---:|:--- |
+| ControllerName | `controllerName`(string) |
+| ControllerPodConfig | `controllerPodConfig`(config.ControllerPodConfig) |
 | GatewayClass | `gatewayClass`(string) |
+| LeaderElectionConfig | `leaderElection`(config.LeaderElectionConfig) |
 | Logging |  |
+| MetricsConfig | `metricsConfig`(config.MetricsConfig) |
+| RLogging |  |
+
+### ControllerName
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/controller
+  github.com/haproxytech/kubernetes-controller/controller/options
+)
+
+controller, err := controller.New(opt.ControllerName(controllerName))
+```
+
+### ControllerPodConfig
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/controller
+  github.com/haproxytech/kubernetes-controller/controller/options
+)
+
+controller, err := controller.New(opt.ControllerPodConfig(controllerPodConfig))
+```
 
 ### GatewayClass
 
-GatewayClass sets the GatewayClass of the controller.
 
 Example:
 ```go
@@ -35,6 +65,19 @@ import (
 )
 
 controller, err := controller.New(opt.GatewayClass(gatewayClass))
+```
+
+### LeaderElectionConfig
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/controller
+  github.com/haproxytech/kubernetes-controller/controller/options
+)
+
+controller, err := controller.New(opt.LeaderElectionConfig(leaderElection))
 ```
 
 ### Logging
@@ -48,5 +91,32 @@ import (
 )
 
 controller, err := controller.New(opt.Logging())
+```
+
+### MetricsConfig
+
+ControllerPodConfig sets the ControllerPodConfig of the controller.
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/controller
+  github.com/haproxytech/kubernetes-controller/controller/options
+)
+
+controller, err := controller.New(opt.MetricsConfig(metricsConfig))
+```
+
+### RLogging
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/controller
+  github.com/haproxytech/kubernetes-controller/controller/options
+)
+
+controller, err := controller.New(opt.RLogging())
 ```
 
