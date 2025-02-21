@@ -6,22 +6,22 @@ env:
 
 includes:
   kind:
-    taskfile: tools/kind.yml
+    taskfile: taskfile/kind.yml
     flatten: true
   kubectl:
-    taskfile: tools/kubectl.yml
+    taskfile: taskfile/kubectl.yml
     flatten: true
   git:
-    taskfile: tools/git.yml
+    taskfile: taskfile/git.yml
     flatten: true
   lint:
-    taskfile: tools/golang-ci-lint.yml
+    taskfile: taskfile/golang-ci-lint.yml
     flatten: true
   generate:
-    taskfile: tools/generate.yml
+    taskfile: taskfile/generate.yml
     flatten: true
   haproxy:
-    taskfile: tools/haproxy.yml
+    taskfile: taskfile/haproxy.yml
     flatten: true
 
 tasks:
