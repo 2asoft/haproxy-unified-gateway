@@ -1,41 +1,40 @@
 mode: commit
 min_length: 3
 allowed:
-  - aspell
-  - repo
-  - yaml
-  - config
-  - Github
-  - Gitlab
-  - env
-  - failsafe
-  - golang
-  - mkdir
-  - WORKDIR
-  - apk
-  - ENTRYPOINT
-  - ubuntu
-  - golangci
-  - sudo
-  - releaser
   - backend
   - backends
+  - betteralign
+  - config
+  - crd
+  - env
+  - entrypoint
+  - failsafe
   - frontend
   - frontends
-  - tcp
-  - crd
+  - github
+  - gitlab
+  - golang
+  - golangci
+  - kubebuilder
+  - leaderelection
+  - lifecycle
   - linter
   - linters
-  - tls
-  - lifecycle
-  - passthrough
-  - ssl
-  - unix
-  - parallelize
   - maxconn
-  - kubebuilder
+  - mkdir
   - namespace
-  - leaderelection
   - namespaces
+  - parallelize
+  - passthrough
   - reconciler
+  - releaser
+  - repo
   - runtime
+  - ssl
+  - sudo
+  - tcp
+  - tls
+  - ubuntu
+  - unix
+  - workdir
+  - yaml

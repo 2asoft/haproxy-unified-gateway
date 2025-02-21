@@ -7,6 +7,6 @@ type arguments struct {
 
 type docItem struct {
 	Name    string
-	Args    []arguments
 	Comment string
+	Args    []arguments
 }

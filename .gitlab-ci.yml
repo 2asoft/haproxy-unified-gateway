@@ -2,6 +2,7 @@ stages:
   - diff
   - lint
   - unit-tests
+  - security
   - build
 variables:
   KIND: v0.27.0
@@ -55,7 +56,7 @@ gofumpt:
   script:
     - go tool gofumpt -l -w .
     - test -z "$(git diff 2> /dev/null)" || exit 'Go code not formatted, issue \`go tool gofumpt -l -w .\` and commit the result'
-golangci_lint:
+lint:
   stage: lint
   needs: []
   rules:
@@ -80,6 +81,34 @@ commit-policy:
     - go
   script:
       - /check
+license:
+  stage: security
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [ "" ]
+  tags:
+    - go
+  before_script:
+    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
+  script:
+    - task licenses
+govulncheck:
+  stage: security
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [ "" ]
+  tags:
+    - go
+  before_script:
+    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
+  script:
+    - task govulncheck
 unit-tests:
   needs: ["diff", "tidy"]
   rules:

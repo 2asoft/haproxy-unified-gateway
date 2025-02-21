@@ -2,3 +2,4 @@
 .idea
 .local
 build/kubernetes-controller
+cmd/controller/controller
