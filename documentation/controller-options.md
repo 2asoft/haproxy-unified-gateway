@@ -24,7 +24,7 @@ Available options:
 | ControllerPodConfig | `controllerPodConfig`(config.ControllerPodConfig) |
 | GatewayClass | `gatewayClass`(string) |
 | LeaderElectionConfig | `leaderElection`(config.LeaderElectionConfig) |
-| Logging |  |
+| Logging | `level`(log.Level) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | RLogging |  |
 
@@ -90,7 +90,7 @@ import (
   github.com/haproxytech/kubernetes-controller/controller/options
 )
 
-controller, err := controller.New(opt.Logging())
+controller, err := controller.New(opt.Logging(level))
 ```
 
 ### MetricsConfig

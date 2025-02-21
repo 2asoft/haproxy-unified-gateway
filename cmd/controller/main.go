@@ -13,6 +13,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/controller"
 	"github.com/haproxytech/kubernetes-controller/controller/config"
 	opt "github.com/haproxytech/kubernetes-controller/controller/options"
+	"github.com/phuslu/log"
 )
 
 func main() {
@@ -45,7 +46,7 @@ func main() {
 		opt.MetricsConfig(metricsConfig),
 		opt.LeaderElectionConfig(leaderElectionConfig),
 		opt.ControllerName(gatewayControllerName),
-		opt.Logging(),
+		opt.Logging(log.InfoLevel),
 		opt.RLogging())
 	if err != nil {
 		panic(err)
@@ -57,7 +58,6 @@ func main() {
 	<-ctx.Done()
 	controller.Configuration.Logger.Info().Msg("shutting down")
 	wg.Wait()
-	controller.Configuration.Logger.Info().Msg("done")
 }
 
 func createControllerPodConfig() (config.ControllerPodConfig, error) {

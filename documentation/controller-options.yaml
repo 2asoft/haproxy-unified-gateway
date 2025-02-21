@@ -24,7 +24,9 @@ LeaderElectionConfig:
     comment: ""
 Logging:
     name: Logging
-    args: []
+    args:
+        - name: level
+          type: log.Level
     comment: ""
 MetricsConfig:
     name: MetricsConfig

@@ -112,7 +112,7 @@ tasks:
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy -n haproxy
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
 
-  kind-redeploy:
+  kind-redeploy-controller:
     desc: 'redeploy a KinD cluster with IC'
     silent: true
     cmds:
