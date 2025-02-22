@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
+	"github.com/joho/godotenv"
 
 	"github.com/haproxytech/kubernetes-controller/controller"
 	"github.com/haproxytech/kubernetes-controller/controller/config"
@@ -17,6 +18,10 @@ import (
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		panic(err)
+	}
 	fmt.Println(string(version.Info)) //nolint
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
