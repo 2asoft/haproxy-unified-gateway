@@ -3,12 +3,6 @@ version: '3'
 
 tasks:
 
-  git-install-pre-commit-hook:
-    cmds:
-      - echo '#!/bin/sh' > .git/hooks/pre-commit
-      - echo 'task ci' >> .git/hooks/pre-commit
-      - chmod +x .git/hooks/pre-commit
-
   git-install-pre-push-hook:
     cmds:
       - echo '#!/bin/sh' > .git/hooks/pre-push

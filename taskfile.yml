@@ -52,13 +52,13 @@ tasks:
     deps: [lint-version]
     cmds:
       - "{{.TMP_DIR}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint run --timeout 15m --color always --max-issues-per-linter 0 --max-same-issues 0"
-      - go tool betteralign ./...
+      - go tool -modfile tools/go.mod betteralign ./...
 
   format:
     internal: true
     desc: 'formats the code'
     cmds:
-      - go tool gofumpt -l -w .
+      - go tool -modfile tools/go.mod gofumpt -l -w .
 
   licenses:
     internal: true
@@ -68,15 +68,15 @@ tasks:
       - |
           PROJECT="$(go list -m)"
           ALLOWED_LICENSES="$(<../../.allowed_license_types)"
-          go tool go-licenses report --ignore "$PROJECT" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
-          go tool go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/oktalz/present" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
+          go tool -modfile tools/go.mod go-licenses report --ignore "$PROJECT" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
+          go tool -modfile tools/go.mod go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/oktalz/present" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
 
   check-commit:
-    internal: true
     cmds:
-      - go tool check-commit
+      - cmd: go tool -modfile tools/go.mod check-commit
+        platform: linux/amd64
 
   govulncheck:
     internal: true
     cmds:
-      - go tool govulncheck -show verbose ./...
+      - go tool -modfile tools/go.mod govulncheck -show verbose ./...
