@@ -1,15 +1,6 @@
 #https://taskfile.dev/
 version: '3'
 
-env:
-  CLUSTER_NAME: "{{ default \"dev-controller\" .CLUSTER_NAME}}"
-  DOCKER_FILE: "{{ default \"-build/Dockerfile\" .DOCKER_FILE}}"
-
-vars:
-  CONFIG_DIR: "ci/kind/manifests"
-  K8S_VERSION: 1.32.2
-  TMP_DIR: /tmp
-
 tasks:
 
   check-if-gitlab-env:
@@ -32,13 +23,17 @@ tasks:
 
   kind-create-cluster:
     internal: true
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: kind
     desc: 'create a KinD cluster with controller'
     status:
       - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
     dir: 'ci/kind' # this file is imported so its fine
     cmds:
-      - go tool kind delete cluster --name {{.CLUSTER_NAME}}
-      - go tool kind create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml
+      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind delete cluster --name {{.CLUSTER_NAME}}
+      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml
 
   kind-controller-build:
     desc: ''
@@ -72,8 +67,12 @@ tasks:
   kind-delete:
     desc: 'delete a KinD cluster'
     silent: true
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: kind
     cmds:
-      - "go tool kind delete cluster --name {{.CLUSTER_NAME}}"
+      - "/{{.TMP}}/kind/{{.KIND_VERSION}}/kind delete cluster --name {{.CLUSTER_NAME}}"
 
   kind-create:
     desc: 'create a KinD cluster with IC and one example app'
@@ -85,8 +84,8 @@ tasks:
       - task: kind-build-controller-image
       - task: kind-build-echo-image
       - task: delimiter
-      - cmd: go tool kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
-      - cmd: go tool kind load docker-image haproxytech/http-echo:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/http-echo:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
       - echo "Create HAProxy namespace ..."
       - kubectl apply -f {{.CONFIG_DIR}}/controller/namespace.yaml
@@ -105,20 +104,24 @@ tasks:
       - echo "deploying echo service ..."
       - kubectl apply -f {{.CONFIG_DIR}}/echo/echo.yaml
       - docker pull haproxytech/haproxy-alpine:3.1
-      - go tool kind load docker-image haproxytech/haproxy-alpine:3.1 --name={{.CLUSTER_NAME}}
-      - go tool kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
+      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/haproxy-alpine:3.1 --name={{.CLUSTER_NAME}}
+      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
       - kubectl apply -f {{.CONFIG_DIR}}/haproxy/haproxy.yaml
       - task: delimiter
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy -n haproxy
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
 
   kind-redeploy-controller:
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: kind
     desc: 'redeploy a KinD cluster with IC'
     silent: true
     cmds:
       - task: kind-build-controller-image
       - task: delimiter
-      - cmd: go tool kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
       - echo "deploying Controller ..."
       - kubectl apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
@@ -128,10 +131,14 @@ tasks:
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
 
   kind-redeploy-haproxy:
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: kind
     desc: 'redeploy a HAProxy'
     silent: true
     cmds:
       - task: kind-build-haproxy-image
-      - go tool kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
+      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
       - kubectl delete pods -l run=haproxy -n haproxy
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy -n haproxy

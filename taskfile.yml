@@ -5,6 +5,9 @@ env:
   TASK_INTERNAL: true
 
 includes:
+  vars:
+    taskfile: taskfile/.vars.yml
+    flatten: true
   kind:
     taskfile: taskfile/kind.yml
     flatten: true
@@ -22,6 +25,9 @@ includes:
     flatten: true
   haproxy:
     taskfile: taskfile/haproxy.yml
+    flatten: true
+  go-tools:
+    taskfile: taskfile/go-tools.yml
     flatten: true
 
 tasks:
@@ -49,34 +55,75 @@ tasks:
 
   lint:
     desc: 'run Go linters'
-    deps: [lint-version]
+    deps:
+      - lint-version
+      - task: check-go-tool
+        vars:
+          PACKAGE: betteralign
+    vars:
+      VERSION:
+        sh: yq eval '.betteralign.version' go-tools.yml
     cmds:
-      - "{{.TMP_DIR}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint run --timeout 15m --color always --max-issues-per-linter 0 --max-same-issues 0"
-      - go tool -modfile tools/go.mod betteralign ./...
+      - /{{.TMP}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint run --timeout 15m --color always --max-issues-per-linter 0 --max-same-issues 0
+      - /{{.TMP}}/betteralign/{{.VERSION}}/betteralign ./...
 
   format:
     internal: true
     desc: 'formats the code'
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: 'gofumpt'
+    vars:
+      VERSION:
+        sh: yq eval '.gofumpt.version' go-tools.yml
     cmds:
-      - go tool -modfile tools/go.mod gofumpt -l -w .
+      - /{{.TMP}}/gofumpt/{{.VERSION}}/gofumpt -l -w .
 
   licenses:
     internal: true
     dir: cmd/controller
     desc: 'check licenses'
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: 'go-licenses'
+    vars:
+      VERSION:
+        sh: yq eval '.go-licenses.version' ./../../go-tools.yml
     cmds:
       - |
           PROJECT="$(go list -m)"
           ALLOWED_LICENSES="$(<../../.allowed_license_types)"
-          go tool -modfile tools/go.mod go-licenses report --ignore "$PROJECT" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
-          go tool -modfile tools/go.mod go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/oktalz/present" --ignore "github.com/golang/freetype/raster" --ignore "github.com/golang/freetype/truetype" --ignore "oss.terrastruct.com/d2" .
+          /{{.TMP}}/go-licenses/{{.VERSION}}/go-licenses report --ignore "$PROJECT" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys" --ignore "golang.org/x/sys/unix"  .
+          /{{.TMP}}/go-licenses/{{.VERSION}}/go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/modern-go/reflect2" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys/unix"  .
 
   check-commit:
+    internal: true
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: 'check-commit'
+    vars:
+      VERSION:
+        sh: yq eval '.check-commit.version' go-tools.yml
     cmds:
-      - cmd: go tool -modfile tools/go.mod check-commit
-        platform: linux/amd64
+      - /{{.TMP}}/check-commit/{{.VERSION}}/check-commit
 
   govulncheck:
     internal: true
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: 'govulncheck'
+    vars:
+      VERSION:
+        sh: yq eval '.govulncheck.version' go-tools.yml
     cmds:
-      - go tool -modfile tools/go.mod govulncheck -show verbose ./...
+      - /{{.TMP}}/govulncheck/{{.VERSION}}/govulncheck -show verbose ./...
+
+  legal:
+    desc: 'check legal'
+    cmds:
+      - task: govulncheck
+      - task: licenses
