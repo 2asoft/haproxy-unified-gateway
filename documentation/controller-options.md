@@ -24,7 +24,7 @@ Available options:
 | ControllerPodConfig | `controllerPodConfig`(config.ControllerPodConfig) |
 | GatewayClass | `gatewayClass`(string) |
 | LeaderElectionConfig | `leaderElection`(config.LeaderElectionConfig) |
-| Logging | `level`(log.Level) |
+| Logging | `level`(slog.Level) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | RLogging |  |
 

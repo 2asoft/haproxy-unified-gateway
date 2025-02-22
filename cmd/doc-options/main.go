@@ -66,7 +66,7 @@ func main() {
 						}
 						if result, ok := funcDecl.Type.Results.List[0].Type.(*ast.StarExpr); ok {
 							if sel, ok := result.X.(*ast.SelectorExpr); ok {
-								if sel.Sel.Name == "Controller" && sel.X.(*ast.Ident).Name == "controller" {
+								if sel.Sel.Name == "Configuration" && sel.X.(*ast.Ident).Name == "config" {
 									continue
 								}
 							}

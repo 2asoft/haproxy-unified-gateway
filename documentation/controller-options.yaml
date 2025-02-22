@@ -27,7 +27,7 @@ Logging:
     comment: ""
     args:
         - name: level
-          type: log.Level
+          type: slog.Level
 MetricsConfig:
     name: MetricsConfig
     comment: |

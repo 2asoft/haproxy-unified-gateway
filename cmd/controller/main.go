@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -14,7 +15,6 @@ import (
 	"github.com/haproxytech/kubernetes-controller/controller"
 	"github.com/haproxytech/kubernetes-controller/controller/config"
 	opt "github.com/haproxytech/kubernetes-controller/controller/options"
-	"github.com/phuslu/log"
 )
 
 func main() {
@@ -51,17 +51,22 @@ func main() {
 		opt.MetricsConfig(metricsConfig),
 		opt.LeaderElectionConfig(leaderElectionConfig),
 		opt.ControllerName(gatewayControllerName),
-		opt.Logging(log.InfoLevel),
+		opt.Logging(slog.LevelInfo),
 		opt.RLogging())
 	if err != nil {
 		panic(err)
 	}
 
 	var wg sync.WaitGroup
-	go controller.Run(ctx, &wg)
+	go func() {
+		err := controller.Run(ctx, &wg)
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	<-ctx.Done()
-	controller.Configuration.Logger.Info().Msg("shutting down")
+	controller.Configuration.Logger.Info("shutting down controller")
 	wg.Wait()
 }
 
