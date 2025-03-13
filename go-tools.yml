@@ -4,6 +4,12 @@ yq:
 betteralign:
   version: v0.6.5
   install: github.com/dkorunic/betteralign/cmd/betteralign
+revive:
+  version: v1.7.0
+  install: github.com/mgechev/revive
+staticcheck:
+  version: v0.6.0
+  install: honnef.co/go/tools/cmd/staticcheck
 go-licenses:
   version: v1.6.0
   install: github.com/google/go-licenses

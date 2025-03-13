@@ -10,15 +10,15 @@ import (
 	"strings"
 )
 
-func (c context) echoHostname(writer http.ResponseWriter, request *http.Request) {
+func (c context) echoHostname(writer http.ResponseWriter, _ *http.Request) {
 	writer.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintln(writer, c.hostname)
+	fmt.Fprintln(writer, c.hostname) //revive:disable:unhandled-error
 }
 
 // echoAll echos back request in response
 func (c context) echoAll(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Echoing back request made to " + request.URL.Path + " to client (" + request.RemoteAddr + ")")
-	attr := make(map[string]interface{})
+	attr := make(map[string]any)
 
 	// OS
 	attr["os"] = map[string]string{
@@ -52,7 +52,7 @@ func (c context) echoAll(writer http.ResponseWriter, request *http.Request) {
 	for _, cookie := range request.Cookies() {
 		cookies = append(cookies, cookie.String())
 	}
-	attr["http"] = map[string]interface{}{
+	attr["http"] = map[string]any{
 		"protocol": request.Proto,
 		"headers":  headers,
 		"cookies":  cookies,
@@ -64,5 +64,5 @@ func (c context) echoAll(writer http.ResponseWriter, request *http.Request) {
 	}
 	res, _ := json.MarshalIndent(attr, "", "  ")
 	writer.Header().Set("Content-Type", "application/json")
-	fmt.Fprintln(writer, string(res))
+	fmt.Fprintln(writer, string(res)) //revive:disable:unhandled-error
 }

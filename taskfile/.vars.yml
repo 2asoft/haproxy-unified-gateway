@@ -10,6 +10,5 @@ env:
 
 vars:
   CONFIG_DIR: "ci/kind/manifests"
-  GOLANGCI_LINT_VERSION: 1.64.5
   KIND_VERSION:
     sh: yq eval '.kind.version' go-tools.yml

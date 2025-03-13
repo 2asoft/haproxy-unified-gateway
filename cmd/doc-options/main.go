@@ -15,7 +15,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func main() {
+//revive:disable:line-length-limit
+
+func main() { //revive:disable:cognitive-complexity,unhandled-error,function-length
 	defer func() {
 		if err := recover(); err != nil {
 			log.Error().Err(fmt.Errorf("%v", err)).Msg("")

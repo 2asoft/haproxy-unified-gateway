@@ -19,7 +19,7 @@ import (
 
 func main() {
 	_ = godotenv.Load()
-	fmt.Println(string(version.Info)) //nolint
+	fmt.Println(string(version.Info))
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	controllerConfig, err := createControllerPodConfig()
@@ -42,7 +42,7 @@ func main() {
 	}
 	gatewayControllerName := "haproxy-ingress.github.io/gateway-controller"
 
-	controller, err := controller.New(
+	cntlr, err := controller.New(
 		opt.ControllerPodConfig(controllerConfig),
 		opt.GatewayClass(gatewayClass),
 		opt.MetricsConfig(metricsConfig),
@@ -56,14 +56,14 @@ func main() {
 
 	var wg sync.WaitGroup
 	go func() {
-		err := controller.Run(ctx, &wg)
+		err := cntlr.Run(ctx, &wg)
 		if err != nil {
 			panic(err)
 		}
 	}()
 
 	<-ctx.Done()
-	controller.Configuration.Logger.Info("shutting down controller")
+	cntlr.Configuration.Logger.Info("shutting down controller")
 	wg.Wait()
 }
 

@@ -17,9 +17,6 @@ includes:
   git:
     taskfile: taskfile/git.yml
     flatten: true
-  lint:
-    taskfile: taskfile/golang-ci-lint.yml
-    flatten: true
   generate:
     taskfile: taskfile/generate.yml
     flatten: true
@@ -56,16 +53,26 @@ tasks:
   lint:
     desc: 'run Go linters'
     deps:
-      - lint-version
       - task: check-go-tool
         vars:
           PACKAGE: betteralign
+      - task: check-go-tool
+        vars:
+          PACKAGE: revive
+      - task: check-go-tool
+        vars:
+          PACKAGE: staticcheck
     vars:
-      VERSION:
+      BA_VERSION:
         sh: yq eval '.betteralign.version' go-tools.yml
+      RV_VERSION:
+        sh: yq eval '.revive.version' go-tools.yml
+      SC_VERSION:
+        sh: yq eval '.staticcheck.version' go-tools.yml
     cmds:
-      - /{{.TMP}}/golangci-lint/{{.GOLANGCI_LINT_VERSION}}/golangci-lint run --timeout 15m --color always --max-issues-per-linter 0 --max-same-issues 0
-      - /{{.TMP}}/betteralign/{{.VERSION}}/betteralign ./...
+      - /{{.TMP}}/revive/{{.RV_VERSION}}/revive -config revive.toml -formatter friendly -set_exit_status ./...
+      - /{{.TMP}}/staticcheck/{{.SC_VERSION}}/staticcheck ./...
+      - /{{.TMP}}/betteralign/{{.BA_VERSION}}/betteralign ./...
 
   format:
     internal: true

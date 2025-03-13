@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+//revive:disable:deep-exit
+
 // DefaultPort is the default port to use if once is not specified by the SERVER_PORT environment variable
 const (
 	HTTPPort  = 8888
@@ -20,11 +22,12 @@ type context struct {
 	hostname string
 }
 
-func (c *context) getParams() {
+func (c *context) setParams() {
 	c.params = make(map[string]string)
 	httpPtr := flag.Int("http", HTTPPort, "http port value")
 	httpsPtr := flag.Int("https", HTTPSPort, "https port value")
-	defaultRsp := flag.String("default-response", "all", "what should default response include. Values can be: all, hostname")
+	defaultRsp := flag.String("default-response", "all",
+		"what should default response include. Values can be: all, hostname")
 	flag.Parse()
 	c.params["http"] = strconv.Itoa(*httpPtr)
 	c.params["https"] = strconv.Itoa(*httpsPtr)
@@ -58,7 +61,7 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	ctx.getParams()
+	ctx.setParams()
 	http.HandleFunc("/hostname", ctx.echoHostname)
 	http.HandleFunc("/all", ctx.echoAll)
 	switch ctx.params["response"] {
