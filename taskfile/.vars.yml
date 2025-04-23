@@ -11,4 +11,4 @@ env:
 vars:
   CONFIG_DIR: "ci/kind/manifests"
   KIND_VERSION:
-    sh: yq eval '.kind.version' go-tools.yml
+    sh: yq eval '.kind.version' taskfile-tools.yml

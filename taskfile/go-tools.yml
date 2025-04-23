@@ -9,9 +9,12 @@ tasks:
     silent: true
     vars:
       PKG:
-        sh: yq eval '.{{.PACKAGE}}.install | sub("/cmd/.*", "")' go-tools.yml
+        sh: yq eval '.{{.PACKAGE}}.install | sub("/cmd/.*", "")' taskfile-tools.yml
       LATEST_PACKAGE_VERSION:
-        sh: GO111MODULE=on go list -m -versions -json {{.PKG}} | yq -r '.Versions[-1]'
+        sh: |
+          GO111MODULE=on go list -m -versions -json {{.PKG}} | \
+          yq eval '.Versions | map(select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))) | .[-1]' -
+
     status:
       - "{{ if eq .LATEST_PACKAGE_VERSION .CURRENT_VERSION }}true{{ else }}false{{ end }}"
     cmds:
@@ -39,9 +42,9 @@ tasks:
       - "{{ if eq .CURRENT_VERSION .VERSION }}true{{ else }}false{{ end }}"
     vars:
       VERSION:
-        sh: yq eval '.{{.PACKAGE}}.version' go-tools.yml
+        sh: yq eval '.{{.PACKAGE}}.version' taskfile-tools.yml
       URL:
-        sh: yq eval '.{{.PACKAGE}}.install' go-tools.yml
+        sh: yq eval '.{{.PACKAGE}}.install' taskfile-tools.yml
       CURRENT_VERSION:
         sh: go version -m /{{.TMP}}/{{.PACKAGE}}/{{.VERSION}}/{{.PACKAGE}} | awk '$1 == "mod" {print $3}'
     cmds:
@@ -57,7 +60,7 @@ tasks:
     silent: true
     vars:
       PACKAGES:
-        sh: yq eval 'keys | join(",")' go-tools.yml
+        sh: yq eval 'keys | join(",")' taskfile-tools.yml
     cmds:
       - for: { var: PACKAGES, split: ',' }
         task: check-go-tool

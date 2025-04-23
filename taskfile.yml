@@ -64,11 +64,11 @@ tasks:
           PACKAGE: staticcheck
     vars:
       BA_VERSION:
-        sh: yq eval '.betteralign.version' go-tools.yml
+        sh: yq eval '.betteralign.version' taskfile-tools.yml
       RV_VERSION:
-        sh: yq eval '.revive.version' go-tools.yml
+        sh: yq eval '.revive.version' taskfile-tools.yml
       SC_VERSION:
-        sh: yq eval '.staticcheck.version' go-tools.yml
+        sh: yq eval '.staticcheck.version' taskfile-tools.yml
     cmds:
       - /{{.TMP}}/revive/{{.RV_VERSION}}/revive -config revive.toml -formatter friendly -set_exit_status ./...
       - /{{.TMP}}/staticcheck/{{.SC_VERSION}}/staticcheck ./...
@@ -83,7 +83,7 @@ tasks:
           PACKAGE: 'gofumpt'
     vars:
       VERSION:
-        sh: yq eval '.gofumpt.version' go-tools.yml
+        sh: yq eval '.gofumpt.version' taskfile-tools.yml
     cmds:
       - /{{.TMP}}/gofumpt/{{.VERSION}}/gofumpt -l -w .
 
@@ -97,7 +97,7 @@ tasks:
           PACKAGE: 'go-licenses'
     vars:
       VERSION:
-        sh: yq eval '.go-licenses.version' ./../../go-tools.yml
+        sh: yq eval '.go-licenses.version' ./../../taskfile-tools.yml
     cmds:
       - |
           PROJECT="$(go list -m)"
@@ -113,7 +113,7 @@ tasks:
           PACKAGE: 'check-commit'
     vars:
       VERSION:
-        sh: yq eval '.check-commit.version' go-tools.yml
+        sh: yq eval '.check-commit.version' taskfile-tools.yml
     cmds:
       - /{{.TMP}}/check-commit/{{.VERSION}}/check-commit
 
@@ -125,7 +125,7 @@ tasks:
           PACKAGE: 'govulncheck'
     vars:
       VERSION:
-        sh: yq eval '.govulncheck.version' go-tools.yml
+        sh: yq eval '.govulncheck.version' taskfile-tools.yml
     cmds:
       - /{{.TMP}}/govulncheck/{{.VERSION}}/govulncheck -show verbose ./...
 
