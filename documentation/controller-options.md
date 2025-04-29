@@ -8,8 +8,8 @@ Multiple options can be combined
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 // multiple options can be combined
@@ -34,8 +34,8 @@ Available options:
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 controller, err := controller.New(opt.ControllerName(controllerName))
@@ -47,8 +47,8 @@ controller, err := controller.New(opt.ControllerName(controllerName))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 controller, err := controller.New(opt.ControllerPodConfig(controllerPodConfig))
@@ -60,8 +60,8 @@ controller, err := controller.New(opt.ControllerPodConfig(controllerPodConfig))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 controller, err := controller.New(opt.GatewayClass(gatewayClass))
@@ -73,8 +73,8 @@ controller, err := controller.New(opt.GatewayClass(gatewayClass))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 controller, err := controller.New(opt.LeaderElectionConfig(leaderElection))
@@ -86,8 +86,8 @@ controller, err := controller.New(opt.LeaderElectionConfig(leaderElection))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 controller, err := controller.New(opt.Logging(level))
@@ -100,8 +100,8 @@ ControllerPodConfig sets the ControllerPodConfig of the controller.
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 controller, err := controller.New(opt.MetricsConfig(metricsConfig))
@@ -113,8 +113,8 @@ controller, err := controller.New(opt.MetricsConfig(metricsConfig))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/controller
-  github.com/haproxytech/kubernetes-controller/controller/options
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
 controller, err := controller.New(opt.RLogging())

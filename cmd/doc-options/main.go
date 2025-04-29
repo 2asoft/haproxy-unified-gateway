@@ -42,7 +42,7 @@ func main() { //revive:disable:cognitive-complexity,unhandled-error,function-len
 
 	documentation := make(map[string]docItem)
 
-	pkgPath := "../../controller/options"
+	pkgPath := "../../k8s/gate/options"
 
 	fs := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fs, pkgPath, nil, parser.ParseComments)
@@ -138,8 +138,8 @@ func main() { //revive:disable:cognitive-complexity,unhandled-error,function-len
 	buff.WriteRune('\n')
 	buff.WriteString("Example:\n```go\n")
 	buff.WriteString("import (\n")
-	buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller\n")
-	buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller/options\n")
+	buff.WriteString("  github.com/haproxytech/kubernetes-controller/k8s/gate\n")
+	buff.WriteString("  github.com/haproxytech/kubernetes-controller/k8s/gate/options\n")
 	buff.WriteString(")\n\n")
 	buff.WriteString("// multiple options can be combined\n")
 	buff.WriteString("controller, err := controller.New(opt.Option1(arg1), opt.Flag())\n```\n\n")
@@ -168,8 +168,8 @@ func main() { //revive:disable:cognitive-complexity,unhandled-error,function-len
 		buff.WriteRune('\n')
 		buff.WriteString("Example:\n```go\n")
 		buff.WriteString("import (\n")
-		buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller\n")
-		buff.WriteString("  github.com/haproxytech/kubernetes-controller/controller/options\n")
+		buff.WriteString("  github.com/haproxytech/kubernetes-controller/k8s/gate\n")
+		buff.WriteString("  github.com/haproxytech/kubernetes-controller/k8s/gate/options\n")
 		buff.WriteString(")\n\n")
 		buff.WriteString("controller, err := controller.New(opt." + item.Name + "(")
 		for index, arg := range item.Args {

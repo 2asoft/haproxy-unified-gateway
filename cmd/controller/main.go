@@ -12,9 +12,9 @@ import (
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
 	"github.com/joho/godotenv"
 
-	"github.com/haproxytech/kubernetes-controller/controller"
-	"github.com/haproxytech/kubernetes-controller/controller/config"
-	opt "github.com/haproxytech/kubernetes-controller/controller/options"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
 )
 
 func main() {
