@@ -25,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NamespacedNameFilterFunc is a function that returns true if the resource should be processed by the reconciler.
@@ -41,6 +43,7 @@ type ReconcilerConfig struct {
 	EventCh chan<- any
 	// NamespacedNameFilter filters resources the controller will process. Can be nil.
 	NamespacedNameFilter NamespacedNameFilterFunc
+	OnlyMetadata         bool
 }
 
 // Reconciler reconciles Kubernetes resources of a specific type.
@@ -62,7 +65,14 @@ func NewReconciler(cfg ReconcilerConfig) *Reconciler {
 	}
 }
 
-func (Reconciler) mustCreateNewObject(objectType client.Object) client.Object {
+func (r *Reconciler) mustCreateNewObject(objectType client.Object) client.Object {
+	if r.cfg.OnlyMetadata {
+		partialObj := &metav1.PartialObjectMetadata{}
+		partialObj.SetGroupVersionKind(objectType.GetObjectKind().GroupVersionKind())
+
+		return partialObj
+	}
+
 	t := reflect.TypeOf(objectType).Elem()
 	obj, ok := reflect.New(t).Interface().(client.Object)
 	if !ok {

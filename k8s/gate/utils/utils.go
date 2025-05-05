@@ -15,7 +15,62 @@
 
 package utils
 
+import (
+	"fmt"
+	"log/slog"
+	"sort"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+)
+
 // Ptr return pointer to a given value
 func Ptr[V any](v V) *V {
 	return &v
+}
+
+// ExtractGVK is a function that extracts the GroupVersionKind (GVK) of a client.object.
+// It will log an error if the GKV cannot be extracted.
+type ExtractGVK func(object client.Object) schema.GroupVersionKind
+
+// NewExtractGKV creates a new MustExtractGVK function using the scheme.
+func NewExtractGKV(scheme *runtime.Scheme, logger *slog.Logger) ExtractGVK {
+	return func(obj client.Object) schema.GroupVersionKind {
+		gvk, err := apiutil.GVKForObject(obj, scheme)
+		if err != nil {
+			// this should not happen
+			logger.Error(fmt.Sprintf("could not extract GVK for object: %T", obj))
+		}
+
+		return gvk
+	}
+}
+
+type ObjectWithTimestamp interface {
+	GetCreationTimestamp() metav1.Time
+	GetName() string
+}
+
+func SortByCreationTimestamp[T ObjectWithTimestamp](objects []T) {
+	sort.Slice(objects, func(i, j int) bool {
+		a := objects[i]
+		b := objects[j]
+		aTime := a.GetCreationTimestamp()
+		bTime := b.GetCreationTimestamp()
+		return aTime.Time.Before(bTime.Time) ||
+			(aTime.Time.Equal(bTime.Time) && a.GetName() < b.GetName())
+	})
+}
+
+func MapToSortedListByCreationTimestamp[T ObjectWithTimestamp](objects map[types.NamespacedName]T) []T {
+	list := make([]T, 0, len(objects))
+	for _, obj := range objects {
+		list = append(list, obj)
+	}
+	SortByCreationTimestamp(list)
+	return list
 }

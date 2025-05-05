@@ -1,0 +1,63 @@
+// Copyright 2025 HAProxy Technologies LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package store
+
+import (
+	"fmt"
+	"log/slog"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+)
+
+// ObjectStoreUpdater updates the cluster state.
+type ObjectStoreUpdater interface {
+	upsert(obj client.Object)
+	delete(obj client.Object, nsname types.NamespacedName)
+}
+
+// to ensure that objectStoreImpl implements ObjectSore interface
+var _ ObjectStoreUpdater = &objectStoreImpl[*gatewayv1.GatewayClass]{}
+
+// objectStoreImpl wraps maps of types.NamespacedName to Kubernetes resources
+// (e.g. map[types.NamespacedName]*v1.Gateway) so that they can be used through Updater interface.
+type objectStoreImpl[T client.Object] struct {
+	objects map[types.NamespacedName]T
+	logger  *slog.Logger
+}
+
+func newObjectStoreImpl[T client.Object](objects map[types.NamespacedName]T, slogger *slog.Logger) *objectStoreImpl[T] {
+	return &objectStoreImpl[T]{
+		objects: objects,
+		logger:  slogger,
+	}
+}
+
+func (m *objectStoreImpl[T]) upsert(obj client.Object) {
+	t, ok := obj.(T)
+	if !ok {
+		m.logger.Error("obj type mismatch: ", "error", fmt.Errorf("got %T, expected %T", obj, t))
+	}
+	m.objects[client.ObjectKeyFromObject(obj)] = t
+}
+
+func (m *objectStoreImpl[T]) delete(_ client.Object, nsname types.NamespacedName) {
+	delete(m.objects, nsname)
+}
+
+type storeAdapter struct {
+	stores map[schema.GroupVersionKind]ObjectStoreUpdater
+}

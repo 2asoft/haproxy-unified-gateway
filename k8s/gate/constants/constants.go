@@ -11,22 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package opt
+package constants
 
-import (
-	"log/slog"
-	"os"
-
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+const (
+	// BundleVersionAnnotation is the annotation on Gateway API CRDs that contains the installed version.
+	// https://gateway-api.sigs.k8s.io/guides/api-design/?h=version#supported-api-versions
+	BundleVersionAnnotation = "gateway.networking.k8s.io/bundle-version"
 )
-
-func Logging(level slog.Level) func(o *config.Configuration) error {
-	return func(o *config.Configuration) error {
-		slogLogger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: level,
-		}))
-		o.Logger = slogLogger
-		o.K8sLogging.LogConverter = config.NewIOWriter(slogLogger)
-		return nil
-	}
-}

@@ -40,11 +40,17 @@ func (p NamespacePredicate) Create(e event.CreateEvent) bool {
 	if e.Object == nil {
 		return false
 	}
+	if len(p.namespaces) == 0 {
+		return true
+	}
 	return p.namespaces[e.Object.GetNamespace()]
 }
 
 // Update implements default UpdateEvent filter for validating a namespace among a list.
 func (p NamespacePredicate) Update(e event.UpdateEvent) bool {
+	if len(p.namespaces) == 0 {
+		return true
+	}
 	if e.ObjectOld != nil {
 		if p.namespaces[e.ObjectOld.GetNamespace()] {
 			return true
@@ -62,6 +68,9 @@ func (p NamespacePredicate) Update(e event.UpdateEvent) bool {
 
 // Delete implements default DeleteEvent filter for validating a namespace among a list.
 func (p NamespacePredicate) Delete(e event.DeleteEvent) bool {
+	if len(p.namespaces) == 0 {
+		return true
+	}
 	if e.Object == nil {
 		return false
 	}

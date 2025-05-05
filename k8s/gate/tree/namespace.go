@@ -11,22 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package opt
+package tree
 
-import (
-	"log/slog"
-	"os"
-
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-)
-
-func Logging(level slog.Level) func(o *config.Configuration) error {
-	return func(o *config.Configuration) error {
-		slogLogger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: level,
-		}))
-		o.Logger = slogLogger
-		o.K8sLogging.LogConverter = config.NewIOWriter(slogLogger)
-		return nil
-	}
-}
+// A Namespace represents a Kubernetes Service
+type Namespace struct{}

@@ -39,6 +39,7 @@ type recConfig struct {
 	k8sPredicate         predicate.Predicate
 	fieldIndices         index.FieldIndices
 	newReconciler        NewReconcilerFunc
+	onlyMetadata         bool
 }
 
 type NewReconcilerFunc func(cfg ReconcilerConfig) *Reconciler
@@ -71,6 +72,13 @@ func WithFieldIndices(fieldIndices index.FieldIndices) Option {
 func WithNewReconciler(newReconciler NewReconcilerFunc) Option {
 	return func(cfg *recConfig) {
 		cfg.newReconciler = newReconciler
+	}
+}
+
+// WithOnlyMetadata tells the controller to only cache metadata, and to watch the API server in metadata-only form.
+func WithOnlyMetadata() Option {
+	return func(cfg *recConfig) {
+		cfg.onlyMetadata = true
 	}
 }
 
@@ -114,6 +122,12 @@ func Register(
 	// // This is the equivalent of calling
 	// Watches(source.Kind(cache, &Type{}, &handler.EnqueueRequestForObject{})).
 	// It would be possible to enqueue more dependent object reconcilitions.
+	if cfg.onlyMetadata {
+		if objectType.GetObjectKind().GroupVersionKind().Empty() {
+			panic("the object must have its GVK set")
+		}
+		forOpts = append(forOpts, ctlr_builder.OnlyMetadata)
+	}
 	builder := ctlr.NewControllerManagedBy(mgr).
 		Named(name).
 		For(objectType, forOpts...)
@@ -127,6 +141,7 @@ func Register(
 		ObjectType:           objectType,
 		EventCh:              eventCh,
 		NamespacedNameFilter: cfg.namespacedNameFilter,
+		OnlyMetadata:         cfg.onlyMetadata,
 	}
 
 	if err := builder.Complete(cfg.newReconciler(reconcileConfig)); err != nil {

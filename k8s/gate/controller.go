@@ -22,9 +22,11 @@ import (
 	"sync"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
+	constant "github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/predicate"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
 	apiv1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
@@ -75,16 +77,24 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("cannot register controllers: %w", err)
 	}
 
-	eventHandler := events.NewEventHandlerImpl(events.NewEventHandlerConfig(
+	extractGVK := utils.NewExtractGKV(scheme, c.Configuration.Logger)
+
+	treeBuilderConfig := handler.NewGateTreeBuilderConfig(
 		mgr.GetClient(),
 		mgr.GetAPIReader(),
-		c.Configuration.ControllerPodConfig,
-		c.Configuration.GatewayCtlrName,
-	))
+		c.Configuration.GatewayClass,
+		extractGVK,
+	)
 
-	eventLoop := events.NewEventLoop(
+	eventHandler := handler.NewEventHandlerImpl(
+		treeBuilderConfig,
+		extractGVK,
+		c.Configuration.Logger,
+	)
+
+	eventLoop := handler.NewEventLoop(
 		eventCh,
-		*c.Configuration.Logger.WithGroup("monitorLoop"),
+		*c.Configuration.Logger,
 		eventHandler,
 	)
 
@@ -115,11 +125,23 @@ func registerControllers( //revive:disable:function-length
 	crdWithGVK.SetGroupVersionKind(
 		schema.GroupVersionKind{Group: apiext.GroupName, Version: "v1", Kind: "CustomResourceDefinition"},
 	)
-	// Adjust this!!!!!
-	// Here just for example
-	whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test"}
 
 	controllerRegisterCfgs := []ctlrCfg{
+		{
+			// watch metadata of Gateway API CRDs
+			// Gateway API CRDs are filtered with the predicate: AnnotationPredicate
+			// on
+			name:       "GatewayApiCRD",
+			objectType: &crdWithGVK,
+			options: []Option{
+				WithOnlyMetadata(),
+				WithK8sPredicate(
+					k8spredicate.And(
+						// k8spredicate.GenerationChangedPredicate{},
+						predicate.AnnotationPredicate{Annotation: constant.BundleVersionAnnotation}),
+				),
+			},
+		},
 		{
 			name:       "GatewayClass",
 			objectType: &gatewayv1.GatewayClass{},
@@ -139,7 +161,8 @@ func registerControllers( //revive:disable:function-length
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
-						predicate.NewNamespacePredicate(whiteListNs),
+						predicate.GatewayPredicate{GatewayClassName: cfg.GatewayClass},
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),
 			},
@@ -152,7 +175,7 @@ func registerControllers( //revive:disable:function-length
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
 						predicate.GatewayClassPredicate{ControllerName: cfg.GatewayCtlrName},
-						predicate.NewNamespacePredicate(whiteListNs),
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),
 			},
@@ -163,7 +186,7 @@ func registerControllers( //revive:disable:function-length
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
-						predicate.NewNamespacePredicate(whiteListNs),
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),
 			},
@@ -175,7 +198,7 @@ func registerControllers( //revive:disable:function-length
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(whiteListNs),
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),
 			},
@@ -187,7 +210,7 @@ func registerControllers( //revive:disable:function-length
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(whiteListNs),
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),
 				WithFieldIndices(index.CreateEndpointSliceFieldIndices()),
@@ -200,7 +223,19 @@ func registerControllers( //revive:disable:function-length
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(whiteListNs),
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+					),
+				),
+			},
+		},
+		{
+			name:       "ConfigMap",
+			objectType: &apiv1.ConfigMap{},
+			options: []Option{
+				WithK8sPredicate(
+					k8spredicate.And(
+						k8spredicate.GenerationChangedPredicate{},
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),
 			},

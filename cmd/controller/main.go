@@ -12,7 +12,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
 	"github.com/joho/godotenv"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate"
+	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
 )
@@ -33,21 +33,31 @@ func main() {
 		Enabled: false,
 		Secure:  false,
 	}
+	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
+	// (through the spec.controllerName)
 	gatewayClass := "haproxy"
+	gatewayControllerName := "gate.haproxy.org/gateway-controller"
+
+	whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test", "test2"}
+	// whiteListNs := []string{}
+
+	kubeconfig := ""
+
 	leaderElectionLockName := "kubernetes-controller-leader-election-lock"
 	leaderElectionConfig := config.LeaderElectionConfig{
-		Enabled:  true,
+		Enabled:  false,
 		LockName: leaderElectionLockName,
 		Identity: controllerConfig.Name,
 	}
-	gatewayControllerName := "haproxy-ingress.github.io/gateway-controller"
 
 	cntlr, err := controller.New(
 		opt.ControllerPodConfig(controllerConfig),
+		opt.KubeConfig(kubeconfig),
 		opt.GatewayClass(gatewayClass),
 		opt.MetricsConfig(metricsConfig),
 		opt.LeaderElectionConfig(leaderElectionConfig),
 		opt.ControllerName(gatewayControllerName),
+		opt.WhiteListNamespaces(whiteListNs),
 		opt.Logging(slog.LevelInfo),
 		opt.RLogging())
 	if err != nil {

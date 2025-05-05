@@ -17,9 +17,24 @@ import (
 	"log/slog"
 )
 
+// func getConfig() (*rest.Config, error) {
+// 	kubeconfig := os.Getenv("PROBER_KUBECONFIG")
+// 	if len(kubeconfig) > 0 {
+// 		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+// 	}
+
+// 	kubeconfig = os.Getenv("KUBECONFIG")
+// 	if len(kubeconfig) > 0 {
+// 		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+// 	}
+
+// 	return config.GetConfig()
+// }
+
 type Configuration struct {
 	Logger     *slog.Logger
 	K8sLogging *K8sLogging
+	Kubeconfig string
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	GatewayClass        string
@@ -29,6 +44,9 @@ type Configuration struct {
 	LeaderElectionConfig LeaderElectionConfig
 	// MetricsConfig specifies the metrics config.
 	MetricsConfig MetricsConfig
+	// WhiteListNamespaces is a list of namespaces to watch.
+	// If empty, all namespaces are watched.
+	WhiteListNamespaces []string
 }
 
 // ControllerPodConfig contains information about this Pod.

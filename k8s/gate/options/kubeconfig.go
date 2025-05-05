@@ -14,19 +14,12 @@
 package opt
 
 import (
-	"log/slog"
-	"os"
-
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 )
 
-func Logging(level slog.Level) func(o *config.Configuration) error {
+func KubeConfig(kubeconfig string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		slogLogger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: level,
-		}))
-		o.Logger = slogLogger
-		o.K8sLogging.LogConverter = config.NewIOWriter(slogLogger)
+		o.Kubeconfig = kubeconfig
 		return nil
 	}
 }

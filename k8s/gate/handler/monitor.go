@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package events
+package handler
 
 import (
 	"context"
@@ -19,6 +19,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
 )
 
 type EventLoop struct {
@@ -26,8 +28,8 @@ type EventLoop struct {
 	eventCh <-chan any
 	logger  slog.Logger
 
-	currentBatch EventBatch
-	nextBatch    EventBatch
+	currentBatch events.EventBatch
+	nextBatch    events.EventBatch
 
 	handling bool
 	mu       sync.Mutex
@@ -43,8 +45,8 @@ func NewEventLoop(
 		eventCh:      eventCh,
 		logger:       logger,
 		handler:      handler,
-		currentBatch: EventBatch{Events: make([]any, 0), BatchID: 0},
-		nextBatch:    EventBatch{Events: make([]any, 0), BatchID: 1},
+		currentBatch: events.EventBatch{Events: make([]any, 0), BatchID: 0},
+		nextBatch:    events.EventBatch{Events: make([]any, 0), BatchID: 1},
 	}
 }
 
@@ -61,13 +63,13 @@ func (el *EventLoop) Start(ctx context.Context) error {
 	handlingDone := make(chan struct{})
 
 	handleBatch := func() {
-		go func(batch EventBatch) {
+		go func(batch events.EventBatch) {
 			el.SetHandling(true)
 			// batchLogger := el.logger.WithName("batchHandler").WithValues("batchID", el.currentBatch.BatchID)
 			batchLogger := el.logger.WithGroup("batchHandler").With("batchID", el.currentBatch.BatchID)
 			batchLogger.Info("Handling events from the batch", "total", len(batch.Events))
 
-			el.handler.HandleEventBatch(ctx, batchLogger, batch)
+			el.handler.HandleEventBatch(ctx, batch)
 
 			batchLogger.Info("... Sleeping, give it some time to get more events in the next batch")
 			time.Sleep(5 * time.Second)
@@ -96,7 +98,7 @@ func (el *EventLoop) Start(ctx context.Context) error {
 			// Add the event to the current batch.
 			el.nextBatch.Events = append(el.nextBatch.Events, e)
 
-			el.logger.Info(
+			el.logger.Debug(
 				"added an event to the next batch",
 				"batchId", el.nextBatch.BatchID,
 				"type", fmt.Sprintf("%T", e),
