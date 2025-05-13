@@ -7,7 +7,6 @@ require (
 	github.com/go-logr/logr v1.4.2
 	github.com/google/renameio/v2 v2.0.0
 	github.com/joho/godotenv v1.5.1
-	github.com/lmittmann/tint v1.0.7
 	github.com/phuslu/log v1.0.113
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0

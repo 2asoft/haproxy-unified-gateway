@@ -3,4 +3,4 @@ kind: GatewayClass
 metadata:
   name: haproxy3
 spec:
-  controllerName: haproxy-ingress.github.io/gateway-controller
+  controllerName: gate.haproxy.org/gateway-controller

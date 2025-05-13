@@ -14,8 +14,6 @@
 package conditions
 
 import (
-	"fmt"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -38,65 +36,6 @@ type Condition struct {
 }
 
 type Conditions map[ConditionType]Condition
-
-// NewGatewayClassUnsupportedVersion returns Conditions to indicate:
-// - the Gateway API CRD versions are not supported.
-// Only applies to Accepted GatewayClasses
-// Ignored GatewayClasses will have a Conflict Condition
-func NewGatewayClassUnsupportedVersion(recommendedVersion string) map[ConditionType]Condition {
-	return map[ConditionType]Condition{
-		ConditionType(v1.GatewayClassConditionStatusAccepted): {
-			Type:   ConditionType(v1.GatewayClassConditionStatusAccepted),
-			Status: metav1.ConditionTrue,
-			Reason: string(v1.GatewayClassReasonUnsupportedVersion),
-			Message: fmt.Sprintf(
-				"Gateway API CRD versions are not supported. Best effort. Please install version %s",
-				recommendedVersion,
-			),
-		},
-		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
-			Type:   ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
-			Status: metav1.ConditionFalse,
-			Reason: string(v1.GatewayClassReasonUnsupportedVersion),
-			Message: fmt.Sprintf(
-				"Gateway API CRD versions are not supported. Please install version %s",
-				recommendedVersion,
-			),
-		},
-	}
-}
-
-// NewGatewayClassConflict returns a Condition that indicates that the GatewayClass is not accepted
-// due to a conflict with another GatewayClass.
-func NewGatewayClassConflict() map[ConditionType]Condition {
-	return map[ConditionType]Condition{
-		ConditionType(v1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
-			Status:  metav1.ConditionFalse,
-			Reason:  string(GatewayClassReasonGatewayClassConflict),
-			Message: GatewayClassMessageGatewayClassConflict,
-		},
-	}
-}
-
-// NewDefaultGatewayClassConditions returns Conditions that indicate that the GatewayClass is accepted and that the
-// Gateway API CRD versions are supported.
-func NewDefaultGatewayClassConditions() map[ConditionType]Condition {
-	return map[ConditionType]Condition{
-		ConditionType(v1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
-			Status:  metav1.ConditionTrue,
-			Reason:  string(v1.GatewayClassReasonAccepted),
-			Message: "GatewayClass is accepted",
-		},
-		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
-			Type:    ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
-			Status:  metav1.ConditionTrue,
-			Reason:  string(v1.GatewayClassReasonSupportedVersion),
-			Message: "Gateway API CRD versions are supported",
-		},
-	}
-}
 
 func (a Conditions) MergeOverrideConditions(b Conditions) {
 	for k, v := range b {
