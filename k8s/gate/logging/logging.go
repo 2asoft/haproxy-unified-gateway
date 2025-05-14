@@ -11,18 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package tree
+package logging
 
-import (
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-)
+import "log/slog"
 
-type HaproxyGate struct {
-	// K8sResource is the source resource.
-	K8sResource *v3.HaproxyGate
-	// Conditions include Conditions for the HaproxyGate.
-	Conditions conditions.Conditions
-	// Valid shows whether the HaproxyGate is valid.
-	Valid bool
-}
+var LogLevel = &slog.LevelVar{}

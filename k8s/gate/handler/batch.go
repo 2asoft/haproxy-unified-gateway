@@ -22,6 +22,7 @@ import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
@@ -88,23 +89,42 @@ func NewEventHandlerImpl(
 
 func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.EventBatch) {
 	start := time.Now()
-	h.logger.With("batchID", batch.BatchID).Info("Started processing event batch", "len", len(batch.Events))
+	batchLogGroup := slog.Group("batch",
+		slog.Int("batchID", batch.BatchID),
+		slog.Int("len", len(batch.Events)),
+	)
+	h.logger.LogAttrs(context.Background(), slog.LevelInfo,
+		"Started processing event batch",
+		batchLogGroup,
+	)
 
 	defer func() {
 		duration := time.Since(start)
-		h.logger.With("batchID", batch.BatchID).With("len", len(batch.Events)).Info(
+		h.logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Finished processing event batch",
-			"duration", duration.String(),
+			batchLogGroup,
+			slog.String("duration", duration.String()),
 		)
 	}()
 
 	// Process each event in the batch
-	hasRelevantChanges := h.treeBuilder.ProcessBatch(batch)
-	h.logger.Info("HELENE", "hasRelevantChanges", hasRelevantChanges)
+	_ = h.treeBuilder.ProcessBatch(batch)
+	// Adjust dynamically the log level
+	for _, haproxyGate := range h.treeBuilder.clusterStore.HaproxyGate {
+		switch haproxyGate.Spec.Logging.Level {
+		case "Info":
+			logging.LogLevel.Set(slog.LevelInfo)
+		case "Warn":
+			logging.LogLevel.Set(slog.LevelWarn)
+		case "Error":
+			logging.LogLevel.Set(slog.LevelError)
+		case "Debug":
+			logging.LogLevel.Set(slog.LevelDebug)
+		}
+	}
 
 	// Build the GateTree
 	newTree := h.treeBuilder.buildGateTree()
-	h.logger.Info("HELENE", "newTree", newTree)
 
 	// Update some sort of store
 	// Compute config

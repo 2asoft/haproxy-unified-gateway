@@ -146,20 +146,33 @@ func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) (re
 func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 	newTree := &tree.GateTree{}
 
-	gatewayClassCategorizer := &tree.GatewayClassCategorizerImpl{}
+	// --------------
+	// GatewayClass
+	// gatewayClassCategorizer := &tree.GatewayClassCategorizerImpl{}
 	// TODO :
-	// 	gatewayClassCategorizer := tree.GatewayClassCategorizerImpl_EE{}
+	gatewayClassCategorizer := &tree.GatewayClassCategorizerImplEE{}
 	// for EE. To discusse
 
-	gatewayClassBuilder := tree.NewGatewayClassBuilder(
-		b.clusterStore,
-		b.cfg.gatewayClassName,
-		gatewayClassCategorizer,
-		b.logger,
-	)
+	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
+		ClusterStore: b.clusterStore,
+		GcName:       b.cfg.gatewayClassName,
+		Categorizer:  gatewayClassCategorizer,
+		Logger:       b.logger,
+	}
+	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
 	categorizedGatewayClasses := gatewayClassBuilder.Build()
 	newTree.GatewayClasses = categorizedGatewayClasses.Supported
 	newTree.IgnoredGatewayClasses = categorizedGatewayClasses.Ignored
+
+	// --------------
+	// HaproxyGate
+	haproxyGateBuilderParams := tree.HaproxyGateBuilderParams{
+		ClusterStore:   b.clusterStore,
+		GatewayClasses: categorizedGatewayClasses.Supported,
+		Logger:         b.logger,
+	}
+	haproxygateBuilder := tree.NewHaproxyGateBuilder(haproxyGateBuilderParams)
+	haproxygateBuilder.Build()
 
 	return newTree
 }

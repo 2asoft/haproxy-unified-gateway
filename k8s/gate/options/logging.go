@@ -18,13 +18,15 @@ import (
 	"os"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
 func Logging(level slog.Level) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		slogLogger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: level,
+		slogLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: logging.LogLevel,
 		}))
+		logging.LogLevel.Set(level)
 		o.Logger = slogLogger
 		o.K8sLogging.LogConverter = config.NewIOWriter(slogLogger)
 		return nil

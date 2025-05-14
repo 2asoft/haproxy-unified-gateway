@@ -23,6 +23,12 @@ type GatewayClassCategorizerImplEE struct{}
 
 var _ GatewayClassCategorizer = &GatewayClassCategorizerImplEE{}
 
+// CategorizedK8sGatewayClasses is a struct that contains the categorized GatewayClass resources.
+// It contains two maps:
+// - Supported: GatewayClass resources that are supported by the controller.
+// - Ignored: GatewayClass resources that are ignored by the controller.
+// For the EE version, gcName should be empty
+// Several GatewayClass are supported by the controller.
 func (*GatewayClassCategorizerImplEE) Categorize(
 	gatewayClasses map[types.NamespacedName]*v1.GatewayClass,
 	_ string,

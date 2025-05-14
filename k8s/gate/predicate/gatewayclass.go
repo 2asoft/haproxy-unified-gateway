@@ -16,7 +16,7 @@ package predicate
 import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/gateway-api/apis/v1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // GatewayClassPredicate implements a predicate function based on the controllerName of a GatewayClass.

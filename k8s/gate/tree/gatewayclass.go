@@ -21,6 +21,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,6 +57,7 @@ type GatewayClass struct {
 	K8sResource *v1.GatewayClass
 	// Conditions include Conditions for the GatewayClass.
 	Conditions conditions.Conditions
+	v1.Gateway
 	// Valid shows whether the GatewayClass is valid.
 	Valid bool
 }
@@ -74,17 +76,19 @@ type GatewayClassCategorizerImpl struct{}
 
 var _ GatewayClassBuilder = &GatewayClassBuilderImpl{}
 
-func NewGatewayClassBuilder(
-	clusterStore *store.ClusterStore,
-	gcName string,
-	categorizer GatewayClassCategorizer,
-	logger *slog.Logger,
-) *GatewayClassBuilderImpl {
+type GatewayClassBuilderParams struct {
+	Categorizer  GatewayClassCategorizer
+	ClusterStore *store.ClusterStore
+	Logger       *slog.Logger
+	GcName       string
+}
+
+func NewGatewayClassBuilder(params GatewayClassBuilderParams) *GatewayClassBuilderImpl {
 	return &GatewayClassBuilderImpl{
-		clusterStore: clusterStore,
-		gcName:       gcName,
-		categorizer:  categorizer,
-		logger:       logger,
+		clusterStore: params.ClusterStore,
+		gcName:       params.GcName,
+		categorizer:  params.Categorizer,
+		logger:       params.Logger,
 	}
 }
 
@@ -134,6 +138,13 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGwAPIGatewayClasses {
 	return categorizedGwAPIGw
 }
 
+// CategorizedK8sGatewayClasses is a struct that contains the categorized GatewayClass resources.
+// It contains two maps:
+// - Supported: GatewayClass resources that are supported by the controller.
+// - Ignored: GatewayClass resources that are ignored by the controller.
+// For the CE version, gcName shoould not be empty
+// Only 1 GatewayClass is supported by the controller.
+// The one that has this name
 func (*GatewayClassCategorizerImpl) Categorize(
 	gatewayClasses map[types.NamespacedName]*v1.GatewayClass,
 	gcName string,
@@ -218,4 +229,14 @@ func (builder *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params 
 	}
 
 	return false
+}
+
+var _ utils.ObjectWithTimestamp = &GatewayClass{}
+
+func (g *GatewayClass) GetCreationTimestamp() metav1.Time {
+	return g.K8sResource.GetCreationTimestamp()
+}
+
+func (g *GatewayClass) GetName() string {
+	return g.K8sResource.GetName()
 }

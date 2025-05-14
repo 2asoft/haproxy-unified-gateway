@@ -38,9 +38,22 @@ spec:
             type: object
           spec:
             properties:
+              logging:
+                properties:
+                  level:
+                    enum:
+                    - Debug
+                    - Info
+                    - Warn
+                    - Error
+                    type: string
+                required:
+                - level
+                type: object
               mworkerMaxReload:
                 type: integer
             required:
+            - logging
             - mworkerMaxReload
             type: object
         required:

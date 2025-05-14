@@ -26,12 +26,17 @@ import (
 // HaproxyGate is a specification for a HaproxyGate resource
 type HaproxyGate struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              GateSpec `json:"spec"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 }
 
+type Logging struct {
+	// +kubebuilder:validation:Enum=Debug;Info;Warn;Error
+	Level string `json:"level"`
+}
 type GateSpec struct {
-	MWorkerMaxReload int `json:"mworkerMaxReload"`
+	Logging          Logging `json:"logging"`
+	MWorkerMaxReload int     `json:"mworkerMaxReload"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

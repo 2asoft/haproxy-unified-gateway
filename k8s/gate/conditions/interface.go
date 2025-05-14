@@ -15,7 +15,7 @@ package conditions
 
 import "sigs.k8s.io/controller-runtime/pkg/client"
 
-type ConditionHandler[T client.Object] interface {
+type ConditionAccessor[T client.Object] interface {
 	GetConditions(obj T) Conditions
 	SetConditions(obj T, conds Conditions)
 }

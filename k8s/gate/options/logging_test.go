@@ -21,7 +21,7 @@ import (
 )
 
 func TestLogging(t *testing.T) {
-	_, err := controller.New(Logging(slog.LevelInfo))
+	_, err := controller.New(Logging(slog.LevelDebug))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

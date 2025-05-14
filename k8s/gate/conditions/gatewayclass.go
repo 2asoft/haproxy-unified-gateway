@@ -20,7 +20,7 @@ import (
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-var _ ConditionHandler[*v1.GatewayClass] = &GatewayClassConditionImpl{}
+var _ ConditionAccessor[*v1.GatewayClass] = &GatewayClassConditionImpl{}
 
 type GatewayClassConditionImpl struct{}
 

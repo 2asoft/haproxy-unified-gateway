@@ -29,6 +29,11 @@ type GateTree struct {
 	// Those GatewayClass are needed as GatewayAPI spec
 	// This is used to update the status of the those GatewayClass resources.
 	IgnoredGatewayClasses map[types.NamespacedName]*GatewayClass
+	// HaproxyGate contains the HaproxyGate (confguration CRD)
+	// at GeatewayClass level
+	// There will be only one HaproxyGate: if the different GatewayClasses reference different
+	// HaproxyGate, we will take the first one (oldeest by GatewayClass creation timestamp)
+	HaproxyGate *HaproxyGate
 	// ReferencedSecrets includes Secrets referenced by Gateway Listeners, including invalid ones.
 	// It is different from the other maps, because it includes entries for Secrets that do not exist
 	// in the cluster. We need such entries so that we can query the Graph to determine if a Secret is referenced

@@ -4,3 +4,7 @@ metadata:
   name: haproxy
 spec:
   controllerName: gate.haproxy.org/gateway-controller
+  parametersRef:
+    group: gate.v3.haproxy.com
+    kind: HaproxyGate
+    name: haproxygate

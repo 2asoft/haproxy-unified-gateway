@@ -104,7 +104,7 @@ type StatusUpdateParams[T client.Object] struct {
 	Getter            client.Client
 	StatusUpdater     client.SubResourceWriter
 	Logger            *slog.Logger
-	ConditionHandler  conditions.ConditionHandler[T]
+	ConditionHandler  conditions.ConditionAccessor[T]
 	extractGVK        utils.ExtractGVK
 }
 
