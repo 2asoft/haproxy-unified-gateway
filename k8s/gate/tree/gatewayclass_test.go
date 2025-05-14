@@ -50,7 +50,11 @@ func TestValidateOneInstalledGwApiVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := builder.validateOneInstalledGwApiVersion(tt.supportedVersions, tt.installedVersion)
+			params := validateOneGwAPIVersionParams{
+				supportedVersions: tt.supportedVersions,
+				installedVersion:  tt.installedVersion,
+			}
+			result := builder.validateOneInstalledGwAPIVersion(params)
 			assert.Equal(t, tt.expectedResult, result)
 		})
 	}
@@ -105,7 +109,12 @@ func TestValidateVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := builder.validateVersion(tt.supportedVersions, tt.installedVersion)
+			result := builder.validateVersion(
+				validateVersionsParams{
+					supportedVersions:      tt.supportedVersions,
+					installedGwAPIVersions: tt.installedVersion,
+				},
+			)
 			assert.Equal(t, tt.expectedResult, result)
 		})
 	}

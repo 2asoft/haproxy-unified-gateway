@@ -24,11 +24,11 @@ var _ ConditionHandler[*v1.GatewayClass] = &GatewayClassConditionImpl{}
 
 type GatewayClassConditionImpl struct{}
 
-func (g *GatewayClassConditionImpl) GetConditions(obj *v1.GatewayClass) Conditions {
+func (*GatewayClassConditionImpl) GetConditions(obj *v1.GatewayClass) Conditions {
 	return NewConditionsFromMetav1Conditions(obj.Status.Conditions)
 }
 
-func (g *GatewayClassConditionImpl) SetConditions(obj *v1.GatewayClass, conds Conditions) {
+func (*GatewayClassConditionImpl) SetConditions(obj *v1.GatewayClass, conds Conditions) {
 	obj.Status.Conditions = conds.ToMetav1Conditions()
 }
 

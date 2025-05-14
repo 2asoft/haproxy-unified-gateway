@@ -4,3 +4,4 @@
 .env
 build/kubernetes-controller
 cmd/controller/controller
+controller

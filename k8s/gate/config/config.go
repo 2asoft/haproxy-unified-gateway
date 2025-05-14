@@ -34,19 +34,19 @@ import (
 type Configuration struct {
 	Logger     *slog.Logger
 	K8sLogging *K8sLogging
-	Kubeconfig string
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
+	Kubeconfig          string
 	GatewayClass        string
 	// GatewayCtlrName is the name of this controller.
 	GatewayCtlrName string
 	// LeaderElectionConfig contains the configuration for leader election.
 	LeaderElectionConfig LeaderElectionConfig
-	// MetricsConfig specifies the metrics config.
-	MetricsConfig MetricsConfig
 	// WhiteListNamespaces is a list of namespaces to watch.
 	// If empty, all namespaces are watched.
 	WhiteListNamespaces []string
+	// MetricsConfig specifies the metrics config.
+	MetricsConfig MetricsConfig
 }
 
 // ControllerPodConfig contains information about this Pod.

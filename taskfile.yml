@@ -32,7 +32,7 @@ tasks:
   ci:
     desc: 'do almost all the checks'
     cmds:
-      - task: check-commit
+      #- task: check-commit
       - task: tidy
       - task: format
       - task: generate

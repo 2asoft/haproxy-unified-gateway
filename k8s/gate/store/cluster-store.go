@@ -35,7 +35,7 @@ type ClusterStore struct {
 	Namespaces     map[types.NamespacedName]*v1.Namespace
 	Secrets        map[types.NamespacedName]*v1.Secret
 	ConfigMaps     map[types.NamespacedName]*v1.ConfigMap
-	GatewayApiCRDs map[types.NamespacedName]*metav1.PartialObjectMetadata
+	GatewayAPICRDs map[types.NamespacedName]*metav1.PartialObjectMetadata
 }
 
 // ClusterStoreUpdater updates the cluster store.
@@ -70,7 +70,7 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&v1.Namespace{}):                    newObjectStoreImpl(clusterStore.Namespaces, logger),
 				extractGVK(&v1.Secret{}):                       newObjectStoreImpl(clusterStore.Secrets, logger),
 				extractGVK(&v1.ConfigMap{}):                    newObjectStoreImpl(clusterStore.ConfigMaps, logger),
-				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayApiCRDs, logger),
+				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, logger),
 			},
 		},
 		extractGVK: extractGVK,

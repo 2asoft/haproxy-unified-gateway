@@ -16,6 +16,12 @@ GatewayClass:
     args:
         - name: gatewayClass
           type: string
+KubeConfig:
+    name: KubeConfig
+    comment: ""
+    args:
+        - name: kubeconfig
+          type: string
 LeaderElectionConfig:
     name: LeaderElectionConfig
     comment: ""
@@ -39,3 +45,9 @@ RLogging:
     name: RLogging
     comment: ""
     args: []
+WhiteListNamespaces:
+    name: WhiteListNamespaces
+    comment: ""
+    args:
+        - name: whitelistNs
+          type: '*ast.ArrayType'

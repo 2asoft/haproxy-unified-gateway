@@ -92,7 +92,7 @@ tasks:
       - kubectl apply -f {{.CONFIG_DIR}}/haproxy/namespace.yaml
       - task: delimiter
       - echo "Install custom resource definitions ..."
-      - kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+      - kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
       #- kubectl apply -f {{.CONFIG_DIR}}/crd/rbac.yaml
       #- kubectl apply -f {{.CONFIG_DIR}}/crd/job-crd.yaml
       #- kubectl wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-controller

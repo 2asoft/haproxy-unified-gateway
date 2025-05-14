@@ -37,17 +37,17 @@ type Condition struct {
 
 type Conditions map[ConditionType]Condition
 
-func (a Conditions) MergeOverrideConditions(b Conditions) {
+func (c Conditions) MergeOverrideConditions(b Conditions) {
 	for k, v := range b {
-		a[k] = v
+		c[k] = v
 	}
 }
 
-func (a Conditions) Equal(b Conditions) bool {
-	if len(a) != len(b) {
+func (c Conditions) Equal(b Conditions) bool {
+	if len(c) != len(b) {
 		return false
 	}
-	for k, v := range a {
+	for k, v := range c {
 		if b[k] != v {
 			return false
 		}

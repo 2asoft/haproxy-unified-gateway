@@ -36,11 +36,11 @@ type GateTreeBuilderConfig struct {
 	k8sClient client.Client
 	// k8sReader is a Kubernets API reader.
 	k8sReader client.Reader
+	// extractGVK is a function that extracts the GroupVersionKind (GVK) of a client.object.
+	extractGVK utils.ExtractGVK
 	// gatewayClassName is the name of the supported GatewayClass.
 	// If empty, all GatewayClasses are supported that match the controller name
 	gatewayClassName string
-	// extractGVK is a function that extracts the GroupVersionKind (GVK) of a client.object.
-	extractGVK utils.ExtractGVK
 }
 
 type GateTreeBuilder struct {

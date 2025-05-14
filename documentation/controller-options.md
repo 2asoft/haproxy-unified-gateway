@@ -23,10 +23,12 @@ Available options:
 | ControllerName | `controllerName`(string) |
 | ControllerPodConfig | `controllerPodConfig`(config.ControllerPodConfig) |
 | GatewayClass | `gatewayClass`(string) |
+| KubeConfig | `kubeconfig`(string) |
 | LeaderElectionConfig | `leaderElection`(config.LeaderElectionConfig) |
 | Logging | `level`(slog.Level) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | RLogging |  |
+| WhiteListNamespaces | `whitelistNs`(*ast.ArrayType) |
 
 ### ControllerName
 
@@ -65,6 +67,19 @@ import (
 )
 
 controller, err := controller.New(opt.GatewayClass(gatewayClass))
+```
+
+### KubeConfig
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.KubeConfig(kubeconfig))
 ```
 
 ### LeaderElectionConfig
@@ -118,5 +133,18 @@ import (
 )
 
 controller, err := controller.New(opt.RLogging())
+```
+
+### WhiteListNamespaces
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.WhiteListNamespaces(whitelistNs))
 ```
 

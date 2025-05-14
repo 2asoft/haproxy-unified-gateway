@@ -54,14 +54,14 @@ func NewStatusUpdaterImpl(
 }
 
 func NewStatusUpdaterConf(
-	client client.Client,
+	k8sClient client.Client,
 	extractGVK utils.ExtractGVK,
 	logger *slog.Logger,
 ) StatusUpdaterConf {
 	return StatusUpdaterConf{
 		logger:     logger,
 		extractGVK: extractGVK,
-		client:     client,
+		client:     k8sClient,
 	}
 }
 
@@ -111,7 +111,15 @@ type StatusUpdateParams[T client.Object] struct {
 func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx context.Context) (bool, error) {
 	return func(ctx context.Context) (bool, error) {
 		// Create a fresh empty object of type T
-		obj := param.Object.DeepCopyObject().(T)
+		obj, ok := param.Object.DeepCopyObject().(T)
+		if !ok {
+			param.Logger.Info(
+				"Encountered error when copying object",
+				"object", client.ObjectKeyFromObject(param.Object),
+				"kind", param.extractGVK(param.Object),
+			)
+			return false, nil
+		}
 		err := param.Getter.Get(ctx, types.NamespacedName{
 			Namespace: param.Object.GetNamespace(),
 			Name:      param.Object.GetName(),

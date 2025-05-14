@@ -25,3 +25,6 @@ gofumpt:
 kind:
   version: v0.27.0
   install: sigs.k8s.io/kind
+controller-gen:
+  version: v0.18.0
+  install: sigs.k8s.io/controller-tools/cmd/controller-gen

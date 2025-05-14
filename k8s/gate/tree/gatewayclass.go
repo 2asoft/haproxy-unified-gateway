@@ -36,7 +36,7 @@ func (s SupportedVersions) String() string {
 }
 
 type GatewayClassBuilder interface {
-	Build() CategorizedGwApiGatewayClasses
+	Build() CategorizedGwAPIGatewayClasses
 }
 
 type GatewayClassCategorizer interface {
@@ -44,10 +44,10 @@ type GatewayClassCategorizer interface {
 }
 
 type GatewayClassBuilderImpl struct {
-	clusterStore *store.ClusterStore
-	gcName       string
 	categorizer  GatewayClassCategorizer
+	clusterStore *store.ClusterStore
 	logger       *slog.Logger
+	gcName       string
 }
 
 // GatewayClass represents the GatewayClass resource.
@@ -65,7 +65,7 @@ type categorizedK8sGatewayClasses struct {
 	Ignored   map[types.NamespacedName]*v1.GatewayClass
 }
 
-type CategorizedGwApiGatewayClasses struct {
+type CategorizedGwAPIGatewayClasses struct {
 	Supported map[types.NamespacedName]*GatewayClass
 	Ignored   map[types.NamespacedName]*GatewayClass
 }
@@ -88,15 +88,19 @@ func NewGatewayClassBuilder(
 	}
 }
 
-func (builder *GatewayClassBuilderImpl) Build() CategorizedGwApiGatewayClasses {
+func (builder *GatewayClassBuilderImpl) Build() CategorizedGwAPIGatewayClasses {
 	categorizedK8sGw := builder.categorizer.Categorize(builder.clusterStore.GatewayClasses, builder.gcName)
 
 	// Retrieve Gateway API bundle version
 	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
-	installedVersions := getGatewayAPIBundleVersions(builder.clusterStore.GatewayApiCRDs)
-	versionValid := builder.validateVersion(SupportedGatewayAPIBundleVersion, installedVersions)
+	installedVersions := getGatewayAPIBundleVersions(builder.clusterStore.GatewayAPICRDs)
+	validateVersionsParams := validateVersionsParams{
+		supportedVersions:      SupportedGatewayAPIBundleVersion,
+		installedGwAPIVersions: installedVersions,
+	}
+	versionValid := builder.validateVersion(validateVersionsParams)
 
-	categorizedGwApiGw := CategorizedGwApiGatewayClasses{}
+	categorizedGwAPIGw := CategorizedGwAPIGatewayClasses{}
 
 	builder.logger.Info("HELENE", "installedVersions", installedVersions)
 	for _, k8sgateway := range categorizedK8sGw.Supported {
@@ -107,13 +111,13 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGwApiGatewayClasses {
 		}
 		if !versionValid {
 			treeGc.Valid = true
-			treeGc.Conditions.MergeOverrideConditions(conditions.NewGatewayClassUnsupportedVersion(SupportedGatewayAPIBundleVersion.String()))
+			treeGc.Conditions.MergeOverrideConditions(
+				conditions.NewGatewayClassUnsupportedVersion(SupportedGatewayAPIBundleVersion.String()))
 		}
-		if categorizedGwApiGw.Supported == nil {
-			categorizedGwApiGw.Supported = make(map[types.NamespacedName]*GatewayClass)
+		if categorizedGwAPIGw.Supported == nil {
+			categorizedGwAPIGw.Supported = make(map[types.NamespacedName]*GatewayClass)
 		}
-		categorizedGwApiGw.Supported[client.ObjectKeyFromObject(k8sgateway)] = &treeGc
-
+		categorizedGwAPIGw.Supported[client.ObjectKeyFromObject(k8sgateway)] = &treeGc
 	}
 
 	for _, k8sgateway := range categorizedK8sGw.Ignored {
@@ -122,15 +126,15 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGwApiGatewayClasses {
 			Valid:       false,
 			Conditions:  conditions.NewGatewayClassConflict(),
 		}
-		if categorizedGwApiGw.Ignored == nil {
-			categorizedGwApiGw.Ignored = make(map[types.NamespacedName]*GatewayClass)
+		if categorizedGwAPIGw.Ignored == nil {
+			categorizedGwAPIGw.Ignored = make(map[types.NamespacedName]*GatewayClass)
 		}
-		categorizedGwApiGw.Ignored[client.ObjectKeyFromObject(k8sgateway)] = &treeGc
+		categorizedGwAPIGw.Ignored[client.ObjectKeyFromObject(k8sgateway)] = &treeGc
 	}
-	return categorizedGwApiGw
+	return categorizedGwAPIGw
 }
 
-func (c *GatewayClassCategorizerImpl) Categorize(
+func (*GatewayClassCategorizerImpl) Categorize(
 	gatewayClasses map[types.NamespacedName]*v1.GatewayClass,
 	gcName string,
 ) categorizedK8sGatewayClasses {
@@ -153,7 +157,9 @@ func (c *GatewayClassCategorizerImpl) Categorize(
 	return filteredGc
 }
 
-func getGatewayAPIBundleVersions(gatewayAPICRDs map[types.NamespacedName]*metav1.PartialObjectMetadata) map[string]struct{} {
+type installedGwAPIVersions map[types.NamespacedName]*metav1.PartialObjectMetadata
+
+func getGatewayAPIBundleVersions(gatewayAPICRDs installedGwAPIVersions) map[string]struct{} {
 	versions := map[string]struct{}{}
 
 	for _, md := range gatewayAPICRDs {
@@ -163,9 +169,18 @@ func getGatewayAPIBundleVersions(gatewayAPICRDs map[types.NamespacedName]*metav1
 	return versions
 }
 
-func (builder *GatewayClassBuilderImpl) validateVersion(supportedVersions []string, installedGwApiVersions map[string]struct{}) bool {
-	for v := range installedGwApiVersions {
-		valid := builder.validateOneInstalledGwApiVersion(supportedVersions, v)
+type validateVersionsParams struct {
+	installedGwAPIVersions map[string]struct{}
+	supportedVersions      []string
+}
+
+func (builder *GatewayClassBuilderImpl) validateVersion(params validateVersionsParams) bool {
+	for v := range params.installedGwAPIVersions {
+		params := validateOneGwAPIVersionParams{
+			supportedVersions: params.supportedVersions,
+			installedVersion:  v,
+		}
+		valid := builder.validateOneInstalledGwAPIVersion(params)
 		if !valid {
 			return false
 		}
@@ -173,11 +188,15 @@ func (builder *GatewayClassBuilderImpl) validateVersion(supportedVersions []stri
 	return true
 }
 
-func (builder *GatewayClassBuilderImpl) validateOneInstalledGwApiVersion(supportedVersions []string, installedVersion string) bool {
+type validateOneGwAPIVersionParams struct {
+	installedVersion  string
+	supportedVersions []string
+}
+
+func (builder *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params validateOneGwAPIVersionParams) bool {
 	constraints := make([]*semver.Constraints, 0)
 
-	for _, v := range supportedVersions {
-
+	for _, v := range params.supportedVersions {
 		constraint, err := semver.NewConstraint("~" + v)
 		if err != nil {
 			builder.logger.Error("cannot build semver constraint", "error", err)
@@ -186,7 +205,7 @@ func (builder *GatewayClassBuilderImpl) validateOneInstalledGwApiVersion(support
 		constraints = append(constraints, constraint)
 	}
 
-	sv, err := semver.NewVersion(installedVersion)
+	sv, err := semver.NewVersion(params.installedVersion)
 	if err != nil {
 		// If a version string is invalid, we should not consider it as a supported version.
 		builder.logger.Error("cannot parse version string", "error", err)

@@ -19,7 +19,7 @@ tasks:
   kubectl-install:
     internal: true
     deps:
-      - task: check-latest-version
+      - task: kubectl-check-latest-version
     status:
       - "/{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version | grep -q '{{.KUBECTL_VERSION}}'"
     cmds:

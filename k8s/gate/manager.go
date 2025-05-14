@@ -28,6 +28,8 @@ import (
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	ctlr "sigs.k8s.io/controller-runtime"
 	ctrlcfg "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -59,7 +61,13 @@ func createManager(cfg config.Configuration) (manager.Manager, error) {
 		},
 	}
 
-	clusterCfg, err := ctlr.GetConfig()
+	var clusterCfg *rest.Config
+	var err error
+	if cfg.Kubeconfig != "" {
+		clusterCfg, err = getKubeconfigFromString(cfg.Kubeconfig)
+	} else {
+		clusterCfg, err = ctlr.GetConfig()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +79,10 @@ func createManager(cfg config.Configuration) (manager.Manager, error) {
 	}
 
 	return mgr, nil
+}
+
+func getKubeconfigFromString(kubeconfigString string) (*rest.Config, error) {
+	return clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfigString))
 }
 
 func getMetricsOptions(cfg config.MetricsConfig) metricsserver.Options {

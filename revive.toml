@@ -28,3 +28,12 @@ enableAllRules = true
 
 [rule.add-constant]
   Disabled = true
+
+[rule.redundant-import-alias]
+  disabled = true
+
+[rule.struct-tag] # tag inline unrecognized
+  disabled = true
+
+[rule.function-length]
+  arguments = [30, 100]

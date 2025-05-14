@@ -66,7 +66,7 @@ func NewEventHandlerImpl(
 		Namespaces:     make(map[types.NamespacedName]*v1.Namespace),
 		Secrets:        make(map[types.NamespacedName]*v1.Secret),
 		ConfigMaps:     make(map[types.NamespacedName]*v1.ConfigMap),
-		GatewayApiCRDs: make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
+		GatewayAPICRDs: make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
 	}
 
 	treeBuilder := NewGateTreeBuilder(

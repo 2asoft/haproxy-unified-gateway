@@ -19,13 +19,13 @@ import (
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-type GatewayClassCategorizerImpl_EE struct{}
+type GatewayClassCategorizerImplEE struct{}
 
-var _ GatewayClassCategorizer = &GatewayClassCategorizerImpl_EE{}
+var _ GatewayClassCategorizer = &GatewayClassCategorizerImplEE{}
 
-func (c *GatewayClassCategorizerImpl_EE) Categorize(
+func (*GatewayClassCategorizerImplEE) Categorize(
 	gatewayClasses map[types.NamespacedName]*v1.GatewayClass,
-	gcName string,
+	_ string,
 ) categorizedK8sGatewayClasses {
 	processedGwClasses := categorizedK8sGatewayClasses{}
 
@@ -34,7 +34,6 @@ func (c *GatewayClassCategorizerImpl_EE) Categorize(
 			processedGwClasses.Supported = make(map[types.NamespacedName]*v1.GatewayClass)
 		}
 		processedGwClasses.Supported[client.ObjectKeyFromObject(gc)] = gc
-
 	}
 
 	return processedGwClasses
