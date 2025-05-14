@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"time"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
@@ -67,6 +68,7 @@ func NewEventHandlerImpl(
 		Secrets:        make(map[types.NamespacedName]*v1.Secret),
 		ConfigMaps:     make(map[types.NamespacedName]*v1.ConfigMap),
 		GatewayAPICRDs: make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
+		HaproxyGate:    make(map[types.NamespacedName]*v3.HaproxyGate),
 	}
 
 	treeBuilder := NewGateTreeBuilder(

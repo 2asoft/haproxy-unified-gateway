@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: haproxy
-          #image: "haproxytech/haproxy-alpine:3.1"
-          image: "haproxytech/haproxy"
+          image: "haproxytech/haproxy-alpine:3.1"
+          #image: "haproxytech/haproxy"
           imagePullPolicy: Never
           resources:
             limits:

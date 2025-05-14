@@ -1,0 +1,20 @@
+#https://taskfile.dev/
+version: '3'
+
+tasks:
+  controller-gen-deep-copy:
+    desc: 'Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.'
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: controller-gen
+    cmds:
+      - controller-gen object:headerFile="assets/license-header.txt" paths="./..." output:artifacts:config=./api
+  controller-gen-manifest:
+    desc: "Generate CustomResourceDefinition objects."
+    deps:
+      - task: check-go-tool
+        vars:
+          PACKAGE: controller-gen
+    cmds:
+      - controller-gen crd webhook paths="./api/gate/..." output:crd:artifacts:config=./api/definition

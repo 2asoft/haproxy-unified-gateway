@@ -16,6 +16,7 @@ package store
 import (
 	"log/slog"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	v1 "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -36,6 +37,7 @@ type ClusterStore struct {
 	Secrets        map[types.NamespacedName]*v1.Secret
 	ConfigMaps     map[types.NamespacedName]*v1.ConfigMap
 	GatewayAPICRDs map[types.NamespacedName]*metav1.PartialObjectMetadata
+	HaproxyGate    map[types.NamespacedName]*v3.HaproxyGate
 }
 
 // ClusterStoreUpdater updates the cluster store.
@@ -71,6 +73,7 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&v1.Secret{}):                       newObjectStoreImpl(clusterStore.Secrets, logger),
 				extractGVK(&v1.ConfigMap{}):                    newObjectStoreImpl(clusterStore.ConfigMaps, logger),
 				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, logger),
+				extractGVK(&v3.HaproxyGate{}):                  newObjectStoreImpl(clusterStore.HaproxyGate, logger),
 			},
 		},
 		extractGVK: extractGVK,

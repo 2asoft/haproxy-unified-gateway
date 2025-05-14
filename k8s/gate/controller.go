@@ -21,6 +21,7 @@ import (
 	"log/slog"
 	"sync"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	constant "github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
@@ -235,6 +236,18 @@ func registerControllers( //revive:disable:function-length
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+					),
+				),
+			},
+		},
+		{
+			name:       "HaproxyGate",
+			objectType: &v3.HaproxyGate{},
+			options: []Option{
+				WithK8sPredicate(
+					k8spredicate.And(
+						k8spredicate.ResourceVersionChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),

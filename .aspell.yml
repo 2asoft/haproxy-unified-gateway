@@ -16,6 +16,7 @@ allowed:
   - golang
   - golangci
   - kubebuilder
+  - kubeconfig
   - leaderelection
   - lifecycle
   - linter

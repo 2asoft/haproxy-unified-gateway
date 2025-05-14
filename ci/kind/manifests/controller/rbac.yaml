@@ -122,6 +122,18 @@ rules:
       - list
       - watch
   - apiGroups:
+    - gateway.networking.k8s.io
+    resources:
+      - gatewayclasses/status
+      - gateways/status
+      - httproutes/status
+      - referencegrants/status
+      - grpcroutes/status
+    verbs:
+      - get
+      - update
+      - patch
+  - apiGroups:
     - coordination.k8s.io
     resources:
       - leases
@@ -129,6 +141,15 @@ rules:
       - create
       - get
       - update
+  - apiGroups:
+    - gate.v3.haproxy.org
+    resources:
+      - haproxygates
+    verbs:
+      - get
+      - list
+      - watch
+
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

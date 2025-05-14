@@ -22,6 +22,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
+	haproxyapiv3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
@@ -45,6 +46,7 @@ func init() { //nolint:gochecknoinits
 	utilruntime.Must(discoveryV1.AddToScheme(scheme))
 	utilruntime.Must(apiext.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))
+	utilruntime.Must(haproxyapiv3.AddToScheme(scheme))
 }
 
 func createManager(cfg config.Configuration) (manager.Manager, error) {

@@ -22,7 +22,7 @@ tasks:
         silent: true
 
   kind-create-cluster:
-    internal: true
+    #internal: true
     deps:
       - task: check-go-tool
         vars:
@@ -105,7 +105,7 @@ tasks:
       - kubectl apply -f {{.CONFIG_DIR}}/echo/echo.yaml
       - docker pull haproxytech/haproxy-alpine:3.1
       - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/haproxy-alpine:3.1 --name={{.CLUSTER_NAME}}
-      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
+      #- /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
       - kubectl apply -f {{.CONFIG_DIR}}/haproxy/haproxy.yaml
       - task: delimiter
       - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy -n haproxy

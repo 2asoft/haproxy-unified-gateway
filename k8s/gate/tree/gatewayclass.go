@@ -29,7 +29,7 @@ import (
 
 type SupportedVersions []string
 
-var SupportedGatewayAPIBundleVersion = SupportedVersions{"v1.1", "v1.2"}
+var SupportedGatewayAPIBundleVersion = SupportedVersions{"v1.2", "v1.3"}
 
 func (s SupportedVersions) String() string {
 	return strings.Join(s, ", ")
