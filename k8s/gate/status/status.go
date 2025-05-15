@@ -18,6 +18,7 @@ import (
 	"log/slog"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -87,11 +88,10 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 		default:
 		}
 
-		s.cfg.logger.Info(
+		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Updating status for resource",
-			"namespace", gwc.K8sResource.Namespace,
-			"name", gwc.K8sResource.Name,
-			"kind", s.cfg.extractGVK(gwc.K8sResource),
+			logging.LogAttrCategory(logging.LogCategoryStatus),
+			logging.LogAttrResource(gwc, s.cfg.extractGVK(gwc.K8sResource)),
 		)
 
 		s.writeGatewayClassStatus(ctx, gwc)
@@ -110,14 +110,15 @@ type StatusUpdateParams[T client.Object] struct {
 
 func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx context.Context) (bool, error) {
 	return func(ctx context.Context) (bool, error) {
+		objAttr := logging.LogAttrResource(param.Object, param.extractGVK(param.Object))
+
 		// Create a fresh empty object of type T
 		obj, ok := param.Object.DeepCopyObject().(T)
 		if !ok {
-			param.Logger.Info(
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when copying object",
-				"object", client.ObjectKeyFromObject(param.Object),
-				"kind", param.extractGVK(param.Object),
-			)
+				logging.LogAttrCategory(logging.LogCategoryStatus),
+				objAttr)
 			return false, nil
 		}
 		err := param.Getter.Get(ctx, types.NamespacedName{
@@ -128,41 +129,36 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			if apierrors.IsNotFound(err) {
 				return true, nil
 			}
-			param.Logger.Info(
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when getting resource to update status",
-				"error", err,
-				"object", client.ObjectKeyFromObject(obj),
-				"kind", param.extractGVK(obj),
-			)
+				logging.LogAttrCategory(logging.LogCategoryStatus),
+				objAttr)
 			return false, nil
 		}
 
 		currentConditions := param.ConditionHandler.GetConditions(obj)
 		if currentConditions.Equal(param.DesiredConditions) {
-			param.Logger.Info(
+			param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 				"Status already up to date",
-				"object", client.ObjectKeyFromObject(obj),
-				"kind", param.extractGVK(obj),
-			)
+				logging.LogAttrCategory(logging.LogCategoryStatus),
+				objAttr)
 			return true, nil
 		}
 
 		param.ConditionHandler.SetConditions(obj, param.DesiredConditions)
 
 		if err := param.StatusUpdater.Update(ctx, obj); err != nil {
-			param.Logger.Info(
-				"Encountered error updating status",
-				"error", err,
-				"object", client.ObjectKeyFromObject(obj),
-				"kind", param.extractGVK(obj),
-			)
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when updating status",
+				logging.LogAttrCategory(logging.LogCategoryStatus),
+				objAttr)
 			return false, nil
 		}
 
-		param.Logger.Info(
+		param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Successfully updated status",
-			"object", client.ObjectKeyFromObject(obj),
-			"kind", param.extractGVK(obj),
+			logging.LogAttrCategory(logging.LogCategoryStatus),
+			objAttr,
 		)
 		return true, nil
 	}

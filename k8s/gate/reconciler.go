@@ -17,13 +17,15 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"reflect"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +45,7 @@ type ReconcilerConfig struct {
 	EventCh chan<- any
 	// NamespacedNameFilter filters resources the controller will process. Can be nil.
 	NamespacedNameFilter NamespacedNameFilterFunc
+	Logger               *slog.Logger
 	OnlyMetadata         bool
 }
 
@@ -65,41 +68,53 @@ func NewReconciler(cfg ReconcilerConfig) *Reconciler {
 	}
 }
 
-func (r *Reconciler) mustCreateNewObject(objectType client.Object) client.Object {
+func (r *Reconciler) mustCreateNewObject(objectType client.Object) (client.Object, error) {
 	if r.cfg.OnlyMetadata {
 		partialObj := &metav1.PartialObjectMetadata{}
 		partialObj.SetGroupVersionKind(objectType.GetObjectKind().GroupVersionKind())
 
-		return partialObj
+		return partialObj, nil
 	}
 
 	t := reflect.TypeOf(objectType).Elem()
 	obj, ok := reflect.New(t).Interface().(client.Object)
 	if !ok {
-		panic("failed to create a new object")
+		err := fmt.Errorf("failed to create a new object of type %T", objectType)
+		r.cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
+			"failed to create a new object",
+			logging.LogAttrError(err))
+		return nil, err
 	}
-	return obj
+	return obj, nil
 }
 
 // Reconcile implements the reconcile.Reconciler Reconcile method.
 func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	logger := log.FromContext(ctx)
-
-	// The controller runtime has already set the logger with the group, kind, namespace and name of the resource,
-	logger.Info("Reconciling the resource")
-
 	if r.cfg.NamespacedNameFilter != nil {
 		if shouldProcess, msg := r.cfg.NamespacedNameFilter(req.NamespacedName); !shouldProcess {
-			logger.Info(msg)
+			r.cfg.Logger.Info(msg)
 			return reconcile.Result{}, nil
 		}
 	}
 
-	obj := r.mustCreateNewObject(r.cfg.ObjectType)
+	obj, err := r.mustCreateNewObject(r.cfg.ObjectType)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// The controller runtime has already set the logger with the group, kind, namespace and name of the resource,
+	r.cfg.Logger.LogAttrs(context.Background(), slog.LevelDebug,
+		"Reconciling the resource",
+		logging.LogAttrCategory(logging.LogCategoryK8s),
+		logging.LogAttrObjectKey(obj))
 
 	if err := r.cfg.Getter.Get(ctx, req.NamespacedName, obj); err != nil {
 		if !apierrors.IsNotFound(err) {
-			logger.Error(err, "Failed to get the resource")
+			r.cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Failed to get the resource",
+				logging.LogAttrCategory(logging.LogCategoryK8s),
+				logging.LogAttrObjectKey(obj))
+
 			return reconcile.Result{}, err
 		}
 		// The resource does not exist (was deleted).
@@ -124,12 +139,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 
 	select {
 	case <-ctx.Done():
-		logger.Info("Did not process the resource because the context was canceled")
+		r.cfg.Logger.LogAttrs(context.Background(), slog.LevelInfo,
+			"Did not process the resource because the context was canceled",
+			logging.LogAttrObjectKey(obj))
 		return reconcile.Result{}, nil
 	case r.cfg.EventCh <- e:
 	}
 
-	logger.Info(op + (" the resource"))
+	r.cfg.Logger.LogAttrs(context.Background(), slog.LevelDebug,
+		fmt.Sprintf("%s the resource", op),
+		logging.LogAttrCategory(logging.LogCategoryK8s),
+		logging.LogAttrObjectKey(obj))
 
 	return reconcile.Result{}, nil
 }

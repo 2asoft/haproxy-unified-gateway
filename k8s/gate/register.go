@@ -17,7 +17,9 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
@@ -88,31 +90,35 @@ func defaultConfig() recConfig {
 	}
 }
 
+type registerParams struct {
+	ctx        context.Context
+	logger     *slog.Logger
+	objectType client.Object
+	name       string
+	mgr        manager.Manager
+	eventCh    chan<- any
+	options    []Option
+}
+
 // Register registers a new controller for the object type in the manager and configure it with the provided options.
 // If the options include WithFieldIndices, it will add the specified indices to FieldIndexer of the manager.
 // The registered controller will send events to the provided channel.
-func Register(
-	ctx context.Context,
-	objectType client.Object,
-	name string,
-	mgr manager.Manager,
-	eventCh chan<- any,
-	options ...Option,
-) error {
+func Register(params registerParams) error {
 	cfg := defaultConfig()
 
-	for _, opt := range options {
+	for _, opt := range params.options {
 		opt(&cfg)
 	}
 
 	for field, indexerFunc := range cfg.fieldIndices {
-		if err := addIndex(
-			ctx,
-			mgr.GetFieldIndexer(),
-			objectType,
-			field,
-			indexerFunc,
-		); err != nil {
+		addIndexParams := addIndexParams{
+			ctx:         params.ctx,
+			indexer:     params.mgr.GetFieldIndexer(),
+			objectType:  params.objectType,
+			field:       field,
+			indexerFunc: indexerFunc,
+		}
+		if err := addIndex(addIndexParams); err != nil {
 			return err
 		}
 	}
@@ -123,46 +129,49 @@ func Register(
 	// Watches(source.Kind(cache, &Type{}, &handler.EnqueueRequestForObject{})).
 	// It would be possible to enqueue more dependent object reconcilitions.
 	if cfg.onlyMetadata {
-		if objectType.GetObjectKind().GroupVersionKind().Empty() {
-			panic("the object must have its GVK set")
+		if params.objectType.GetObjectKind().GroupVersionKind().Empty() {
+			return errors.New("the object must have its GVK set")
 		}
 		forOpts = append(forOpts, ctlr_builder.OnlyMetadata)
 	}
-	builder := ctlr.NewControllerManagedBy(mgr).
-		Named(name).
-		For(objectType, forOpts...)
+	builder := ctlr.NewControllerManagedBy(params.mgr).
+		Named(params.name).
+		For(params.objectType, forOpts...)
 
 	if cfg.k8sPredicate != nil {
 		builder = builder.WithEventFilter(cfg.k8sPredicate)
 	}
 
 	reconcileConfig := ReconcilerConfig{
-		Getter:               mgr.GetClient(),
-		ObjectType:           objectType,
-		EventCh:              eventCh,
+		Getter:               params.mgr.GetClient(),
+		ObjectType:           params.objectType,
+		EventCh:              params.eventCh,
 		NamespacedNameFilter: cfg.namespacedNameFilter,
 		OnlyMetadata:         cfg.onlyMetadata,
+		Logger:               params.logger,
 	}
 
 	if err := builder.Complete(cfg.newReconciler(reconcileConfig)); err != nil {
-		return fmt.Errorf("cannot build a controller for %T: %w", objectType, err)
+		return fmt.Errorf("cannot build a controller for %T: %w", params.objectType, err)
 	}
 
 	return nil
 }
 
-func addIndex(
-	ctx context.Context,
-	indexer client.FieldIndexer,
-	objectType client.Object,
-	field string,
-	indexerFunc client.IndexerFunc,
-) error {
-	c, cancel := context.WithTimeout(ctx, addIndexFieldTimeout)
+type addIndexParams struct {
+	ctx         context.Context
+	indexer     client.FieldIndexer
+	objectType  client.Object
+	indexerFunc client.IndexerFunc
+	field       string
+}
+
+func addIndex(params addIndexParams) error {
+	c, cancel := context.WithTimeout(params.ctx, addIndexFieldTimeout)
 	defer cancel()
 
-	if err := indexer.IndexField(c, objectType, field, indexerFunc); err != nil {
-		return fmt.Errorf("failed to add index for %T for field %s: %w", objectType, field, err)
+	if err := params.indexer.IndexField(c, params.objectType, params.field, params.indexerFunc); err != nil {
+		return fmt.Errorf("failed to add index for %T for field %s: %w", params.objectType, params.field, err)
 	}
 
 	return nil

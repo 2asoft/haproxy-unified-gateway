@@ -14,9 +14,11 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
@@ -116,8 +118,13 @@ func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) (re
 	switch obj := event.(type) {
 	case *events.UpsertEvent:
 		gvk := b.cfg.extractGVK(obj.Resource)
-		logger.Info("Processing event in batch", "eventType", "upsert", "GVK",
-			gvk, "resource", client.ObjectKeyFromObject(obj.Resource))
+		logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Processing event in batch",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrEventType("upsert"),
+			logging.LogAttrResource(obj.Resource, gvk),
+		)
+
 		b.clusterStoreUpdater.Upsert(obj.Resource)
 		relevantChangeFunc, ok := b.isRelevantChangeFunc[gvk]
 		if !ok {
@@ -129,8 +136,14 @@ func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) (re
 
 	case *events.DeleteEvent:
 		gvk := b.cfg.extractGVK(obj.Type)
-		logger.Info("Processing event in batch", "eventType", "delete", "GVK",
-			gvk, "resource", obj.NamespacedName)
+
+		logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Processing event in batch",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrEventType("delete"),
+			logging.LogAttrResource(obj.Type, gvk),
+		)
+
 		b.clusterStoreUpdater.Delete(obj.Type, obj.NamespacedName)
 		relevantChangeFunc, ok := b.isRelevantChangeFunc[gvk]
 		if !ok {

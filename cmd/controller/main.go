@@ -8,9 +8,11 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
 	"github.com/joho/godotenv"
+	"k8s.io/apimachinery/pkg/types"
 
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
@@ -64,12 +66,20 @@ func main() {
 	// (through the spec.controllerName)
 	gatewayClass := "haproxy"
 	gatewayControllerName := "gate.haproxy.org/gateway-controller"
+	controllerConfName := types.NamespacedName{
+		Namespace: "test",
+		Name:      "haproxyctrlconf",
+	}
 
 	whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test", "test2"}
 	// whiteListNs := []string{}
 
 	// kubeconfig := testKubeConfig
 	kubeconfig := ""
+
+	syncPeriod := 1 * time.Second
+	logLevel := slog.LevelDebug
+	logCategories := []string{"all"}
 
 	leaderElectionLockName := "kubernetes-controller-leader-election-lock"
 	leaderElectionConfig := config.LeaderElectionConfig{
@@ -82,12 +92,14 @@ func main() {
 		opt.ControllerPodConfig(controllerConfig),
 		opt.KubeConfig(kubeconfig),
 		opt.GatewayClass(gatewayClass),
+		opt.ControllerConf(controllerConfName),
+		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),
 		opt.LeaderElectionConfig(leaderElectionConfig),
 		opt.ControllerName(gatewayControllerName),
 		opt.WhiteListNamespaces(whiteListNs),
-		opt.Logging(slog.LevelInfo),
-		opt.RLogging())
+		opt.Logging(logLevel, logCategories),
+	)
 	if err != nil {
 		panic(err)
 	}

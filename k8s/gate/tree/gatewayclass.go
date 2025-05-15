@@ -14,12 +14,14 @@
 package tree
 
 import (
+	"context"
 	"log/slog"
 	"strings"
 
 	semver "github.com/Masterminds/semver/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,7 +108,11 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGwAPIGatewayClasses {
 
 	categorizedGwAPIGw := CategorizedGwAPIGatewayClasses{}
 
-	builder.logger.Info("HELENE", "installedVersions", installedVersions)
+	builder.logger.LogAttrs(context.Background(), slog.LevelDebug,
+		"",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrInstalledVersions(installedVersions),
+	)
 	for _, k8sgateway := range categorizedK8sGw.Supported {
 		treeGc := GatewayClass{
 			K8sResource: k8sgateway,
@@ -210,7 +216,11 @@ func (builder *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params 
 	for _, v := range params.supportedVersions {
 		constraint, err := semver.NewConstraint("~" + v)
 		if err != nil {
-			builder.logger.Error("cannot build semver constraint", "error", err)
+			builder.logger.LogAttrs(context.Background(), slog.LevelError,
+				"cannot build semver constraint",
+				logging.LogAttrCategory(logging.LogCategoryGate),
+				logging.LogAttrError(err),
+			)
 			return false
 		}
 		constraints = append(constraints, constraint)
@@ -219,7 +229,11 @@ func (builder *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params 
 	sv, err := semver.NewVersion(params.installedVersion)
 	if err != nil {
 		// If a version string is invalid, we should not consider it as a supported version.
-		builder.logger.Error("cannot parse version string", "error", err)
+		builder.logger.LogAttrs(context.Background(), slog.LevelError,
+			"cannot parse version string",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrError(err),
+		)
 		return false
 	}
 	for _, constraint := range constraints {

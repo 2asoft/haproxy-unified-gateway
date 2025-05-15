@@ -145,6 +145,7 @@ rules:
     - gate.v3.haproxy.org
     resources:
       - haproxygates
+      - haproxygatectrlcfgs
     verbs:
       - get
       - list

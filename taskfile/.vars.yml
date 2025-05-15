@@ -13,3 +13,4 @@ vars:
   CONFIG_DIR: "ci/kind/manifests"
   KIND_VERSION:
     sh: yq eval '.kind.version' taskfile-tools.yml
+  API_DEFINITION_DIR: "api/definition"

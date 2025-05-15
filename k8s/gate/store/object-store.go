@@ -14,9 +14,11 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,7 +51,10 @@ func newObjectStoreImpl[T client.Object](objects map[types.NamespacedName]T, slo
 func (m *objectStoreImpl[T]) upsert(obj client.Object) {
 	t, ok := obj.(T)
 	if !ok {
-		m.logger.Error("obj type mismatch: ", "error", fmt.Errorf("got %T, expected %T", obj, t))
+		m.logger.LogAttrs(context.Background(), slog.LevelError,
+			fmt.Sprintf("obj type mismatch. got %T, expected %T", obj, t),
+			logging.LogAttrCategory(logging.LogCategoryGate),
+		)
 	}
 	m.objects[client.ObjectKeyFromObject(obj)] = t
 }

@@ -15,7 +15,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -25,23 +24,32 @@ import (
 
 type EventLoop struct {
 	handler EventHandler
-	eventCh <-chan any
 	logger  slog.Logger
+	eventCh <-chan any
 
 	currentBatch events.EventBatch
 	nextBatch    events.EventBatch
 
+	loopCfg EventLoopConfig
+
+	mu sync.Mutex
+
 	handling bool
-	mu       sync.Mutex
+}
+
+type EventLoopConfig struct {
+	SyncPeriod time.Duration
 }
 
 // NewEventLoop creates a new EventLoop.
 func NewEventLoop(
+	loopCfg EventLoopConfig,
 	eventCh <-chan any,
 	logger slog.Logger,
 	handler EventHandler,
 ) *EventLoop {
 	return &EventLoop{
+		loopCfg:      loopCfg,
 		eventCh:      eventCh,
 		logger:       logger,
 		handler:      handler,
@@ -65,17 +73,10 @@ func (el *EventLoop) Start(ctx context.Context) error {
 	handleBatch := func() {
 		go func(batch events.EventBatch) {
 			el.SetHandling(true)
-			// batchLogger := el.logger.WithName("batchHandler").WithValues("batchID", el.currentBatch.BatchID)
-			batchLogger := el.logger.WithGroup("batchHandler").With("batchID", el.currentBatch.BatchID)
-			batchLogger.Info("Handling events from the batch", "total", len(batch.Events))
 
 			el.handler.HandleEventBatch(ctx, batch)
 
-			batchLogger.Info("... Sleeping, give it some time to get more events in the next batch")
-			time.Sleep(5 * time.Second)
-			batchLogger.Info("... Slept")
-
-			batchLogger.Info("Finished handling the batch")
+			time.Sleep(el.loopCfg.SyncPeriod)
 			handlingDone <- struct{}{}
 		}(el.currentBatch)
 	}
@@ -98,13 +99,13 @@ func (el *EventLoop) Start(ctx context.Context) error {
 			// Add the event to the current batch.
 			el.nextBatch.Events = append(el.nextBatch.Events, e)
 
-			el.logger.Debug(
-				"added an event to the next batch",
-				"batchId", el.nextBatch.BatchID,
-				"type", fmt.Sprintf("%T", e),
-				"event", e,
-				"total", len(el.nextBatch.Events),
-			)
+			// el.logger.LogAttrs(context.Background(), slog.LevelDebug,
+			// 	"added an event to the next batch",
+			// 	logging.LogCategoryAttr(logging.LogCategoryK8s),
+			// 	logging.BatchAttr(el.nextBatch.BatchID, len(el.nextBatch.Events)),
+			// 	logging.ObjTypeAttr(e),
+			// )
+
 			// If no batch is currently being handled, swap batches and begin handling the batch.
 			if !el.GetHandling() {
 				swapAndHandleBatch()

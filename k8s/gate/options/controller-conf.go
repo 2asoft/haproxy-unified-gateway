@@ -14,22 +14,13 @@
 package opt
 
 import (
-	"log/slog"
-	"testing"
-
-	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestLogging(t *testing.T) {
-	_, err := controller.New(Logging(slog.LevelDebug, []string{"all"}))
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestLoggingEmpty(t *testing.T) {
-	_, err := controller.New()
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+func ControllerConf(controllerConf types.NamespacedName) func(o *config.Configuration) error {
+	return func(o *config.Configuration) error {
+		o.ControllerConfNsName = controllerConf
+		return nil
 	}
 }

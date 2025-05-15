@@ -16,10 +16,13 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sort"
+	"strings"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -43,7 +46,10 @@ func NewExtractGKV(scheme *runtime.Scheme, logger *slog.Logger) ExtractGVK {
 		gvk, err := apiutil.GVKForObject(obj, scheme)
 		if err != nil {
 			// this should not happen
-			logger.Error(fmt.Sprintf("could not extract GVK for object: %T", obj))
+			logger.LogAttrs(context.Background(), slog.LevelError,
+				fmt.Sprintf("could not extract GVK for object: %T", obj),
+				logging.LogAttrCategory(logging.LogCategoryGate),
+			)
 		}
 
 		return gvk
@@ -73,4 +79,13 @@ func MapToSortedListByCreationTimestamp[T ObjectWithTimestamp](objects map[types
 	}
 	SortByCreationTimestamp(list)
 	return list
+}
+
+// ParseNamespacedName parses a "namespace/name" string into a NamespacedName.
+func ParseNamespacedName(s string) (types.NamespacedName, error) {
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) != 2 {
+		return types.NamespacedName{}, fmt.Errorf("invalid format: expected namespace/name, got %q", s)
+	}
+	return types.NamespacedName{Namespace: parts[0], Name: parts[1]}, nil
 }

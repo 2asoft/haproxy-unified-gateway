@@ -19,16 +19,43 @@ import (
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	ctlr_zap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-func Logging(level slog.Level) func(o *config.Configuration) error {
+func Logging(level slog.Level, allowedCategories []string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		slogLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: logging.LogLevel,
-		}))
-		logging.LogLevel.Set(level)
+		base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: level,
+			// AddSource: true,
+		})
+		handlerParams := logging.CategoryFilterHandlerParams{
+			Base:              base,
+			InitialLevel:      level,
+			AllowedCategories: allowedCategories,
+			CategoryKey:       logging.LogCategoryKey,
+		}
+		handler := logging.NewCategoryFilterHandler(handlerParams)
+		slogLogger := slog.New(handler)
+
 		o.Logger = slogLogger
-		o.K8sLogging.LogConverter = config.NewIOWriter(slogLogger)
+		o.LoggerCaterogyFilterHandler = handler
+
+		logConverter := config.NewIOWriter(slogLogger)
+		opts := ctlr_zap.Options{
+			Development: true,
+			TimeEncoder: zapcore.ISO8601TimeEncoder,
+			ZapOpts: []zap.Option{
+				zap.AddCaller(),
+			},
+			DestWriter: logConverter, // use main logger to write output
+		}
+		rlogger := ctlr_zap.New(ctlr_zap.UseFlagOptions(&opts))
+
+		runtimelog.SetLogger(rlogger)
 		return nil
 	}
 }

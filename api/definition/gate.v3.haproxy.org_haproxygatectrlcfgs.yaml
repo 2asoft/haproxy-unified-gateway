@@ -4,20 +4,21 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: haproxygates.gate.v3.haproxy.org
+  name: haproxygatectrlcfgs.gate.v3.haproxy.org
 spec:
   group: gate.v3.haproxy.org
   names:
-    kind: HaproxyGate
-    listKind: HaproxyGateList
-    plural: haproxygates
-    singular: haproxygate
+    kind: HaproxyGateCtrlCfg
+    listKind: HaproxyGateCtrlCfgList
+    plural: haproxygatectrlcfgs
+    singular: haproxygatectrlcfg
   scope: Namespaced
   versions:
   - name: v3
     schema:
       openAPIV3Schema:
-        description: HaproxyGate is a specification for a HaproxyGate resource
+        description: HaproxyGateCtrlCfg is a specification for a the controller related
+          configuration
         properties:
           apiVersion:
             description: |-
@@ -38,10 +39,30 @@ spec:
             type: object
           spec:
             properties:
-              mworkerMaxReload:
-                type: integer
+              logging:
+                properties:
+                  categories:
+                    items:
+                      enum:
+                      - all
+                      - k8s
+                      - gate
+                      - status
+                      type: string
+                    type: array
+                  level:
+                    enum:
+                    - Debug
+                    - Info
+                    - Warn
+                    - Error
+                    type: string
+                required:
+                - categories
+                - level
+                type: object
             required:
-            - mworkerMaxReload
+            - logging
             type: object
         required:
         - spec

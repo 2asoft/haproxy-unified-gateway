@@ -11,25 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package opt
+package logging
 
-import (
-	"log/slog"
-	"testing"
+type LogCategory string
 
-	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
+var (
+	LogCategoryK8s    LogCategory = "k8s"
+	LogCategoryGate   LogCategory = "gate"
+	LogCategoryStatus LogCategory = "status"
 )
-
-func TestLogging(t *testing.T) {
-	_, err := controller.New(Logging(slog.LevelDebug, []string{"all"}))
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestLoggingEmpty(t *testing.T) {
-	_, err := controller.New()
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-}

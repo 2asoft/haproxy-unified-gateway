@@ -44,14 +44,11 @@ type Controller struct {
 	Configuration config.Configuration
 }
 
-func New(options ...func(*config.Configuration) error) (Controller, error) {
+func New(options ...func(c *config.Configuration) error) (Controller, error) {
 	slogger := slog.Default()
 	ctrl := Controller{
 		Configuration: config.Configuration{
 			Logger: slogger,
-			K8sLogging: &config.K8sLogging{
-				LogConverter: config.NewIOWriter(slogger),
-			},
 		},
 	}
 	for _, o := range options {
@@ -87,13 +84,21 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		extractGVK,
 	)
 
+	eventHandlerConfig := handler.EventHandlerImplConfig{
+		Logger:                   c.Configuration.Logger,
+		LogCategoryFilterHandler: c.Configuration.LoggerCaterogyFilterHandler,
+		ExtractGVK:               extractGVK,
+		ControllerConfNsName:     c.Configuration.ControllerConfNsName,
+	}
 	eventHandler := handler.NewEventHandlerImpl(
 		treeBuilderConfig,
-		extractGVK,
-		c.Configuration.Logger,
-	)
+		eventHandlerConfig)
 
+	loopCfg := handler.EventLoopConfig{
+		SyncPeriod: c.Configuration.SyncPeriod,
+	}
 	eventLoop := handler.NewEventLoop(
+		loopCfg,
 		eventCh,
 		*c.Configuration.Logger,
 		eventHandler,
@@ -110,12 +115,8 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func registerControllers( //revive:disable:function-length
-	ctx context.Context,
-	cfg config.Configuration,
-	mgr manager.Manager,
-	eventCh chan any,
-) error {
+//revive:disable:function-length
+func registerControllers(ctx context.Context, cfg config.Configuration, mgr manager.Manager, eventCh chan any) error {
 	type ctlrCfg struct {
 		name       string
 		objectType client.Object
@@ -214,7 +215,7 @@ func registerControllers( //revive:disable:function-length
 						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),
-				WithFieldIndices(index.CreateEndpointSliceFieldIndices()),
+				WithFieldIndices(index.CreateEndpointSliceFieldIndices(cfg.Logger)),
 			},
 		},
 		{
@@ -253,17 +254,34 @@ func registerControllers( //revive:disable:function-length
 				),
 			},
 		},
+		{
+			name:       "ControllerConf",
+			objectType: &v3.HaproxyGateCtrlCfg{},
+			options: []Option{
+				WithK8sPredicate(
+					k8spredicate.And(
+						k8spredicate.ResourceVersionChangedPredicate{},
+						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.ControllerConfPredicate{
+							ControllerConfName: cfg.ControllerConfNsName,
+						},
+					),
+				),
+			},
+		},
 	}
 
 	for _, registerConfig := range controllerRegisterCfgs {
-		if err := Register(
-			ctx,
-			registerConfig.objectType,
-			registerConfig.name,
-			mgr,
-			eventCh,
-			registerConfig.options...,
-		); err != nil {
+		params := registerParams{
+			ctx:        ctx,
+			logger:     cfg.Logger,
+			objectType: registerConfig.objectType,
+			name:       registerConfig.name,
+			mgr:        mgr,
+			eventCh:    eventCh,
+			options:    registerConfig.options,
+		}
+		if err := Register(params); err != nil {
 			return fmt.Errorf("cannot register controller for %T: %w", registerConfig.objectType, err)
 		}
 	}

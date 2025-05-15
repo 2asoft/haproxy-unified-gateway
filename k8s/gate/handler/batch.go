@@ -15,7 +15,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -43,22 +42,27 @@ type EventHandler interface {
 	HandleEventBatch(ctx context.Context, batch events.EventBatch)
 }
 
+type EventHandlerImplConfig struct {
+	Logger                   *slog.Logger
+	LogCategoryFilterHandler *logging.CategoryFilterHandler
+	ExtractGVK               utils.ExtractGVK
+	//  Namespace and name of the controller conf CRD
+	ControllerConfNsName types.NamespacedName
+}
+
 // eventHandlerImpl implements EventHandler.
 // eventHandlerImpl is responsible for:
 // - Reconciling the Gateway API and Kubernetes built-in resources with the HAProxy configuration.
 // - building the GateTree
 type eventHandlerImpl struct {
 	treeBuilder *GateTreeBuilder
-	logger      *slog.Logger
-
-	extractGVK utils.ExtractGVK
+	config      EventHandlerImplConfig
 }
 
 // NewEventHandlerImpl creates a new eventHandlerImpl.
 func NewEventHandlerImpl(
 	treeBuilderConfig GateTreeBuilderConfig,
-	extractGVK utils.ExtractGVK,
-	logger *slog.Logger,
+	config EventHandlerImplConfig,
 ) *eventHandlerImpl {
 	clusterStore := &store.ClusterStore{
 		GatewayClasses: make(map[types.NamespacedName]*gatewayv1.GatewayClass),
@@ -70,18 +74,18 @@ func NewEventHandlerImpl(
 		ConfigMaps:     make(map[types.NamespacedName]*v1.ConfigMap),
 		GatewayAPICRDs: make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
 		HaproxyGate:    make(map[types.NamespacedName]*v3.HaproxyGate),
+		ControllerConf: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
 	}
 
 	treeBuilder := NewGateTreeBuilder(
 		clusterStore,
 		treeBuilderConfig,
-		logger.WithGroup("treeBuilder"),
+		config.Logger,
 	)
 
 	handler := &eventHandlerImpl{
 		treeBuilder: treeBuilder,
-		extractGVK:  extractGVK,
-		logger:      logger,
+		config:      config,
 	}
 
 	return handler
@@ -89,39 +93,26 @@ func NewEventHandlerImpl(
 
 func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.EventBatch) {
 	start := time.Now()
-	batchLogGroup := slog.Group("batch",
-		slog.Int("batchID", batch.BatchID),
-		slog.Int("len", len(batch.Events)),
-	)
-	h.logger.LogAttrs(context.Background(), slog.LevelInfo,
+
+	h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 		"Started processing event batch",
-		batchLogGroup,
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
 	)
 
 	defer func() {
 		duration := time.Since(start)
-		h.logger.LogAttrs(context.Background(), slog.LevelInfo,
+		h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Finished processing event batch",
-			batchLogGroup,
-			slog.String("duration", duration.String()),
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
+			logging.LogAttrDuration(duration),
 		)
 	}()
 
 	// Process each event in the batch
 	_ = h.treeBuilder.ProcessBatch(batch)
-	// Adjust dynamically the log level
-	for _, haproxyGate := range h.treeBuilder.clusterStore.HaproxyGate {
-		switch haproxyGate.Spec.Logging.Level {
-		case "Info":
-			logging.LogLevel.Set(slog.LevelInfo)
-		case "Warn":
-			logging.LogLevel.Set(slog.LevelWarn)
-		case "Error":
-			logging.LogLevel.Set(slog.LevelError)
-		case "Debug":
-			logging.LogLevel.Set(slog.LevelDebug)
-		}
-	}
+	h.ReconcileLogLevelAndCategory()
 
 	// Build the GateTree
 	newTree := h.treeBuilder.buildGateTree()
@@ -145,17 +136,21 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		client.InNamespace(svcNs),
 	)
 	if err != nil {
-		h.logger.Error("error client.List svc http-echo", "error", err)
+		h.config.Logger.LogAttrs(context.Background(), slog.LevelError,
+			"could not retrieve http-echo endpoints",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrError(err),
+		)
 	}
-	h.logger.Info(
-		fmt.Sprintf("JUST AN EXAMPLE to show cache indexes usage. endpoints for http-echo svc %v", endpointSliceList))
+	// h.config.Logger.Info(
+	// 	fmt.Sprintf("JUST AN EXAMPLE to show cache indexes usage. eps for http-echo svc %v", endpointSliceList))
 	// END EXAMPLE
 
 	statusUpdater := status.NewStatusUpdaterImpl(
 		status.NewStatusUpdaterConf(
 			h.treeBuilder.cfg.k8sClient,
-			h.extractGVK,
-			h.logger.WithGroup("statusUpdater"),
+			h.config.ExtractGVK,
+			h.config.Logger,
 		),
 		newTree.GatewayClasses,
 		newTree.IgnoredGatewayClasses,
@@ -165,4 +160,41 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 
 	// h.updateHAProxy(ctx, logger)  //revive:disable:unused-parameters
 	// h.updateStatuses(ctx, logger) //revive:disable:unused-parameter
+}
+
+func (h *eventHandlerImpl) ReconcileLogLevelAndCategory() {
+	conf := h.treeBuilder.clusterStore.ControllerConf
+	if conf == nil {
+		return
+	}
+	// conf size should be 1
+	if len(conf) != 1 {
+		return
+	}
+	logConf, ok := conf[h.config.ControllerConfNsName]
+	if !ok {
+		return
+	}
+
+	changed := h.config.LogCategoryFilterHandler.ReconcileLevel(logConf.Spec.Logging.Level)
+	if changed {
+		h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
+			"Reconciled log level",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrLogLevel(logConf.Spec.Logging.Level),
+		)
+	}
+
+	expectedCategories := make([]string, 0, len(logConf.Spec.Logging.Categories))
+	for _, cat := range logConf.Spec.Logging.Categories {
+		expectedCategories = append(expectedCategories, string(cat))
+	}
+	changed = h.config.LogCategoryFilterHandler.ReconcileAllowedCategories(expectedCategories)
+	if changed {
+		h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
+			"Reconciled log categories",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrLogCategories(expectedCategories),
+		)
+	}
 }

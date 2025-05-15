@@ -14,8 +14,11 @@
 package index
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -29,29 +32,37 @@ const (
 )
 
 // CreateEndpointSliceFieldIndices creates a FieldIndices map for the EndpointSlice resource.
-func CreateEndpointSliceFieldIndices() FieldIndices {
+func CreateEndpointSliceFieldIndices(logger *slog.Logger) FieldIndices {
 	return FieldIndices{
-		EndpointSliceServiceNameIndexField: ServiceNameIndexFunc,
+		EndpointSliceServiceNameIndexField: ServiceNameIndexFunc(logger),
 	}
 }
+
+type ServiceNameIndexFuncWithLogger func(obj client.Object) []string
 
 // ServiceNameIndexFunc is a client.IndexerFunc that parses a Kubernetes object and returns the value of the
 // Kubernetes service-name label.
 // Used to index EndpointSlices by their service owners.
-func ServiceNameIndexFunc(obj client.Object) []string {
-	slice, ok := obj.(*discoveryV1.EndpointSlice)
-	if !ok {
-		panic(fmt.Sprintf("expected an EndpointSlice; got %T", obj))
-	}
+func ServiceNameIndexFunc(logger *slog.Logger) client.IndexerFunc {
+	return func(obj client.Object) []string {
+		slice, ok := obj.(*discoveryV1.EndpointSlice)
+		if !ok {
+			logger.LogAttrs(context.Background(), slog.LevelError,
+				fmt.Sprintf("expected an EndpointSlice; got %T", obj),
+				logging.LogAttrCategory(logging.LogCategoryK8s),
+			)
+			return nil
+		}
 
-	if slice.Labels == nil {
-		return nil
-	}
+		if slice.Labels == nil {
+			return nil
+		}
 
-	name := slice.Labels[EndpointSliceServiceNameLabel]
-	if name == "" {
-		return nil
-	}
+		name := slice.Labels[EndpointSliceServiceNameLabel]
+		if name == "" {
+			return nil
+		}
 
-	return []string{name}
+		return []string{name}
+	}
 }

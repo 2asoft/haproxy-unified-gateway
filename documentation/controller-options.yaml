@@ -1,3 +1,9 @@
+ControllerConf:
+    name: ControllerConf
+    comment: ""
+    args:
+        - name: controllerConf
+          type: types.NamespacedName
 ControllerName:
     name: ControllerName
     comment: ""
@@ -34,6 +40,8 @@ Logging:
     args:
         - name: level
           type: slog.Level
+        - name: allowedCategories
+          type: '*ast.ArrayType'
 MetricsConfig:
     name: MetricsConfig
     comment: |
@@ -41,10 +49,12 @@ MetricsConfig:
     args:
         - name: metricsConfig
           type: config.MetricsConfig
-RLogging:
-    name: RLogging
+SyncPeriod:
+    name: SyncPeriod
     comment: ""
-    args: []
+    args:
+        - name: syncPeriod
+          type: time.Duration
 WhiteListNamespaces:
     name: WhiteListNamespaces
     comment: ""

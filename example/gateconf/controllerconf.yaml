@@ -1,0 +1,9 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: HaproxyGateCtrlCfg
+metadata:
+  name: haproxyctrlconf
+spec:
+  logging:
+    level: Debug
+    categories:
+      - gate

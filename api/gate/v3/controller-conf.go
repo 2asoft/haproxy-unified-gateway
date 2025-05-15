@@ -23,23 +23,31 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// HaproxyGate is a specification for a HaproxyGate resource
-type HaproxyGate struct {
+// HaproxyGateCtrlCfg is a specification for a the controller related configuration
+type HaproxyGateCtrlCfg struct {
 	metav1.TypeMeta   `json:",inline"`
+	Spec              ControllerConfSpec `json:"spec"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              GateSpec `json:"spec"`
 }
 
-type GateSpec struct {
-	MWorkerMaxReload int `json:"mworkerMaxReload"`
+// +kubebuilder:validation:Enum=all;k8s;gate;status
+type Category string
+
+type Logging struct {
+	// +kubebuilder:validation:Enum=Debug;Info;Warn;Error
+	Level      string     `json:"level"`
+	Categories []Category `json:"categories"`
+}
+type ControllerConfSpec struct {
+	Logging Logging `json:"logging"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// HaproxyGateList is a list of HaproxyGate resources
-type HaproxyGateList struct {
+// HaproxyGateCtrlCfgList is a list of HaproxyGateCtrlrConf resources
+type HaproxyGateCtrlCfgList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []HaproxyGate `json:"items"`
+	Items []HaproxyGateCtrlCfg `json:"items"`
 }

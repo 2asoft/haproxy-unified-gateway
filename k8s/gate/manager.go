@@ -52,7 +52,6 @@ func init() { //nolint:gochecknoinits
 func createManager(cfg config.Configuration) (manager.Manager, error) {
 	options := manager.Options{
 		Scheme:                        scheme,
-		Logger:                        cfg.K8sLogging.RLogger.V(1),
 		Metrics:                       getMetricsOptions(cfg.MetricsConfig),
 		LeaderElection:                cfg.LeaderElectionConfig.Enabled,
 		LeaderElectionNamespace:       cfg.ControllerPodConfig.Namespace,

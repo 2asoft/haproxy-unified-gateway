@@ -14,30 +14,14 @@
 package opt
 
 import (
+	"time"
+
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"k8s.io/klog/v2"
-	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
-	ctlr_zap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-func RLogging() func(o *config.Configuration) error {
+func SyncPeriod(syncPeriod time.Duration) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		opts := ctlr_zap.Options{
-			Development: true,
-			TimeEncoder: zapcore.ISO8601TimeEncoder,
-			ZapOpts: []zap.Option{
-				zap.AddCaller(),
-			},
-			DestWriter: o.K8sLogging.LogConverter, // use main logger to write output
-		}
-		logger := ctlr_zap.New(ctlr_zap.UseFlagOptions(&opts))
-
-		runtimelog.SetLogger(logger)
-		klog.SetLogger(logger)
-
-		o.K8sLogging.RLogger = logger
+		o.SyncPeriod = syncPeriod
 		return nil
 	}
 }

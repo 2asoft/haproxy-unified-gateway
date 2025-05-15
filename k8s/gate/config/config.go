@@ -15,6 +15,10 @@ package config
 
 import (
 	"log/slog"
+	"time"
+
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // func getConfig() (*rest.Config, error) {
@@ -32,21 +36,25 @@ import (
 // }
 
 type Configuration struct {
-	Logger     *slog.Logger
-	K8sLogging *K8sLogging
+	Logger                      *slog.Logger
+	LoggerCaterogyFilterHandler *logging.CategoryFilterHandler
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
-	Kubeconfig          string
-	GatewayClass        string
-	// GatewayCtlrName is the name of this controller.
-	GatewayCtlrName string
 	// LeaderElectionConfig contains the configuration for leader election.
+	//  Namespace and name of the controller conf CRD
+	ControllerConfNsName types.NamespacedName
+	Kubeconfig           string
+	GatewayClass         string
+	// GatewayCtlrName is the name of this controller.
+	GatewayCtlrName      string
 	LeaderElectionConfig LeaderElectionConfig
 	// WhiteListNamespaces is a list of namespaces to watch.
 	// If empty, all namespaces are watched.
 	WhiteListNamespaces []string
 	// MetricsConfig specifies the metrics config.
 	MetricsConfig MetricsConfig
+	// SyncPeriod is the duration we wait after handling one batch before the next one
+	SyncPeriod time.Duration
 }
 
 // ControllerPodConfig contains information about this Pod.

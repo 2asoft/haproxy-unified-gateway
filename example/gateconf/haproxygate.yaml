@@ -4,5 +4,3 @@ metadata:
   name: haproxygate
 spec:
   mworkerMaxReload: 7
-  logging:
-    level: Debug

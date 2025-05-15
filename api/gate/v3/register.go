@@ -46,6 +46,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&HaproxyGate{},
 		&HaproxyGateList{},
+		&HaproxyGateCtrlCfg{},
+		&HaproxyGateCtrlCfgList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

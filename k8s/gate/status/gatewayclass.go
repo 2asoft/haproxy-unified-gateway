@@ -16,9 +16,11 @@ package status
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"k8s.io/apimachinery/pkg/util/wait"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -48,11 +50,11 @@ func (s *StatusUpdaterImpl) writeGatewayClassStatus(ctx context.Context, gwc *tr
 		TryUpdateStatusFunc(updateOptions),
 	)
 	if err != nil && !errors.Is(err, context.Canceled) {
-		s.cfg.logger.Error(
+		s.cfg.logger.LogAttrs(context.Background(), slog.LevelError,
 			"Failed to update status",
-			"namespace", updateOptions.Object.GetNamespace(),
-			"name", updateOptions.Object.GetName(),
-			"kind", s.cfg.extractGVK(gwc.K8sResource),
-			"error", err)
+			logging.LogAttrCategory(logging.LogCategoryStatus),
+			logging.LogAttrResource(gwc.K8sResource, s.cfg.extractGVK(gwc.K8sResource)),
+			logging.LogAttrError(err),
+		)
 	}
 }

@@ -38,6 +38,7 @@ type ClusterStore struct {
 	ConfigMaps     map[types.NamespacedName]*v1.ConfigMap
 	GatewayAPICRDs map[types.NamespacedName]*metav1.PartialObjectMetadata
 	HaproxyGate    map[types.NamespacedName]*v3.HaproxyGate
+	ControllerConf map[types.NamespacedName]*v3.HaproxyGateCtrlCfg
 }
 
 // ClusterStoreUpdater updates the cluster store.
@@ -74,6 +75,7 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&v1.ConfigMap{}):                    newObjectStoreImpl(clusterStore.ConfigMaps, logger),
 				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, logger),
 				extractGVK(&v3.HaproxyGate{}):                  newObjectStoreImpl(clusterStore.HaproxyGate, logger),
+				extractGVK(&v3.HaproxyGateCtrlCfg{}):           newObjectStoreImpl(clusterStore.ControllerConf, logger),
 			},
 		},
 		extractGVK: extractGVK,

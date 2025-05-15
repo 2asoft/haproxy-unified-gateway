@@ -1,8 +1,11 @@
 package config
 
 import (
+	"context"
 	"io"
 	"log/slog"
+
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
 // type Writer interface {
@@ -14,7 +17,10 @@ type LogConverter struct {
 }
 
 func (l *LogConverter) Write(p []byte) (n int, err error) {
-	l.log.Debug(string(p))
+	l.log.LogAttrs(context.Background(), slog.LevelDebug,
+		string(p),
+		logging.LogAttrCategory(logging.LogCategoryK8s),
+	)
 	return len(p), nil
 }
 
