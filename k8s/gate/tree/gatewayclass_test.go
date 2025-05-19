@@ -109,13 +109,13 @@ func TestValidateVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := builder.validateVersion(
+			builder.checkSupportedVersion(
 				validateVersionsParams{
 					supportedVersions:      tt.supportedVersions,
 					installedGwAPIVersions: tt.installedVersion,
 				},
 			)
-			assert.Equal(t, tt.expectedResult, result)
+			assert.Equal(t, tt.expectedResult, builder.isGwAPIVersionValid)
 		})
 	}
 }

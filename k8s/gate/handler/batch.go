@@ -152,8 +152,8 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 			h.config.ExtractGVK,
 			h.config.Logger,
 		),
-		newTree.GatewayClasses,
-		newTree.IgnoredGatewayClasses,
+		newTree.GatewayClasses.Supported,
+		newTree.GatewayClasses.Ignored,
 	)
 
 	statusUpdater.UpdateStatus(ctx)

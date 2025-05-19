@@ -163,7 +163,7 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 	// GatewayClass
 	// gatewayClassCategorizer := &tree.GatewayClassCategorizerImpl{}
 	// TODO :
-	gatewayClassCategorizer := &tree.GatewayClassCategorizerImplEE{}
+	gatewayClassCategorizer := &tree.GatewayClassCategorizerImpl{}
 	// for EE. To discusse
 
 	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
@@ -174,18 +174,7 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 	}
 	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
 	categorizedGatewayClasses := gatewayClassBuilder.Build()
-	newTree.GatewayClasses = categorizedGatewayClasses.Supported
-	newTree.IgnoredGatewayClasses = categorizedGatewayClasses.Ignored
-
-	// --------------
-	// HaproxyGate
-	haproxyGateBuilderParams := tree.HaproxyGateBuilderParams{
-		ClusterStore:   b.clusterStore,
-		GatewayClasses: categorizedGatewayClasses.Supported,
-		Logger:         b.logger,
-	}
-	haproxygateBuilder := tree.NewHaproxyGateBuilder(haproxyGateBuilderParams)
-	haproxygateBuilder.Build()
+	newTree.GatewayClasses = categorizedGatewayClasses
 
 	return newTree
 }

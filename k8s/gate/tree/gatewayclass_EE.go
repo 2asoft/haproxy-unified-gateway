@@ -32,14 +32,17 @@ var _ GatewayClassCategorizer = &GatewayClassCategorizerImplEE{}
 func (*GatewayClassCategorizerImplEE) Categorize(
 	gatewayClasses map[types.NamespacedName]*v1.GatewayClass,
 	_ string,
-) categorizedK8sGatewayClasses {
-	processedGwClasses := categorizedK8sGatewayClasses{}
+) CategorizedGatewayClasses {
+	processedGwClasses := CategorizedGatewayClasses{}
 
 	for _, gc := range gatewayClasses {
 		if processedGwClasses.Supported == nil {
-			processedGwClasses.Supported = make(map[types.NamespacedName]*v1.GatewayClass)
+			processedGwClasses.Supported = make(map[types.NamespacedName]*GatewayClass)
 		}
-		processedGwClasses.Supported[client.ObjectKeyFromObject(gc)] = gc
+		treeGc := &GatewayClass{
+			K8sResource: gc,
+		}
+		processedGwClasses.Supported[client.ObjectKeyFromObject(gc)] = treeGc
 	}
 
 	return processedGwClasses

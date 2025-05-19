@@ -17,6 +17,7 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -87,6 +88,18 @@ func NewDefaultGatewayClassConditions() map[ConditionType]Condition {
 			Status:  metav1.ConditionTrue,
 			Reason:  string(v1.GatewayClassReasonSupportedVersion),
 			Message: "Gateway API CRD versions are supported",
+		},
+	}
+}
+
+// NewGatewayClassInvalidParameters returns a Condition that indicates that the GatewayClass has invalid parameters.
+func NewGatewayClassInvalidParameters(err *field.Error) map[ConditionType]Condition {
+	return map[ConditionType]Condition{
+		ConditionType(v1.GatewayClassConditionStatusAccepted): {
+			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(v1.GatewayClassReasonInvalidParameters),
+			Message: fmt.Sprintf("invalid parametersRef: %s", err),
 		},
 	}
 }

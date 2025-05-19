@@ -8,3 +8,4 @@ spec:
     group: gate.v3.haproxy.com
     kind: HaproxyGate
     name: haproxygate
+    namespace: test

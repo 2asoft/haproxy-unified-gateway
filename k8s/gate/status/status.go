@@ -91,7 +91,7 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Updating status for resource",
 			logging.LogAttrCategory(logging.LogCategoryStatus),
-			logging.LogAttrResource(gwc, s.cfg.extractGVK(gwc.K8sResource)),
+			logging.LogAttrResource(gwc.K8sResource, s.cfg.extractGVK(gwc.K8sResource)),
 		)
 
 		s.writeGatewayClassStatus(ctx, gwc)
