@@ -93,7 +93,7 @@ tasks:
       - task: delimiter
       - echo "Install custom resource definitions ..."
       - echo "Install Gateway API CRDs"
-      - kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
+      - kubectl apply -f {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
       - echo "Install Gateway API Controller CRDs"
       - kubectl apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_haproxygatectrlcfgs.yaml
       - kubectl apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_haproxygates.yaml

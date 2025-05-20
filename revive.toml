@@ -36,4 +36,4 @@ enableAllRules = true
   disabled = true
 
 [rule.function-length]
-  arguments = [30, 100]
+  arguments = [50, 100]

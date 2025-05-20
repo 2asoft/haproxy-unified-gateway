@@ -1,0 +1,46 @@
+#https://taskfile.dev/
+version: '3'
+
+tasks:
+  check-envtest-setup-tool:
+    desc: 'install envtest-setup tool'
+    internal: true
+    silent: true
+    vars:
+      PACKAGE: setup-envtest
+      VERSION:
+        sh: yq eval '.{{.PACKAGE}}.version' taskfile-tools.yml
+      URL:
+        sh: yq eval '.{{.PACKAGE}}.install' taskfile-tools.yml
+    cmds:
+      - task : go-install
+        vars:
+          PACKAGE: '{{.URL}}@{{.VERSION}}'
+          GOBIN: '/{{.TMP}}/{{.PACKAGE}}/{{.VERSION}}'
+      - echo "Installed {{.PACKAGE}} {{.VERSION}} in /{{.TMP}}/{{.PACKAGE}}/{{.VERSION}}"
+
+  set-kubebuilderasset:
+    silent: true
+    vars:
+      PACKAGE: setup-envtest
+      ENVTEST_BIN: envtest
+      VERSION:
+        sh: yq eval '.{{.PACKAGE}}.version' taskfile-tools.yml
+      KUBEBUILDER_ASSETS:
+        sh: |
+          /{{.TMP}}/{{.PACKAGE}}/{{.VERSION}}/{{.PACKAGE}} use {{.ENVTEST_K8S_VERSION}} --bin-dir /{{.TMP}}/{{.ENVTEST_BIN}} -p path
+    cmds:
+      - echo "{{.KUBEBUILDER_ASSETS}}" > /{{.TMP}}/.kubebuilder_assets_path
+
+
+  download-gateway-crds:
+      silent: true
+      desc: Download Gateway API CRDs and split into individual files
+      vars:
+        OUTDIR: test/integration/api
+      cmds:
+        - mkdir -p /{{.TMP}}
+        - curl -L -o /{{.TMP}}/standard-install.yaml {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
+        - cd /{{.TMP}} && csplit --elide-empty-files -f gatewayapicrd- -z --suffix-format='%02d.yaml' standard-install.yaml "/^---$/" "{*}"
+        - mkdir -p crds
+        - mv /{{.TMP}}/gatewayapicrd-* {{.OUTDIR}}

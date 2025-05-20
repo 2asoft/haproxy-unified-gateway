@@ -29,6 +29,11 @@ includes:
   controller-gen:
     taskfile: taskfile/controller-gen.yml
     flatten: true
+  envtest:
+    taskfile: taskfile/envtest.yml
+    flatten: true
+
+vars:
 
 tasks:
 
@@ -45,8 +50,16 @@ tasks:
 
   test:
     desc: 'run Go tests'
+    vars:
+      PACKAGE: setup-envtest
+      VERSION: release-0.20
     cmds:
-      - go test -v ./...
+      #- task: download-gateway-crds
+      - task: check-envtest-setup-tool
+      - task: set-kubebuilderasset
+      - |
+        KUBEBUILDER_ASSETS=$(cat /{{.TMP}}/.kubebuilder_assets_path)
+        KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS go test -v -count=1 ./...
 
   tidy:
     internal: true

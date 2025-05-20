@@ -28,3 +28,6 @@ kind:
 controller-gen:
   version: v0.18.0
   install: sigs.k8s.io/controller-tools/cmd/controller-gen
+setup-envtest:
+  version: release-0.20
+  install: sigs.k8s.io/controller-runtime/tools/setup-envtest

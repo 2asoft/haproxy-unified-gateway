@@ -69,47 +69,102 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("cannot build runtime manager: %w", err)
 	}
 
+	// eventCh := make(chan any)
+
+	// if err := registerControllers(ctx, c.Configuration, mgr, eventCh); err != nil {
+	// 	return fmt.Errorf("cannot register controllers: %w", err)
+	// }
+
+	// extractGVK := utils.NewExtractGKV(scheme, c.Configuration.Logger)
+
+	// treeBuilderConfig := handler.NewGateTreeBuilderConfig(
+	// 	mgr.GetClient(),
+	// 	mgr.GetAPIReader(),
+	// 	c.Configuration.GatewayClass,
+	// 	extractGVK,
+	// )
+
+	// eventHandlerConfig := handler.EventHandlerImplConfig{
+	// 	Logger:                   c.Configuration.Logger,
+	// 	LogCategoryFilterHandler: c.Configuration.LoggerCaterogyFilterHandler,
+	// 	ExtractGVK:               extractGVK,
+	// 	ControllerConfNsName:     c.Configuration.ControllerConfNsName,
+	// }
+	// eventHandler := handler.NewEventHandlerImpl(
+	// 	treeBuilderConfig,
+	// 	eventHandlerConfig)
+
+	// loopCfg := handler.EventLoopConfig{
+	// 	SyncPeriod: c.Configuration.SyncPeriod,
+	// }
+	// eventLoop := handler.NewEventLoop(
+	// 	loopCfg,
+	// 	eventCh,
+	// 	*c.Configuration.Logger,
+	// 	eventHandler,
+	// )
+
+	// if err = mgr.Add(eventLoop); err != nil {
+	// 	return fmt.Errorf("cannot register event loop: %w", err)
+	// }
+
+	// if err = mgr.Start(ctx); err != nil {
+	// 	return fmt.Errorf("cannot start runtime manager: %w", err)
+	// }
+
+	if err := Add(ctx, c.Configuration, mgr); err != nil {
+		return err
+	}
+
+	if err := mgr.Start(ctx); err != nil {
+		return fmt.Errorf("cannot start runtime manager: %w", err)
+	}
+
+	return nil
+}
+
+func Add(
+	ctx context.Context,
+	cfg config.Configuration,
+	mgr manager.Manager,
+) error {
 	eventCh := make(chan any)
 
-	if err := registerControllers(ctx, c.Configuration, mgr, eventCh); err != nil {
+	if err := registerControllers(ctx, cfg, mgr, eventCh); err != nil {
 		return fmt.Errorf("cannot register controllers: %w", err)
 	}
 
-	extractGVK := utils.NewExtractGKV(scheme, c.Configuration.Logger)
+	extractGVK := utils.NewExtractGKV(scheme, cfg.Logger)
 
 	treeBuilderConfig := handler.NewGateTreeBuilderConfig(
 		mgr.GetClient(),
 		mgr.GetAPIReader(),
-		c.Configuration.GatewayClass,
+		cfg.GatewayClass,
 		extractGVK,
 	)
 
 	eventHandlerConfig := handler.EventHandlerImplConfig{
-		Logger:                   c.Configuration.Logger,
-		LogCategoryFilterHandler: c.Configuration.LoggerCaterogyFilterHandler,
+		Logger:                   cfg.Logger,
+		LogCategoryFilterHandler: cfg.LoggerCaterogyFilterHandler,
 		ExtractGVK:               extractGVK,
-		ControllerConfNsName:     c.Configuration.ControllerConfNsName,
+		ControllerConfNsName:     cfg.ControllerConfNsName,
 	}
 	eventHandler := handler.NewEventHandlerImpl(
 		treeBuilderConfig,
 		eventHandlerConfig)
 
 	loopCfg := handler.EventLoopConfig{
-		SyncPeriod: c.Configuration.SyncPeriod,
+		SyncPeriod: cfg.SyncPeriod,
 	}
 	eventLoop := handler.NewEventLoop(
 		loopCfg,
 		eventCh,
-		*c.Configuration.Logger,
+		*cfg.Logger,
 		eventHandler,
 	)
 
-	if err = mgr.Add(eventLoop); err != nil {
+	if err := mgr.Add(eventLoop); err != nil {
 		return fmt.Errorf("cannot register event loop: %w", err)
-	}
-
-	if err = mgr.Start(ctx); err != nil {
-		return fmt.Errorf("cannot start runtime manager: %w", err)
 	}
 
 	return nil

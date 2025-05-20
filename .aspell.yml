@@ -8,6 +8,7 @@ allowed:
   - crd
   - env
   - entrypoint
+  - envtest
   - failsafe
   - frontend
   - frontends
