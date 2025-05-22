@@ -37,6 +37,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,11 +59,11 @@ const (
 )
 
 type Test struct {
-	ctx       context.Context
-	testEnv   *envtest.Environment
-	g         *gomega.GomegaWithT
+	Ctx       context.Context
+	Client    ctrlruntimeclient.Client
+	TestEnv   *envtest.Environment
 	cancel    context.CancelFunc
-	namespace string
+	Namespace string
 }
 
 func NewTest(t *testing.T) (test Test, err error) {
@@ -82,11 +83,10 @@ func NewTest(t *testing.T) (test Test, err error) {
 	}
 
 	test = Test{
-		g:         g, // Gomega handle bound to `t`
-		ctx:       ctx,
+		Ctx:       ctx,
 		cancel:    cancel,
-		testEnv:   testEnv,
-		namespace: namespace,
+		TestEnv:   testEnv,
+		Namespace: namespace,
 	}
 
 	return test, nil
@@ -94,17 +94,20 @@ func NewTest(t *testing.T) (test Test, err error) {
 
 func (test *Test) StartTestEnv(t *testing.T) {
 	// Bootstrapping test environment.
-	cfg, err := test.testEnv.Start()
-	test.g.Expect(err).ToNot(gomega.HaveOccurred())
-	test.g.Expect(cfg).ToNot(gomega.BeNil())
+	cfg, err := test.TestEnv.Start()
+	g := gomega.NewWithT(t)
+
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+	g.Expect(cfg).ToNot(gomega.BeNil())
 
 	mgr, err := ctrlruntime.NewManager(cfg, ctrlruntime.Options{
 		Scheme: scheme.Scheme,
 	})
-	test.g.Expect(err).ToNot(gomega.HaveOccurred())
+	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	client, err := ctrlruntimeclient.New(cfg, ctrlruntimeclient.Options{Scheme: scheme.Scheme})
-	test.g.Expect(err).ToNot(gomega.HaveOccurred())
+	test.Client = client
+	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	// Create controller namespace.
 	gateNs := &corev1.Namespace{
@@ -112,7 +115,7 @@ func (test *Test) StartTestEnv(t *testing.T) {
 			Name: controllerNs,
 		},
 	}
-	if err := client.Create(test.ctx, gateNs); err != nil {
+	if err := client.Create(test.Ctx, gateNs); err != nil {
 		t.Fatalf("failed to create namespace: %s", err)
 	}
 
@@ -169,11 +172,11 @@ func (test *Test) StartTestEnv(t *testing.T) {
 		_ = o(&gatecontrollercfg)
 	}
 
-	err = gatecontroller.Add(test.ctx, gatecontrollercfg, mgr)
-	test.g.Expect(err).ToNot(gomega.HaveOccurred())
+	err = gatecontroller.Add(test.Ctx, gatecontrollercfg, mgr)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {
-		if err := mgr.Start(test.ctx); err != nil {
+		if err := mgr.Start(test.Ctx); err != nil {
 			t.Errorf("failed to start manager: %s", err)
 			return
 		}
@@ -185,7 +188,7 @@ func (test *Test) StopTestEnv(t *testing.T) {
 	test.cancel()
 
 	// Tearing down the test environment.
-	if err := test.testEnv.Stop(); err != nil {
+	if err := test.TestEnv.Stop(); err != nil {
 		t.Fatalf("failed to stop testEnv: %s", err)
 	}
 }
@@ -203,4 +206,29 @@ func setupNamespace() (string, error) {
 		return r
 	}, strings.ToLower(dir))
 	return "e2e-tests-" + dir, nil
+}
+
+func GetCRDFixturePath() string {
+	path := "manifests/"
+	// switch os.Getenv("CRD_VERSION") {
+	// case "v1":
+	// 	path = "config/crd-v1"
+	// case "ce_v3":
+	// 	path = "config/crd-ce-v3"
+	// case "ce_v1":
+	// 	path = "config/crd-ce-v1"
+	// }
+
+	return path
+}
+
+// WaitFor is a convenience wrapper that makes simple, "brute force"
+// waiting loops easier to write.
+func WaitFor(ctx context.Context, interval time.Duration, timeout time.Duration, callback func() bool) bool {
+	//revive:disable
+	err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(ctx context.Context) (bool, error) {
+		return callback(), nil
+	})
+	//revive:enable
+	return err == nil
 }

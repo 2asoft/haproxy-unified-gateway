@@ -37,8 +37,8 @@ func (*GatewayClassConditionImpl) SetConditions(obj *v1.GatewayClass, conds Cond
 // - the Gateway API CRD versions are not supported.
 // Only applies to Accepted GatewayClasses
 // Ignored GatewayClasses will have a Conflict Condition
-func NewGatewayClassUnsupportedVersion(recommendedVersion string) map[ConditionType]Condition {
-	return map[ConditionType]Condition{
+func NewGatewayClassUnsupportedVersion(recommendedVersion string) Conditions {
+	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:   ConditionType(v1.GatewayClassConditionStatusAccepted),
 			Status: metav1.ConditionTrue,
@@ -62,8 +62,8 @@ func NewGatewayClassUnsupportedVersion(recommendedVersion string) map[ConditionT
 
 // NewGatewayClassConflict returns a Condition that indicates that the GatewayClass is not accepted
 // due to a conflict with another GatewayClass.
-func NewGatewayClassConflict() map[ConditionType]Condition {
-	return map[ConditionType]Condition{
+func NewGatewayClassConflict() Conditions {
+	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionFalse,
@@ -75,8 +75,8 @@ func NewGatewayClassConflict() map[ConditionType]Condition {
 
 // NewDefaultGatewayClassConditions returns Conditions that indicate that the GatewayClass is accepted and that the
 // Gateway API CRD versions are supported.
-func NewDefaultGatewayClassConditions() map[ConditionType]Condition {
-	return map[ConditionType]Condition{
+func NewDefaultGatewayClassConditions() Conditions {
+	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionTrue,
@@ -92,9 +92,31 @@ func NewDefaultGatewayClassConditions() map[ConditionType]Condition {
 	}
 }
 
+func NewGatewayClassAcceptedConditions() Conditions {
+	return Conditions{
+		ConditionType(v1.GatewayClassConditionStatusAccepted): {
+			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(v1.GatewayClassReasonAccepted),
+			Message: "GatewayClass is accepted",
+		},
+	}
+}
+
+func NewGatewayClassSupportedVersionConditions() Conditions {
+	return Conditions{
+		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
+			Type:    ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(v1.GatewayClassReasonSupportedVersion),
+			Message: "Gateway API CRD versions are supported",
+		},
+	}
+}
+
 // NewGatewayClassInvalidParameters returns a Condition that indicates that the GatewayClass has invalid parameters.
-func NewGatewayClassInvalidParameters(err *field.Error) map[ConditionType]Condition {
-	return map[ConditionType]Condition{
+func NewGatewayClassInvalidParameters(err *field.Error) Conditions {
+	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionFalse,

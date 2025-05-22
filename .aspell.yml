@@ -37,6 +37,7 @@ allowed:
   - ssl
   - sudo
   - taskfile
+  - testenv
   - tcp
   - tls
   - ubuntu

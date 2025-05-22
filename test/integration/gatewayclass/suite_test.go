@@ -15,29 +15,42 @@
 package gatewayclass
 
 import (
-	itest "github.com/haproxytech/kubernetes-controller/test/integration"
+	"context"
 
-	"github.com/stretchr/testify/suite"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	utils "github.com/haproxytech/kubernetes-controller/test/integration"
+	"github.com/haproxytech/kubernetes-controller/test/integration/base"
+	"k8s.io/apimachinery/pkg/types"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type GatewayClassSuite struct {
-	suite.Suite
-	test itest.Test
+	base.BaseSuite
 }
 
 func (s *GatewayClassSuite) SetupSuite() {
-	var err error
-	s.test, err = itest.NewTest(s.T())
-	s.Require().NoError(err)
-
-	s.test.StartTestEnv(s.T())
-	// defer s.test.StopTestEnv(s.T())
+	s.BaseSuite.SetupSuite()
 }
 
 func (s *GatewayClassSuite) TearDownSubSuite() {
-	s.test.StopTestEnv(s.T())
+	s.BaseSuite.TearDownSubSuite()
 }
 
-// func TestGatewayClassSuite(t *testing.T) {
-// 	suite.Run(t, new(GatewayClassSuite))
-// }
+func (s *GatewayClassSuite) expectConditionsUpdated(ctx context.Context, namespace, name string, expectedConditions conditions.Conditions) {
+	gwc := &gatewayv1.GatewayClass{}
+	if !utils.WaitFor(ctx, interval, timeout, func() bool {
+		if err := s.Test().Client.Get(
+			s.Test().Ctx,
+			types.NamespacedName{Name: name, Namespace: namespace}, gwc); err != nil {
+			return false
+		}
+
+		gotConditions := conditions.NewConditionsFromMetav1Conditions(gwc.Status.Conditions)
+
+		res := gotConditions.Equal(expectedConditions)
+
+		return res
+	}) {
+		s.T().Fatal("conditions not correct")
+	}
+}

@@ -1,7 +1,7 @@
 enableAllRules = true
 
 [rule.line-length-limit]
-  arguments = [120]
+  arguments = [200]
 
 [rule.import-alias-naming]
   arguments = ["^[a-z][a-z0-9_]*(V[0-9]+)?$"]
