@@ -16,6 +16,7 @@ package logging
 import (
 	"context"
 	"log/slog"
+	"runtime"
 	"sync"
 )
 
@@ -61,6 +62,10 @@ func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error
 	if !h.Enabled(ctx, r.Level) {
 		return nil
 	}
+
+	_, file, no, _ := runtime.Caller(3)
+	// Still to do:
+	r.AddAttrs(slog.String("file", file), slog.Int("line", no))
 
 	allowed := true
 	r.Attrs(func(a slog.Attr) bool {

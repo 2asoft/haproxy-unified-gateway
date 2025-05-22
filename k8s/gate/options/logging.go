@@ -17,13 +17,11 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/go-logr/logr"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
-	ctlr_zap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func Logging(level slog.Level, allowedCategories []string) func(o *config.Configuration) error {
@@ -44,18 +42,11 @@ func Logging(level slog.Level, allowedCategories []string) func(o *config.Config
 		o.Logger = slogLogger
 		o.LoggerCaterogyFilterHandler = handler
 
-		logConverter := config.NewIOWriter(slogLogger)
-		opts := ctlr_zap.Options{
-			Development: true,
-			TimeEncoder: zapcore.ISO8601TimeEncoder,
-			ZapOpts: []zap.Option{
-				zap.AddCaller(),
-			},
-			DestWriter: logConverter, // use main logger to write output
-		}
-		rlogger := ctlr_zap.New(ctlr_zap.UseFlagOptions(&opts))
+		logrLoggerFromSlog := logr.FromSlogHandler(handler)
+		logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
+		logrLoggerFromSlog.WithCallStackHelper()
 
-		runtimelog.SetLogger(rlogger)
+		runtimelog.SetLogger(logrLoggerFromSlog)
 		return nil
 	}
 }
