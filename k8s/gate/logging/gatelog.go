@@ -73,3 +73,10 @@ func LogAttrLogCategories(catogories []string) slog.Attr {
 func LogAttrInstalledVersions(versions map[string]struct{}) slog.Attr {
 	return slog.String("installedVersions", fmt.Sprintf("%v", versions))
 }
+
+func LogAttrFileSource(file string, line int) slog.Attr {
+	return slog.Group("source",
+		slog.String("file", file),
+		slog.Int("line", line),
+	)
+}

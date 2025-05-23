@@ -64,8 +64,8 @@ func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error
 	}
 
 	_, file, no, _ := runtime.Caller(3)
-	// Still to do:
-	r.AddAttrs(slog.String("file", file), slog.Int("line", no))
+	// Still to do: format correctly the "file" by extracting only useful information
+	r.AddAttrs(LogAttrFileSource(file, no))
 
 	allowed := true
 	r.Attrs(func(a slog.Attr) bool {

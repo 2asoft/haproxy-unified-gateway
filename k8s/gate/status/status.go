@@ -151,7 +151,8 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when updating status",
 				logging.LogAttrCategory(logging.LogCategoryStatus),
-				objAttr)
+				objAttr,
+				logging.LogAttrError(err))
 			return false, nil
 		}
 

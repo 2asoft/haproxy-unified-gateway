@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -102,18 +103,27 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
+	gvk, err := apiutil.GVKForObject(obj, scheme)
+	if err != nil {
+		// this should not happen
+		r.cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
+			fmt.Sprintf("could not extract GVK for object: %T", obj),
+			logging.LogAttrCategory(logging.LogCategoryGate),
+		)
+	}
+
 	// The controller runtime has already set the logger with the group, kind, namespace and name of the resource,
 	r.cfg.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"Reconciling the resource",
 		logging.LogAttrCategory(logging.LogCategoryK8s),
-		logging.LogAttrObjectKey(obj))
+		logging.LogAttrResource(obj, gvk))
 
 	if err := r.cfg.Getter.Get(ctx, req.NamespacedName, obj); err != nil {
 		if !apierrors.IsNotFound(err) {
 			r.cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Failed to get the resource",
 				logging.LogAttrCategory(logging.LogCategoryK8s),
-				logging.LogAttrObjectKey(obj))
+				logging.LogAttrResource(obj, gvk))
 
 			return reconcile.Result{}, err
 		}
@@ -141,7 +151,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	case <-ctx.Done():
 		r.cfg.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Did not process the resource because the context was canceled",
-			logging.LogAttrObjectKey(obj))
+			logging.LogAttrResource(obj, gvk))
 		return reconcile.Result{}, nil
 	case r.cfg.EventCh <- e:
 	}
@@ -149,7 +159,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	r.cfg.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 		fmt.Sprintf("%s the resource", op),
 		logging.LogAttrCategory(logging.LogCategoryK8s),
-		logging.LogAttrObjectKey(obj))
+		logging.LogAttrResource(obj, gvk))
 
 	return reconcile.Result{}, nil
 }
