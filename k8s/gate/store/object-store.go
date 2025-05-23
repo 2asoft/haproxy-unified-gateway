@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,6 +40,7 @@ var _ ObjectStoreUpdater = &objectStoreImpl[*gatewayv1.GatewayClass]{}
 type objectStoreImpl[T client.Object] struct {
 	objects map[types.NamespacedName]T
 	logger  *slog.Logger
+	mu      sync.Mutex
 }
 
 func newObjectStoreImpl[T client.Object](objects map[types.NamespacedName]T, slogger *slog.Logger) *objectStoreImpl[T] {
@@ -49,6 +51,8 @@ func newObjectStoreImpl[T client.Object](objects map[types.NamespacedName]T, slo
 }
 
 func (m *objectStoreImpl[T]) upsert(obj client.Object) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	t, ok := obj.(T)
 	if !ok {
 		m.logger.LogAttrs(context.Background(), slog.LevelError,
@@ -60,6 +64,8 @@ func (m *objectStoreImpl[T]) upsert(obj client.Object) {
 }
 
 func (m *objectStoreImpl[T]) delete(_ client.Object, nsname types.NamespacedName) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	delete(m.objects, nsname)
 }
 
