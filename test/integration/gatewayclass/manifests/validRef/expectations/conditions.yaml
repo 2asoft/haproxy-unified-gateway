@@ -1,0 +1,8 @@
+- message: GatewayClass is accepted
+  reason: Accepted
+  status: "True"
+  type: Accepted
+- message: Gateway API CRD versions are supported
+  reason: SupportedVersion
+  status: "True"
+  type: SupportedVersion

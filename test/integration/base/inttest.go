@@ -13,21 +13,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package base
 
 import (
 	"context"
 	"log/slog"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-logr/logr"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	gatecontroller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
+	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 
 	"github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,7 +38,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,7 +58,7 @@ const (
 	controllerNs = "haproxy-controller"
 )
 
-type Test struct {
+type IntTest struct {
 	Ctx       context.Context
 	Client    ctrlruntimeclient.Client
 	TestEnv   *envtest.Environment
@@ -66,12 +66,12 @@ type Test struct {
 	Namespace string
 }
 
-func NewTest(t *testing.T) (test Test, err error) {
+func NewIntTest(t *testing.T) (test IntTest, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	g := gomega.NewWithT(t)
 
 	// Namespace
-	namespace, err := setupNamespace()
+	namespace, err := utils.GetIntTestNamespace()
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	testEnv := &envtest.Environment{
@@ -82,7 +82,7 @@ func NewTest(t *testing.T) (test Test, err error) {
 		ErrorIfCRDPathMissing: true,
 	}
 
-	test = Test{
+	test = IntTest{
 		Ctx:       ctx,
 		cancel:    cancel,
 		TestEnv:   testEnv,
@@ -92,7 +92,7 @@ func NewTest(t *testing.T) (test Test, err error) {
 	return test, nil
 }
 
-func (test *Test) StartTestEnv(t *testing.T) {
+func (test *IntTest) StartTestEnv(t *testing.T) {
 	// Bootstrapping test environment.
 	cfg, err := test.TestEnv.Start()
 	g := gomega.NewWithT(t)
@@ -109,15 +109,13 @@ func (test *Test) StartTestEnv(t *testing.T) {
 	test.Client = client
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
+	// Create the test Namespace
+	err = test.createNamespace(test.Namespace)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+
 	// Create controller namespace.
-	gateNs := &corev1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: controllerNs,
-		},
-	}
-	if err := client.Create(test.Ctx, gateNs); err != nil {
-		t.Fatalf("failed to create namespace: %s", err)
-	}
+	err = test.createNamespace(controllerNs)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	controllerConfig := config.ControllerPodConfig{}
 
@@ -137,8 +135,8 @@ func (test *Test) StartTestEnv(t *testing.T) {
 		Name:      "haproxyctrlconf",
 	}
 
-	whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test", "test2"}
-	// whiteListNs := []string{}
+	// whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test", "test2"}
+	whiteListNs := []string{}
 
 	// kubeconfig := testKubeConfig
 	kubeconfig := ""
@@ -171,6 +169,10 @@ func (test *Test) StartTestEnv(t *testing.T) {
 	for _, o := range opts {
 		_ = o(&gatecontrollercfg)
 	}
+	logrLoggerFromSlog := logr.FromSlogHandler(gatecontrollercfg.LogHandler)
+	logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
+	logrLoggerFromSlog.WithCallStackHelper()
+	ctrlruntime.SetLogger(logrLoggerFromSlog)
 
 	err = gatecontroller.Add(test.Ctx, gatecontrollercfg, mgr)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
@@ -183,7 +185,17 @@ func (test *Test) StartTestEnv(t *testing.T) {
 	}()
 }
 
-func (test *Test) StopTestEnv(t *testing.T) {
+func (test *IntTest) StopTestEnv(t *testing.T) {
+	g := gomega.NewWithT(t)
+
+	// delete test Namespace
+	err := test.cleanupNamespace(test.Namespace)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+
+	// delete the controller namespace
+	err = test.cleanupNamespace(controllerNs)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+
 	// Clean up and stop controller.
 	test.cancel()
 
@@ -193,42 +205,20 @@ func (test *Test) StopTestEnv(t *testing.T) {
 	}
 }
 
-func setupNamespace() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	dir = filepath.Base(dir)
-	dir = strings.Map(func(r rune) rune {
-		if r < 'a' || r > 'z' && r != '-' {
-			return '-'
-		}
-		return r
-	}, strings.ToLower(dir))
-	return "e2e-tests-" + dir, nil
+func (test *IntTest) createNamespace(ns string) error {
+	err := utils.CreateRuntimeObject(test.Ctx, test.Client, &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ns,
+		},
+	}, true)
+	return err
 }
 
-func GetCRDFixturePath() string {
-	path := "manifests/"
-	// switch os.Getenv("CRD_VERSION") {
-	// case "v1":
-	// 	path = "config/crd-v1"
-	// case "ce_v3":
-	// 	path = "config/crd-ce-v3"
-	// case "ce_v1":
-	// 	path = "config/crd-ce-v1"
-	// }
-
-	return path
-}
-
-// WaitFor is a convenience wrapper that makes simple, "brute force"
-// waiting loops easier to write.
-func WaitFor(ctx context.Context, interval time.Duration, timeout time.Duration, callback func() bool) bool {
-	//revive:disable
-	err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(ctx context.Context) (bool, error) {
-		return callback(), nil
-	})
-	//revive:enable
-	return err == nil
+func (test *IntTest) cleanupNamespace(ns string) error {
+	err := utils.DeleteRuntimeObject(test.Ctx, test.Client, &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ns,
+		},
+	}, true)
+	return err
 }

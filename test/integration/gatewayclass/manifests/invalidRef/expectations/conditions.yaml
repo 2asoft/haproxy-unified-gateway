@@ -1,0 +1,8 @@
+- message: 'invalid parametersRef: spec.parametersRef: Not found: "haproxygate"'
+  reason: InvalidParameters
+  status: "False"
+  type: Accepted
+- message: Gateway API CRD versions are supported
+  reason: SupportedVersion
+  status: "True"
+  type: SupportedVersion

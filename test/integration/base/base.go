@@ -15,28 +15,26 @@
 package base
 
 import (
-	itest "github.com/haproxytech/kubernetes-controller/test/integration"
-
 	"github.com/stretchr/testify/suite"
 )
 
 type BaseSuite struct {
 	suite.Suite
-	test itest.Test
+	test IntTest
 }
 
-func (b *BaseSuite) Test() itest.Test {
+func (b *BaseSuite) Test() IntTest {
 	return b.test
 }
 
 func (b *BaseSuite) SetupSuite() {
 	var err error
-	b.test, err = itest.NewTest(b.T())
+	b.test, err = NewIntTest(b.T())
 	b.Require().NoError(err)
 
 	b.test.StartTestEnv(b.T())
 }
 
-func (b *BaseSuite) TearDownSubSuite() {
+func (b *BaseSuite) TearDownSuite() {
 	b.test.StopTestEnv(b.T())
 }

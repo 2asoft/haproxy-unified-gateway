@@ -1,0 +1,9 @@
+- message: 'invalid parametersRef: spec.parametersRef.namespace: Required value:
+    namespace is required'
+  reason: InvalidParameters
+  status: "False"
+  type: Accepted
+- message: Gateway API CRD versions are supported
+  reason: SupportedVersion
+  status: "True"
+  type: SupportedVersion

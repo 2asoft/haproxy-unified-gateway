@@ -20,10 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	utils "github.com/haproxytech/kubernetes-controller/test/integration"
+	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 	"github.com/stretchr/testify/suite"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (
@@ -40,20 +38,74 @@ func TestGatewayClassTestSuite(t *testing.T) {
 	suite.Run(t, new(GatewayClassTestSuite))
 }
 
-func (s *GatewayClassTestSuite) Test_GatewayClassInvalidParameterRef() {
-	fixtureDirPath := utils.GetCRDFixturePath()
-
-	fixturePath := path.Join(fixtureDirPath, "ns_missing")
-	err := utils.CreateObjectsFromYAMLFiles(s.Test().Ctx, s.Test().Client, s.Test().Namespace, fixturePath)
+func (s *GatewayClassTestSuite) createFixtures(fixturePath string) {
+	params := utils.RuntimeYamlParams{
+		Ctx:               s.Test().Ctx,
+		CrtlruntimeClient: s.Test().Client,
+		Namespace:         s.Test().Namespace,
+		Dir:               fixturePath,
+		WaitForResult:     true,
+	}
+	err := utils.CreateRuntimeObjectsFromYAMLFiles(params)
 	s.Require().NoError(err)
+}
+
+func (s *GatewayClassTestSuite) cleanupFixtures(fixturePath string) {
+	params := utils.RuntimeYamlParams{
+		Ctx:               s.Test().Ctx,
+		CrtlruntimeClient: s.Test().Client,
+		Namespace:         s.Test().Namespace,
+		Dir:               fixturePath,
+		WaitForResult:     true,
+	}
+	err := utils.DeleteRuntimeObjectsFromYAMLFiles(params)
+	s.Require().NoError(err)
+}
+
+func (s *GatewayClassTestSuite) Test_GatewayClass_MissingNamespace() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "nsMissing"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.createFixtures(fixturePath)
+	defer s.cleanupFixtures(fixturePath)
 
 	// Expected Conditions
-	expectedConditions := conditions.NewGatewayClassSupportedVersionConditions()
-	paramPath := field.NewPath("spec").Child("parametersRef")
-	nsPath := paramPath.Child("namespace")
-	// notFound := field.NotFound(paramPath, "haproxygate")
-	nsrequired := field.Required(nsPath, "namespace is required")
-	expectedConditions.MergeOverrideConditions(conditions.NewGatewayClassInvalidParameters(nsrequired))
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, "haproxy", expectedConditions)
+}
+
+func (s *GatewayClassTestSuite) Test_GatewayClass_InvalidRef() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "invalidRef"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.createFixtures(fixturePath)
+	defer s.cleanupFixtures(fixturePath)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, "haproxy", expectedConditions)
+}
+
+func (s *GatewayClassTestSuite) Test_GatewayClass_ValidRef() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "validRef"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.createFixtures(fixturePath)
+	defer s.cleanupFixtures(fixturePath)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
 
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, "haproxy", expectedConditions)
 }

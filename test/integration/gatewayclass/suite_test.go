@@ -18,8 +18,9 @@ import (
 	"context"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	utils "github.com/haproxytech/kubernetes-controller/test/integration"
 	"github.com/haproxytech/kubernetes-controller/test/integration/base"
+	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -32,8 +33,8 @@ func (s *GatewayClassSuite) SetupSuite() {
 	s.BaseSuite.SetupSuite()
 }
 
-func (s *GatewayClassSuite) TearDownSubSuite() {
-	s.BaseSuite.TearDownSubSuite()
+func (s *GatewayClassSuite) TearDownSuite() {
+	s.BaseSuite.TearDownSuite()
 }
 
 func (s *GatewayClassSuite) expectConditionsUpdated(ctx context.Context, namespace, name string, expectedConditions conditions.Conditions) {

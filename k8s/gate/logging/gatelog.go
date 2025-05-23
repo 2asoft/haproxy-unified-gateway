@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -39,7 +40,17 @@ func LogAttrResource(obj client.Object, gvk schema.GroupVersionKind) slog.Attr {
 }
 
 func LogAttrObjectKey(obj client.Object) slog.Attr {
-	return slog.String("objectKey", client.ObjectKeyFromObject(obj).String())
+	if obj != nil {
+		return slog.String("objectKey", client.ObjectKeyFromObject(obj).String())
+	}
+	return slog.String("objectKey", "")
+}
+
+func LogAttrReconcileRequest(namespacedName types.NamespacedName, gvk schema.GroupVersionKind) slog.Attr {
+	return slog.Group("resource",
+		slog.String("GVK", gvk.String()),
+		slog.String("objectKey", namespacedName.String()),
+	)
 }
 
 func LogAttrEventType(t string) slog.Attr {
