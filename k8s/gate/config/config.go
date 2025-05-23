@@ -15,6 +15,7 @@ package config
 
 import (
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -36,8 +37,8 @@ import (
 // }
 
 type Configuration struct {
-	Logger                      *slog.Logger
-	LoggerCaterogyFilterHandler *logging.CategoryFilterHandler
+	Logger     *slog.Logger
+	LogHandler *logging.CategoryFilterHandler
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	// LeaderElectionConfig contains the configuration for leader election.
@@ -85,4 +86,21 @@ type LeaderElectionConfig struct {
 	Identity string
 	// Enabled indicates whether leader election is enabled.
 	Enabled bool
+}
+
+func NewGateLogger(level slog.Level, allowedCategories []string) (*slog.Logger, *logging.CategoryFilterHandler) {
+	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+		// AddSource: true,
+	})
+	handlerParams := logging.CategoryFilterHandlerParams{
+		Base:              base,
+		InitialLevel:      level,
+		AllowedCategories: allowedCategories,
+		CategoryKey:       logging.LogCategoryKey,
+	}
+	handler := logging.NewCategoryFilterHandler(handlerParams)
+	slogLogger := slog.New(handler)
+
+	return slogLogger, handler
 }

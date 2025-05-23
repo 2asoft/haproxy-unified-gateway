@@ -21,11 +21,13 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/go-logr/logr"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	constant "github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/predicate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
@@ -33,11 +35,11 @@ import (
 	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	k8spredicate "sigs.k8s.io/controller-runtime/pkg/predicate"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 type Controller struct {
@@ -45,10 +47,11 @@ type Controller struct {
 }
 
 func New(options ...func(c *config.Configuration) error) (Controller, error) {
-	slogger := slog.Default()
+	slogger, logHandler := config.NewGateLogger(slog.LevelError, []string{"all"})
 	ctrl := Controller{
 		Configuration: config.Configuration{
-			Logger: slogger,
+			Logger:     slogger,
+			LogHandler: logHandler,
 		},
 	}
 	for _, o := range options {
@@ -57,6 +60,10 @@ func New(options ...func(c *config.Configuration) error) (Controller, error) {
 			return Controller{}, err
 		}
 	}
+	logrLoggerFromSlog := logr.FromSlogHandler(ctrl.Configuration.LogHandler)
+	logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
+	logrLoggerFromSlog.WithCallStackHelper()
+	runtimelog.SetLogger(logrLoggerFromSlog)
 	return ctrl, nil
 }
 
@@ -68,49 +75,6 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 	if err != nil {
 		return fmt.Errorf("cannot build runtime manager: %w", err)
 	}
-
-	// eventCh := make(chan any)
-
-	// if err := registerControllers(ctx, c.Configuration, mgr, eventCh); err != nil {
-	// 	return fmt.Errorf("cannot register controllers: %w", err)
-	// }
-
-	// extractGVK := utils.NewExtractGKV(scheme, c.Configuration.Logger)
-
-	// treeBuilderConfig := handler.NewGateTreeBuilderConfig(
-	// 	mgr.GetClient(),
-	// 	mgr.GetAPIReader(),
-	// 	c.Configuration.GatewayClass,
-	// 	extractGVK,
-	// )
-
-	// eventHandlerConfig := handler.EventHandlerImplConfig{
-	// 	Logger:                   c.Configuration.Logger,
-	// 	LogCategoryFilterHandler: c.Configuration.LoggerCaterogyFilterHandler,
-	// 	ExtractGVK:               extractGVK,
-	// 	ControllerConfNsName:     c.Configuration.ControllerConfNsName,
-	// }
-	// eventHandler := handler.NewEventHandlerImpl(
-	// 	treeBuilderConfig,
-	// 	eventHandlerConfig)
-
-	// loopCfg := handler.EventLoopConfig{
-	// 	SyncPeriod: c.Configuration.SyncPeriod,
-	// }
-	// eventLoop := handler.NewEventLoop(
-	// 	loopCfg,
-	// 	eventCh,
-	// 	*c.Configuration.Logger,
-	// 	eventHandler,
-	// )
-
-	// if err = mgr.Add(eventLoop); err != nil {
-	// 	return fmt.Errorf("cannot register event loop: %w", err)
-	// }
-
-	// if err = mgr.Start(ctx); err != nil {
-	// 	return fmt.Errorf("cannot start runtime manager: %w", err)
-	// }
 
 	if err := Add(ctx, c.Configuration, mgr); err != nil {
 		return err
@@ -145,7 +109,7 @@ func Add(
 
 	eventHandlerConfig := handler.EventHandlerImplConfig{
 		Logger:                   cfg.Logger,
-		LogCategoryFilterHandler: cfg.LoggerCaterogyFilterHandler,
+		LogCategoryFilterHandler: cfg.LogHandler,
 		ExtractGVK:               extractGVK,
 		ControllerConfNsName:     cfg.ControllerConfNsName,
 	}

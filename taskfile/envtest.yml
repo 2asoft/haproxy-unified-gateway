@@ -2,7 +2,7 @@
 version: '3'
 
 tasks:
-  check-envtest-setup-tool:
+  install-envtest-setup-tool:
     desc: 'install envtest-setup tool'
     internal: true
     silent: true

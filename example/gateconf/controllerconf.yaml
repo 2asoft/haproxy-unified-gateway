@@ -7,3 +7,5 @@ spec:
     level: Debug
     categories:
       - gate
+      - k8s
+      - status

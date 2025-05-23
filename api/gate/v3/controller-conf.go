@@ -35,7 +35,8 @@ type Category string
 
 type Logging struct {
 	// +kubebuilder:validation:Enum=Debug;Info;Warn;Error
-	Level      string     `json:"level"`
+	Level string `json:"level"`
+	// +kubebuilder:validation:MinItems=1
 	Categories []Category `json:"categories"`
 }
 type ControllerConfSpec struct {

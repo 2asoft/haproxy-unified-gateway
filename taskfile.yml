@@ -55,7 +55,7 @@ tasks:
       VERSION: release-0.20
     cmds:
       #- task: download-gateway-crds
-      - task: check-envtest-setup-tool
+      - task: install-envtest-setup-tool
       - task: set-kubebuilderasset
       - |
         KUBEBUILDER_ASSETS=$(cat /{{.TMP}}/.kubebuilder_assets_path)

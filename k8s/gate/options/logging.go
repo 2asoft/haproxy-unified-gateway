@@ -15,38 +15,16 @@ package opt
 
 import (
 	"log/slog"
-	"os"
 
-	"github.com/go-logr/logr"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-
-	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func Logging(level slog.Level, allowedCategories []string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: level,
-			// AddSource: true,
-		})
-		handlerParams := logging.CategoryFilterHandlerParams{
-			Base:              base,
-			InitialLevel:      level,
-			AllowedCategories: allowedCategories,
-			CategoryKey:       logging.LogCategoryKey,
-		}
-		handler := logging.NewCategoryFilterHandler(handlerParams)
-		slogLogger := slog.New(handler)
-
+		slogLogger, handler := config.NewGateLogger(level, allowedCategories)
 		o.Logger = slogLogger
-		o.LoggerCaterogyFilterHandler = handler
+		o.LogHandler = handler
 
-		logrLoggerFromSlog := logr.FromSlogHandler(handler)
-		logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
-		logrLoggerFromSlog.WithCallStackHelper()
-
-		runtimelog.SetLogger(logrLoggerFromSlog)
 		return nil
 	}
 }

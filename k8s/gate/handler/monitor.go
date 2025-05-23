@@ -114,9 +114,9 @@ func (el *EventLoop) Start(ctx context.Context) error {
 			el.SetHandling(false)
 
 			// If there's at least one event in the next batch, swap batches and begin handling the batch.
-			// if len(el.nextBatch.Events) > 0 {
-			// 	swapAndHandleBatch()
-			// }
+			if len(el.nextBatch.Events) > 0 {
+				swapAndHandleBatch()
+			}
 		}
 	}
 }

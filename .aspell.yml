@@ -16,6 +16,7 @@ allowed:
   - gitlab
   - golang
   - golangci
+  - init
   - kubebuilder
   - kubeconfig
   - leaderelection
