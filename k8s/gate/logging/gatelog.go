@@ -86,7 +86,7 @@ func LogAttrInstalledVersions(versions map[string]struct{}) slog.Attr {
 }
 
 func LogAttrFileSource(file string, line int) slog.Attr {
-	return slog.Group("source",
+	return slog.Group("sourceFile",
 		slog.String("file", file),
 		slog.Int("line", line),
 	)
