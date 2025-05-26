@@ -4,9 +4,11 @@ allowed:
   - backend
   - backends
   - betteralign
+  - categorizer
   - config
   - crd
   - env
+  - entreprise
   - entrypoint
   - envtest
   - failsafe
