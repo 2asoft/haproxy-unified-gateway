@@ -65,7 +65,7 @@ func main() {
 	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
 	// (through the spec.controllerName)
 	gatewayClass := "haproxy"
-	gatewayControllerName := "gate.haproxy.org/gateway-controller"
+	controllerName := "gate.haproxy.org/gateway-controller"
 	controllerConfName := types.NamespacedName{
 		Namespace: "test",
 		Name:      "haproxyctrlconf",
@@ -96,7 +96,7 @@ func main() {
 		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),
 		opt.LeaderElectionConfig(leaderElectionConfig),
-		opt.ControllerName(gatewayControllerName),
+		opt.ControllerName(controllerName),
 		opt.WhiteListNamespaces(whiteListNs),
 		opt.Logging(logLevel, logCategories),
 	)

@@ -1,0 +1,23 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: haproxy
+spec:
+  controllerName: gate.haproxy.org/gateway-controller
+  parametersRef:
+    group: gate.v3.haproxy.com
+    kind: HaproxyGate
+    name: haproxygate
+    namespace: test
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: haproxy2
+spec:
+  controllerName: gate.haproxy.org/gateway-controller
+  parametersRef:
+    group: gate.v3.haproxy.com
+    kind: HaproxyGate
+    name: haproxygate
+    namespace: test

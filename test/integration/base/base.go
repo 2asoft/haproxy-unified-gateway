@@ -15,6 +15,7 @@
 package base
 
 import (
+	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -37,4 +38,28 @@ func (b *BaseSuite) SetupSuite() {
 
 func (b *BaseSuite) TearDownSuite() {
 	b.test.StopTestEnv(b.T())
+}
+
+func (b *BaseSuite) CreateFixtures(fixturePath string) {
+	params := utils.RuntimeYamlParams{
+		Ctx:               b.Test().Ctx,
+		CrtlruntimeClient: b.Test().Client,
+		Namespace:         b.Test().Namespace,
+		Dir:               fixturePath,
+		WaitForResult:     true,
+	}
+	err := utils.CreateRuntimeObjectsFromYAMLFiles(params)
+	b.Require().NoError(err)
+}
+
+func (b *BaseSuite) CleanupFixtures(fixturePath string) {
+	params := utils.RuntimeYamlParams{
+		Ctx:               b.Test().Ctx,
+		CrtlruntimeClient: b.Test().Client,
+		Namespace:         b.Test().Namespace,
+		Dir:               fixturePath,
+		WaitForResult:     true,
+	}
+	err := utils.DeleteRuntimeObjectsFromYAMLFiles(params)
+	b.Require().NoError(err)
 }

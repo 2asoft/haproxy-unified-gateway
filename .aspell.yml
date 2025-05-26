@@ -12,6 +12,7 @@ allowed:
   - failsafe
   - frontend
   - frontends
+  - gatewayclass
   - github
   - gitlab
   - golang

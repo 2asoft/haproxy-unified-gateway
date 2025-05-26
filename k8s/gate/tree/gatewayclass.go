@@ -200,9 +200,7 @@ func (builder *GatewayClassBuilderImpl) buildConditionsIgnoredGwc() {
 // For the CE version, gcName shoould not be empty
 // Only 1 GatewayClass is supported by the controller.
 // The one that has this name
-func (*GatewayClassCategorizerImpl) Categorize(
-	gatewayClasses map[types.NamespacedName]*v1.GatewayClass, gcName string,
-) CategorizedGatewayClasses {
+func (*GatewayClassCategorizerImpl) Categorize(gatewayClasses map[types.NamespacedName]*v1.GatewayClass, gcName string) CategorizedGatewayClasses {
 	filteredGc := CategorizedGatewayClasses{}
 
 	for _, gc := range gatewayClasses {

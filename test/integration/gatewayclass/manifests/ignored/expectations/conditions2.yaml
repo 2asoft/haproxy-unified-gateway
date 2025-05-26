@@ -1,0 +1,4 @@
+- message: Resource ignored due to a conflicting GatewayClass resource
+  reason: GatewayClassConflict
+  status: "False"
+  type: Accepted

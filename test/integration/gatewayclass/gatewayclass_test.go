@@ -38,44 +38,21 @@ func TestGatewayClassTestSuite(t *testing.T) {
 	suite.Run(t, new(GatewayClassTestSuite))
 }
 
-func (s *GatewayClassTestSuite) createFixtures(fixturePath string) {
-	params := utils.RuntimeYamlParams{
-		Ctx:               s.Test().Ctx,
-		CrtlruntimeClient: s.Test().Client,
-		Namespace:         s.Test().Namespace,
-		Dir:               fixturePath,
-		WaitForResult:     true,
-	}
-	err := utils.CreateRuntimeObjectsFromYAMLFiles(params)
-	s.Require().NoError(err)
-}
-
-func (s *GatewayClassTestSuite) cleanupFixtures(fixturePath string) {
-	params := utils.RuntimeYamlParams{
-		Ctx:               s.Test().Ctx,
-		CrtlruntimeClient: s.Test().Client,
-		Namespace:         s.Test().Namespace,
-		Dir:               fixturePath,
-		WaitForResult:     true,
-	}
-	err := utils.DeleteRuntimeObjectsFromYAMLFiles(params)
-	s.Require().NoError(err)
-}
-
 func (s *GatewayClassTestSuite) Test_GatewayClass_MissingNamespace() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "nsMissing"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.createFixtures(fixturePath)
-	defer s.cleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
 
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, "haproxy", expectedConditions)
+	gwcName := "haproxy"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
 }
 
 func (s *GatewayClassTestSuite) Test_GatewayClass_InvalidRef() {
@@ -83,15 +60,16 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_InvalidRef() {
 	fixtureDir := "invalidRef"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.createFixtures(fixturePath)
-	defer s.cleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
 
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, "haproxy", expectedConditions)
+	gwcName := "haproxy"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
 }
 
 func (s *GatewayClassTestSuite) Test_GatewayClass_ValidRef() {
@@ -99,13 +77,39 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_ValidRef() {
 	fixtureDir := "validRef"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.createFixtures(fixturePath)
-	defer s.cleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
 
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, "haproxy", expectedConditions)
+	gwcName := "haproxy"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
+}
+
+func (s *GatewayClassTestSuite) Test_GatewayClass_Ignored() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "ignored"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
+
+	// Expected Conditions
+	// For "haproxy" GatewayClass, we expect it to be accepted by the controller
+	// and have the "Accepted" condition set to "True".
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+	gwcName := "haproxy"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
+
+	// For "haproxy2" GatewayClass, we expect it to be ignored by the controller
+	// and have the "Accepted" condition set to "True".
+	expectedCondPath2 := path.Join(expectationsPath, "conditions2.yaml")
+	expectedConditions2 := s.YamlToConditions(expectedCondPath2)
+	gwcName = "haproxy2"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions2)
 }

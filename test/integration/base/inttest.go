@@ -24,7 +24,7 @@ import (
 	"github.com/go-logr/logr"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	gatecontroller "github.com/haproxytech/kubernetes-controller/k8s/gate"
+	gate "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
@@ -55,8 +55,14 @@ func init() {
 }
 
 const (
-	controllerNs = "haproxy-controller"
+	controllerNs     = "haproxy-controller"
+	gatewayClassName = "haproxy"
 )
+
+var controllerCfgNsName = types.NamespacedName{
+	Namespace: "test",
+	Name:      "haproxyctrlconf",
+}
 
 type IntTest struct {
 	Ctx       context.Context
@@ -128,12 +134,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	}
 	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
 	// (through the spec.controllerName)
-	gatewayClass := "haproxy"
-	gatewayControllerName := "gate.haproxy.org/gateway-controller"
-	controllerConfName := types.NamespacedName{
-		Namespace: "test",
-		Name:      "haproxyctrlconf",
-	}
+	controllerName := "gate.haproxy.org/gateway-controller"
 
 	// whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test", "test2"}
 	whiteListNs := []string{}
@@ -155,12 +156,12 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	opts := []func(c *config.Configuration) error{
 		opt.ControllerPodConfig(controllerConfig),
 		opt.KubeConfig(kubeconfig),
-		opt.GatewayClass(gatewayClass),
-		opt.ControllerConf(controllerConfName),
+		opt.GatewayClass(gatewayClassName),
+		opt.ControllerConf(controllerCfgNsName),
 		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),
 		opt.LeaderElectionConfig(leaderElectionConfig),
-		opt.ControllerName(gatewayControllerName),
+		opt.ControllerName(controllerName),
 		opt.WhiteListNamespaces(whiteListNs),
 		opt.Logging(logLevel, logCategories),
 	}
@@ -174,7 +175,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	logrLoggerFromSlog.WithCallStackHelper()
 	ctrlruntime.SetLogger(logrLoggerFromSlog)
 
-	err = gatecontroller.Add(test.Ctx, gatecontrollercfg, mgr)
+	err = gate.Add(test.Ctx, gatecontrollercfg, mgr)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {

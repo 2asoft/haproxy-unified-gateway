@@ -17,6 +17,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -64,6 +65,7 @@ func New(options ...func(c *config.Configuration) error) (Controller, error) {
 	logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
 	logrLoggerFromSlog.WithCallStackHelper()
 	runtimelog.SetLogger(logrLoggerFromSlog)
+
 	return ctrl, nil
 }
 
@@ -92,6 +94,14 @@ func Add(
 	cfg config.Configuration,
 	mgr manager.Manager,
 ) error {
+	// Check if the controller configuration is valid
+	if err := cfg.Check(); err != nil {
+		cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
+			"GatewayClass is not set",
+			logging.LogAttrError(err))
+		return errors.New("invalid controller configuration")
+	}
+
 	eventCh := make(chan any)
 
 	if err := registerControllers(ctx, cfg, mgr, eventCh); err != nil {
