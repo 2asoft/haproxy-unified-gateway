@@ -69,6 +69,7 @@ type GatewayClass struct {
 	Conditions conditions.Conditions
 	// HaproxyGate contains the HaproxyGate (confguration CRD)
 	HaproxyGate *v3.HaproxyGate
+	v1.Gateway
 	// Valid shows whether the GatewayClass is valid.
 	Valid bool
 }

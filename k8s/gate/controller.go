@@ -122,6 +122,7 @@ func Add(
 		LogCategoryFilterHandler: cfg.LogHandler,
 		ExtractGVK:               extractGVK,
 		ControllerConfNsName:     cfg.ControllerConfNsName,
+		TreeChannel:              cfg.TreeCh,
 	}
 	eventHandler := handler.NewEventHandlerImpl(
 		treeBuilderConfig,

@@ -55,6 +55,12 @@ SyncPeriod:
     args:
         - name: syncPeriod
           type: time.Duration
+TreeChannel:
+    name: TreeChannel
+    comment: ""
+    args:
+        - name: treeCh
+          type: '*ast.ChanType'
 WhiteListNamespaces:
     name: WhiteListNamespaces
     comment: ""

@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Graph is a Graph-like representation of Gateway API resources.
+// GateTree is a Graph-like representation of Gateway API resources.
 type GateTree struct {
 	// // GatewayClasses holds the GatewayClasses resource that are accepted and ignored
 	GatewayClasses CategorizedGatewayClasses
@@ -35,7 +35,7 @@ type GateTree struct {
 	ReferencedServices map[types.NamespacedName]*Service
 }
 
-// IsReferenced returns true if the Graph references the resource.
+// IsReferenced returns true if the Tree references the resource.
 func (g *GateTree) IsReferenced(resourceType client.Object, nsname types.NamespacedName) bool {
 	if g == nil {
 		return false
@@ -47,7 +47,7 @@ func (g *GateTree) IsReferenced(resourceType client.Object, nsname types.Namespa
 		_, exists := g.ReferencedSecrets[nsname]
 		return exists
 	case *v1.Namespace:
-		// HELENE: implement this
+		// implement this
 		exists := true
 		return exists
 	// Service reference exists if at least one HTTPRoute references it.
@@ -56,7 +56,7 @@ func (g *GateTree) IsReferenced(resourceType client.Object, nsname types.Namespa
 		return exists
 	// EndpointSlice reference exists if its Service owner is referenced by at least one HTTPRoute.
 	case *discoveryV1.EndpointSlice:
-		// HELENE implement this
+		// implement this
 		exists := true
 		return exists
 	default:

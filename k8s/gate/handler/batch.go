@@ -24,6 +24,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
 	v1 "k8s.io/api/core/v1"
@@ -46,6 +47,7 @@ type EventHandlerImplConfig struct {
 	Logger                   *slog.Logger
 	LogCategoryFilterHandler *logging.CategoryFilterHandler
 	ExtractGVK               utils.ExtractGVK
+	TreeChannel              chan *tree.GateTree
 	//  Namespace and name of the controller conf CRD
 	ControllerConfNsName types.NamespacedName
 }
@@ -116,11 +118,10 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 
 	// Build the GateTree
 	newTree := h.treeBuilder.buildGateTree()
-
-	// Update some sort of store
-	// Compute config
-	// Compute diffs....
-	// What we need to do has to be done
+	// Send the newTree to the TreeChannel if the channel is configured
+	if h.config.TreeChannel != nil {
+		h.config.TreeChannel <- newTree
+	}
 
 	// START EXAMPLE
 	// Below is just an example

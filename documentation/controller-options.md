@@ -29,6 +29,7 @@ Available options:
 | Logging | `level`(slog.Level), `allowedCategories`(*ast.ArrayType) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | SyncPeriod | `syncPeriod`(time.Duration) |
+| TreeChannel | `treeCh`(*ast.ChanType) |
 | WhiteListNamespaces | `whitelistNs`(*ast.ArrayType) |
 
 ### ControllerConf
@@ -147,6 +148,19 @@ import (
 )
 
 controller, err := controller.New(opt.SyncPeriod(syncPeriod))
+```
+
+### TreeChannel
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.TreeChannel(treeCh))
 ```
 
 ### WhiteListNamespaces

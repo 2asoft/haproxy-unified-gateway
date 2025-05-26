@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -39,6 +40,7 @@ import (
 type Configuration struct {
 	Logger     *slog.Logger
 	LogHandler *logging.CategoryFilterHandler
+	TreeCh     chan *tree.GateTree
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	// LeaderElectionConfig contains the configuration for leader election.

@@ -16,7 +16,9 @@ import (
 
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 )
 
 //revive:disable
@@ -88,6 +90,8 @@ func main() {
 		Identity: controllerConfig.Name,
 	}
 
+	treeCh := make(chan *tree.GateTree, 100)
+
 	cntlr, err := controller.New(
 		opt.ControllerPodConfig(controllerConfig),
 		opt.KubeConfig(kubeconfig),
@@ -99,6 +103,7 @@ func main() {
 		opt.ControllerName(controllerName),
 		opt.WhiteListNamespaces(whiteListNs),
 		opt.Logging(logLevel, logCategories),
+		opt.TreeChannel(treeCh),
 	)
 	if err != nil {
 		panic(err)
@@ -109,6 +114,27 @@ func main() {
 		err := cntlr.Run(ctx, &wg)
 		if err != nil {
 			panic(err)
+		}
+	}()
+
+	// Goroutine to listen on treeCh and print received GateTree objects
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				cntlr.Configuration.Logger.LogAttrs(context.Background(), slog.LevelInfo,
+					"shutting down tree handler goroutine",
+					logging.LogAttrCategory(logging.LogCategoryGate),
+				)
+				return
+			case gt := <-treeCh:
+				cntlr.Configuration.Logger.LogAttrs(context.Background(), slog.LevelDebug,
+					"received new GateTree",
+					logging.LogAttrCategory(logging.LogCategoryGate),
+					slog.String("tree", fmt.Sprintf("Received new GateTree: %+v", gt.GatewayClasses)))
+			}
 		}
 	}()
 
