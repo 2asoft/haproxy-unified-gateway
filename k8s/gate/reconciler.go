@@ -83,6 +83,7 @@ func (r *Reconciler) mustCreateNewObject(objectType client.Object) (client.Objec
 		err := fmt.Errorf("failed to create a new object of type %T", objectType)
 		r.cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
 			"failed to create a new object",
+			logging.LogAttrCategory(logging.LogCategoryK8s),
 			logging.LogAttrError(err))
 		return nil, err
 	}

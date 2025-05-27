@@ -98,6 +98,7 @@ func Add(
 	if err := cfg.Check(); err != nil {
 		cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
 			"GatewayClass is not set",
+			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrError(err))
 		return errors.New("invalid controller configuration")
 	}
