@@ -67,16 +67,16 @@ func NewEventHandlerImpl(
 	config EventHandlerImplConfig,
 ) *eventHandlerImpl {
 	clusterStore := &store.ClusterStore{
-		GatewayClasses: make(map[types.NamespacedName]*gatewayv1.GatewayClass),
-		Gateways:       make(map[types.NamespacedName]*gatewayv1.Gateway),
-		HTTPRoutes:     make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
-		Services:       make(map[types.NamespacedName]*v1.Service),
-		Namespaces:     make(map[types.NamespacedName]*v1.Namespace),
-		Secrets:        make(map[types.NamespacedName]*v1.Secret),
-		ConfigMaps:     make(map[types.NamespacedName]*v1.ConfigMap),
-		GatewayAPICRDs: make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
-		HaproxyGate:    make(map[types.NamespacedName]*v3.HaproxyGate),
-		ControllerConf: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
+		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
+		Gateways:        make(map[types.NamespacedName]*gatewayv1.Gateway),
+		HTTPRoutes:      make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
+		Services:        make(map[types.NamespacedName]*v1.Service),
+		Namespaces:      make(map[types.NamespacedName]*v1.Namespace),
+		Secrets:         make(map[types.NamespacedName]*v1.Secret),
+		ConfigMaps:      make(map[types.NamespacedName]*v1.ConfigMap),
+		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
+		HaproxyGates:    make(map[types.NamespacedName]*v3.HaproxyGate),
+		ControllerConfs: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
 	}
 
 	treeBuilder := NewGateTreeBuilder(
@@ -164,7 +164,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 }
 
 func (h *eventHandlerImpl) ReconcileLogLevelAndCategory() {
-	conf := h.treeBuilder.clusterStore.ControllerConf
+	conf := h.treeBuilder.clusterStore.ControllerConfs
 	if conf == nil {
 		return
 	}

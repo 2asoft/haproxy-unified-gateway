@@ -19,6 +19,7 @@ allowed:
   - gitlab
   - golang
   - golangci
+  - haproxygate
   - init
   - kubebuilder
   - kubeconfig

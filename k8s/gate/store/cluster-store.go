@@ -29,16 +29,16 @@ import (
 
 // ClusterStore includes cluster resources necessary to build the Graph.
 type ClusterStore struct {
-	GatewayClasses map[types.NamespacedName]*gatewayv1.GatewayClass
-	Gateways       map[types.NamespacedName]*gatewayv1.Gateway
-	HTTPRoutes     map[types.NamespacedName]*gatewayv1.HTTPRoute
-	Services       map[types.NamespacedName]*v1.Service
-	Namespaces     map[types.NamespacedName]*v1.Namespace
-	Secrets        map[types.NamespacedName]*v1.Secret
-	ConfigMaps     map[types.NamespacedName]*v1.ConfigMap
-	GatewayAPICRDs map[types.NamespacedName]*metav1.PartialObjectMetadata
-	HaproxyGate    map[types.NamespacedName]*v3.HaproxyGate
-	ControllerConf map[types.NamespacedName]*v3.HaproxyGateCtrlCfg
+	GatewayClasses  map[types.NamespacedName]*gatewayv1.GatewayClass
+	Gateways        map[types.NamespacedName]*gatewayv1.Gateway
+	HTTPRoutes      map[types.NamespacedName]*gatewayv1.HTTPRoute
+	Services        map[types.NamespacedName]*v1.Service
+	Namespaces      map[types.NamespacedName]*v1.Namespace
+	Secrets         map[types.NamespacedName]*v1.Secret
+	ConfigMaps      map[types.NamespacedName]*v1.ConfigMap
+	GatewayAPICRDs  map[types.NamespacedName]*metav1.PartialObjectMetadata
+	HaproxyGates    map[types.NamespacedName]*v3.HaproxyGate
+	ControllerConfs map[types.NamespacedName]*v3.HaproxyGateCtrlCfg
 }
 
 // ClusterStoreUpdater updates the cluster store.
@@ -74,8 +74,8 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&v1.Secret{}):                       newObjectStoreImpl(clusterStore.Secrets, logger),
 				extractGVK(&v1.ConfigMap{}):                    newObjectStoreImpl(clusterStore.ConfigMaps, logger),
 				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, logger),
-				extractGVK(&v3.HaproxyGate{}):                  newObjectStoreImpl(clusterStore.HaproxyGate, logger),
-				extractGVK(&v3.HaproxyGateCtrlCfg{}):           newObjectStoreImpl(clusterStore.ControllerConf, logger),
+				extractGVK(&v3.HaproxyGate{}):                  newObjectStoreImpl(clusterStore.HaproxyGates, logger),
+				extractGVK(&v3.HaproxyGateCtrlCfg{}):           newObjectStoreImpl(clusterStore.ControllerConfs, logger),
 			},
 		},
 		extractGVK: extractGVK,

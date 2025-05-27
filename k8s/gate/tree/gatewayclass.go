@@ -27,7 +27,6 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -52,8 +51,7 @@ type GatewayClassCategorizer interface {
 }
 
 type GatewayClassBuilderImpl struct {
-	categorizer GatewayClassCategorizer
-	// categorizedK8s      categorizedK8sGatewayClasses
+	categorizer         GatewayClassCategorizer
 	categorizedGwAPI    CategorizedGatewayClasses
 	clusterStore        *store.ClusterStore
 	logger              *slog.Logger
@@ -133,7 +131,7 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGatewayClasses {
 func (builder *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
 	for _, gwc := range builder.categorizedGwAPI.Supported {
 		validVersions := true
-		validPramRef := true
+		validParamRef := true
 
 		gwc.Conditions = conditions.NewDefaultGatewayClassConditions()
 
@@ -146,44 +144,16 @@ func (builder *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
 
 		// Checks on parametersRef
 		paramRef := gwc.K8sResource.Spec.ParametersRef
-		if paramRef != nil {
-			paramPath := field.NewPath("spec").Child("parametersRef")
-			if paramRef.Kind != SupportedGatewayClassParametersRefKind {
-				kindPath := paramPath.Child("kind")
-				unsupportedKind := field.NotSupported(
-					kindPath,
-					paramRef.Kind, []string{string(SupportedGatewayClassParametersRefKind)})
-				gwc.Conditions.MergeOverrideConditions(
-					conditions.NewGatewayClassInvalidParameters(unsupportedKind),
-				)
-				validPramRef = false
-			} else {
-				if paramRef.Namespace != nil {
-					haproxyGate, ok := builder.clusterStore.HaproxyGate[types.NamespacedName{
-						Name:      paramRef.Name,
-						Namespace: string(*paramRef.Namespace),
-					}]
-					if !ok {
-						notFound := field.NotFound(paramPath, paramRef.Name)
-						gwc.Conditions.MergeOverrideConditions(
-							conditions.NewGatewayClassInvalidParameters(notFound),
-						)
-						validPramRef = false
-					} else {
-						gwc.HaproxyGate = haproxyGate
-					}
-				} else {
-					nsPath := paramPath.Child("namespace")
-					nsrequired := field.Required(nsPath, "namespace is required")
-					gwc.Conditions.MergeOverrideConditions(
-						conditions.NewGatewayClassInvalidParameters(nsrequired),
-					)
-					validPramRef = false
-				}
-			}
-
-			gwc.Valid = validVersions && validPramRef
+		checker := HaproxyGateParamsRefChecker{
+			ParamRef:          paramRef,
+			StoreHaproxyGates: builder.clusterStore.HaproxyGates,
 		}
+		refCheckResults := CheckHaproxyGateParamsRef(checker)
+		if refCheckResults.Valid {
+			gwc.HaproxyGate = refCheckResults.HaproxyGate
+		}
+		gwc.Conditions.MergeOverrideConditions(refCheckResults.Conditions)
+		gwc.Valid = validVersions && validParamRef
 	}
 }
 
