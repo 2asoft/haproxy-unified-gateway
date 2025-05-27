@@ -30,6 +30,8 @@ type Gateway struct {
 	// Conditions include Conditions for the GatewayClass.
 	Conditions conditions.Conditions
 	// HaproxyGate contains the HaproxyGate (confguration CRD)
+	// The HaproxyGate can be defined at the GatewayClass level or at the Gateway level.
+	// Here it is the merged HaproxyGate between the GatewayClass and the Gateway.
 	HaproxyGate *v3.HaproxyGate
 	// Valid shows whether the GatewayClass is valid.
 	Valid bool
@@ -44,7 +46,7 @@ type GatewayBuilderImpl struct {
 type GatewayBuilderParams struct {
 	// ClusterStore is the store of k8s resources.
 	ClusterStore *store.ClusterStore
-	// GatewayClasses is a map of GatewayClass resources.
+	// GatewayClasses is a map of GatewayClass resources (only accepted by the controller).
 	GatewayClasses map[types.NamespacedName]*GatewayClass
 	// Logger is the logger for the GatewayBuilder.
 	Logger *slog.Logger
@@ -56,4 +58,11 @@ func NewGatewayBuilder(params GatewayBuilderParams) *GatewayBuilderImpl {
 		gatewayclasses: params.GatewayClasses,
 		logger:         params.Logger,
 	}
+}
+
+func (*GatewayBuilderImpl) Build() map[types.NamespacedName]*Gateway {
+	// do all checks...
+	// merge HaproxyGate from GatewayClass and Gateway
+	// compute Conditions, Status, Valid
+	return nil
 }

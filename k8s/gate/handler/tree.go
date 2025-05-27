@@ -42,7 +42,7 @@ type GateTreeBuilderConfig struct {
 	extractGVK utils.ExtractGVK
 	// gatewayClassName is the name of the supported GatewayClass.
 	// If empty, all GatewayClasses are supported that match the controller name
-	gatewayClassName string
+	gatewayClassNames map[string]struct{}
 }
 
 type GateTreeBuilder struct {
@@ -93,14 +93,14 @@ func NewGateTreeBuilder(
 func NewGateTreeBuilderConfig(
 	k8sClient client.Client,
 	k8sReader client.Reader,
-	gatewayClassName string,
+	gatewayClassNames map[string]struct{},
 	extractGVK utils.ExtractGVK,
 ) GateTreeBuilderConfig {
 	eventHandlerConfig := GateTreeBuilderConfig{
-		k8sClient:        k8sClient,
-		k8sReader:        k8sReader,
-		gatewayClassName: gatewayClassName,
-		extractGVK:       extractGVK,
+		k8sClient:         k8sClient,
+		k8sReader:         k8sReader,
+		gatewayClassNames: gatewayClassNames,
+		extractGVK:        extractGVK,
 	}
 	return eventHandlerConfig
 }
@@ -168,13 +168,20 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 
 	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
 		ClusterStore: b.clusterStore,
-		GcName:       b.cfg.gatewayClassName,
+		GcNames:      b.cfg.gatewayClassNames,
 		Categorizer:  gatewayClassCategorizer,
 		Logger:       b.logger,
 	}
 	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
 	categorizedGatewayClasses := gatewayClassBuilder.Build()
 	newTree.GatewayClasses = categorizedGatewayClasses
+
+	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
+		ClusterStore:   b.clusterStore,
+		GatewayClasses: categorizedGatewayClasses.Supported,
+		Logger:         b.logger,
+	})
+	newTree.Gateways = gatewayBuilder.Build()
 
 	return newTree
 }

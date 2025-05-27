@@ -23,7 +23,7 @@ Available options:
 | ControllerConf | `controllerConf`(types.NamespacedName) |
 | ControllerName | `controllerName`(string) |
 | ControllerPodConfig | `controllerPodConfig`(config.ControllerPodConfig) |
-| GatewayClass | `gatewayClass`(string) |
+| GatewayClass | `gatewayClass`(*ast.ArrayType) |
 | KubeConfig | `kubeconfig`(string) |
 | LeaderElectionConfig | `leaderElection`(config.LeaderElectionConfig) |
 | Logging | `level`(slog.Level), `allowedCategories`(*ast.ArrayType) |

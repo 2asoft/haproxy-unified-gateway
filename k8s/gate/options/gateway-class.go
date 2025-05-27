@@ -17,9 +17,12 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 )
 
-func GatewayClass(gatewayClass string) func(o *config.Configuration) error {
+func GatewayClass(gatewayClass []string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.GatewayClass = gatewayClass
+		o.GatewayClasses = make(map[string]struct{})
+		for _, gc := range gatewayClass {
+			o.GatewayClasses[gc] = struct{}{}
+		}
 		return nil
 	}
 }

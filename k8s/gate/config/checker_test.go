@@ -21,18 +21,24 @@ import (
 
 func TestConfiguration_Check(t *testing.T) {
 	tests := []struct {
-		name         string
-		gatewayClass string
-		wantErr      bool
+		name           string
+		gatewayClasses map[string]struct{}
+		wantErr        bool
 	}{
-		{"GatewayClass is set", "my-gateway-class", false},
-		{"GatewayClass is not set", "", true},
+		{"GatewayClass is set and contains only 1 class", map[string]struct{}{
+			"my-gateway-class": {},
+		}, false},
+		{"GatewayClass is not set", map[string]struct{}{
+			"my-gateway-class":      {},
+			"another-gateway-class": {},
+		}, true},
+		{"GatewayClass is not set", map[string]struct{}{}, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Configuration{
-				GatewayClass: tt.gatewayClass,
+				GatewayClasses: tt.gatewayClasses,
 			}
 			err := c.Check()
 			assert.Equal(t, tt.wantErr, err != nil, "Check() error = %v, wantErr %v", err, tt.wantErr)

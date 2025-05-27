@@ -18,8 +18,8 @@ import "errors"
 // Checker is a function to check the configuration.
 // This can be a different for EE or CE
 func (c *Configuration) Check() error {
-	if c.GatewayClass == "" {
-		err := errors.New("GatewayClass is not set in the configuration")
+	if len(c.GatewayClasses) != 1 {
+		err := errors.New("there should be only 1 GatewayClass in the configuration")
 		return err
 	}
 	return nil

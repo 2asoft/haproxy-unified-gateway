@@ -21,7 +21,7 @@ GatewayClass:
     comment: ""
     args:
         - name: gatewayClass
-          type: string
+          type: '*ast.ArrayType'
 KubeConfig:
     name: KubeConfig
     comment: ""

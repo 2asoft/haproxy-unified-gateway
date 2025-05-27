@@ -17,15 +17,18 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate"
+	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 )
 
 func TestGatewayClass(t *testing.T) {
-	ctrlr, err := controller.New(GatewayClass("haproxy"))
+	ctrlr, err := controller.New(GatewayClass([]string{"haproxy"}))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	if !reflect.DeepEqual(ctrlr.Configuration.GatewayClass, "haproxy") {
-		t.Errorf("unexpected host: %s", ctrlr.Configuration.GatewayClass)
+	expected := map[string]struct{}{
+		"haproxy": {},
+	}
+	if !reflect.DeepEqual(ctrlr.Configuration.GatewayClasses, expected) {
+		t.Errorf("unexpected host: %s", ctrlr.Configuration.GatewayClasses)
 	}
 }

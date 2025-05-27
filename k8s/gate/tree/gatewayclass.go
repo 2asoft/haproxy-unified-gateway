@@ -47,7 +47,7 @@ type GatewayClassBuilder interface {
 }
 
 type GatewayClassCategorizer interface {
-	Categorize(map[types.NamespacedName]*v1.GatewayClass, string) CategorizedGatewayClasses
+	Categorize(map[types.NamespacedName]*v1.GatewayClass, map[string]struct{}) CategorizedGatewayClasses
 }
 
 type GatewayClassBuilderImpl struct {
@@ -55,7 +55,7 @@ type GatewayClassBuilderImpl struct {
 	categorizedGwAPI    CategorizedGatewayClasses
 	clusterStore        *store.ClusterStore
 	logger              *slog.Logger
-	gcName              string
+	gcNames             map[string]struct{}
 	isGwAPIVersionValid bool
 }
 
@@ -89,13 +89,13 @@ type GatewayClassBuilderParams struct {
 	Categorizer  GatewayClassCategorizer
 	ClusterStore *store.ClusterStore
 	Logger       *slog.Logger
-	GcName       string
+	GcNames      map[string]struct{}
 }
 
 func NewGatewayClassBuilder(params GatewayClassBuilderParams) *GatewayClassBuilderImpl {
 	return &GatewayClassBuilderImpl{
 		clusterStore: params.ClusterStore,
-		gcName:       params.GcName,
+		gcNames:      params.GcNames,
 		categorizer:  params.Categorizer,
 		logger:       params.Logger,
 	}
@@ -105,7 +105,7 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGatewayClasses {
 	// First categorize:
 	// - accepted
 	// - ignored
-	builder.categorizedGwAPI = builder.categorizer.Categorize(builder.clusterStore.GatewayClasses, builder.gcName)
+	builder.categorizedGwAPI = builder.categorizer.Categorize(builder.clusterStore.GatewayClasses, builder.gcNames)
 
 	// Retrieve Gateway API bundle version
 	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
@@ -167,14 +167,14 @@ func (builder *GatewayClassBuilderImpl) buildConditionsIgnoredGwc() {
 // It contains two maps:
 // - Supported: GatewayClass resources that are supported by the controller.
 // - Ignored: GatewayClass resources that are ignored by the controller.
-// For the CE version, gcName shoould not be empty
 // Only 1 GatewayClass is supported by the controller.
 // The one that has this name
-func (*GatewayClassCategorizerImpl) Categorize(gatewayClasses map[types.NamespacedName]*v1.GatewayClass, gcName string) CategorizedGatewayClasses {
+func (*GatewayClassCategorizerImpl) Categorize(gatewayClasses map[types.NamespacedName]*v1.GatewayClass, gcNames map[string]struct{}) CategorizedGatewayClasses {
 	filteredGc := CategorizedGatewayClasses{}
 
 	for _, gc := range gatewayClasses {
-		if gc.Name == gcName {
+		_, allowedGcName := gcNames[gc.Name]
+		if allowedGcName {
 			if filteredGc.Supported == nil {
 				filteredGc.Supported = make(map[types.NamespacedName]*GatewayClass)
 			}

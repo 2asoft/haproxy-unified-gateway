@@ -47,7 +47,7 @@ type Configuration struct {
 	//  Namespace and name of the controller conf CRD
 	ControllerConfNsName types.NamespacedName
 	Kubeconfig           string
-	GatewayClass         string
+	GatewayClasses       map[string]struct{}
 	// GatewayCtlrName is the name of this controller.
 	GatewayCtlrName      string
 	LeaderElectionConfig LeaderElectionConfig

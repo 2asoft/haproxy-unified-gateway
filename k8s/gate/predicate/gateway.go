@@ -23,7 +23,7 @@ import (
 // This predicate will skip events for Gateways that don't reference this gatewayClass.
 type GatewayPredicate struct {
 	predicate.Funcs
-	GatewayClassName string
+	GatewayClassNames map[string]struct{}
 }
 
 // Create implements default CreateEvent filter for validating a Gateway gatewayClassName.
@@ -36,22 +36,25 @@ func (gp GatewayPredicate) Create(e event.CreateEvent) bool {
 	if !ok {
 		return false
 	}
+	_, allowed := gp.GatewayClassNames[string(gc.Spec.GatewayClassName)]
 
-	return string(gc.Spec.GatewayClassName) == gp.GatewayClassName
+	return allowed
 }
 
 // Update implements default UpdateEvent filter for validating a Gateway gatewayClassName.
 func (gp GatewayPredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectOld != nil {
 		gcOld, ok := e.ObjectOld.(*v1.Gateway)
-		if ok && string(gcOld.Spec.GatewayClassName) == gp.GatewayClassName {
+		_, allowed := gp.GatewayClassNames[string(gcOld.Spec.GatewayClassName)]
+		if ok && allowed {
 			return true
 		}
 	}
 
 	if e.ObjectNew != nil {
 		gcNew, ok := e.ObjectNew.(*v1.Gateway)
-		if ok && string(gcNew.Spec.GatewayClassName) == gp.GatewayClassName {
+		_, allowed := gp.GatewayClassNames[string(gcNew.Spec.GatewayClassName)]
+		if ok && allowed {
 			return true
 		}
 	}
@@ -69,6 +72,7 @@ func (gp GatewayPredicate) Delete(e event.DeleteEvent) bool {
 	if !ok {
 		return false
 	}
+	_, allowed := gp.GatewayClassNames[string(gc.Spec.GatewayClassName)]
 
-	return string(gc.Spec.GatewayClassName) == gp.GatewayClassName
+	return allowed
 }

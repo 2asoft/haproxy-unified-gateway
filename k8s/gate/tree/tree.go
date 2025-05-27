@@ -28,6 +28,7 @@ type GateTree struct {
 	// It is different from the other maps, because it includes entries for Secrets that do not exist
 	// in the cluster. We need such entries so that we can query the Graph to determine if a Secret is referenced
 	// by the Gateway, including the case when the Secret is newly created.
+	Gateways          map[types.NamespacedName]*Gateway
 	ReferencedSecrets map[types.NamespacedName]*Secret
 	// ReferencedNamespaces includes Namespaces with labels that match the Gateway Listener's label selector.
 	ReferencedNamespaces map[types.NamespacedName]*v1.Namespace
