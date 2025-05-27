@@ -4,12 +4,10 @@ version: '3'
 env:
   KUBECTL_VERSION: v1.32.2
   K8S_VERSION: 1.32.2
+  ENVTEST_VERSION: v1.32.0
   CLUSTER_NAME: "{{ default \"dev-controller\" .CLUSTER_NAME}}"
   DOCKER_FILE: "{{ default \"-build/Dockerfile\" .DOCKER_FILE}}"
   TMP: tmp
-  ENVTEST_K8S_VERSION:
-    sh: |
-      echo {{.K8S_VERSION}} | awk -F. '{print $1 "." $2}'
   GATEWAYAPI_CRDS_DOWNLOAD_URL: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
 
 vars:

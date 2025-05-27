@@ -18,6 +18,7 @@ package base
 import (
 	"context"
 	"log/slog"
+	"os"
 	"testing"
 	"time"
 
@@ -82,12 +83,18 @@ func NewIntTest(t *testing.T) (test IntTest, err error) {
 	namespace, err := utils.GetIntTestNamespace()
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
+	testEnvVersion := os.Getenv("ENVTEST_VERSION")
+	installPath := os.Getenv("KUBEBUILDER_ASSETS")
+
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			"../../../api/definition",
 			"../api",
 		},
-		ErrorIfCRDPathMissing: true,
+		ErrorIfCRDPathMissing:       true,
+		DownloadBinaryAssets:        true,
+		DownloadBinaryAssetsVersion: testEnvVersion,
+		BinaryAssetsDirectory:       installPath,
 	}
 
 	test = IntTest{
