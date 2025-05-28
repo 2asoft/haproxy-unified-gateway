@@ -182,5 +182,13 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 	})
 	newTree.Gateways = gatewayBuilder.Build()
 
+	// -------------------
+	// Status compute
+	// -------------------
+	// This should be called from the lib called
+	// with some info on whereas the config was correctly applied
+	// or if they are conflicts
+	gatewayClassBuilder.BuildStatus()
+
 	return newTree
 }

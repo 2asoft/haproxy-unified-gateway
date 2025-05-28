@@ -121,10 +121,6 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGatewayClasses {
 	}
 	builder.checkSupportedVersion(validateVersionsParams)
 
-	// Last build conditions
-	builder.buildConditionsSupportedGwc()
-	builder.buildConditionsIgnoredGwc()
-
 	return builder.categorizedGwAPI
 }
 
@@ -161,6 +157,13 @@ func (builder *GatewayClassBuilderImpl) buildConditionsIgnoredGwc() {
 	for _, gwc := range builder.categorizedGwAPI.Ignored {
 		gwc.Conditions = conditions.NewGatewayClassConflict()
 	}
+}
+
+// Some params to add (reload status, conflicts....)
+func (builder *GatewayClassBuilderImpl) BuildStatus() {
+	// Last build conditions
+	builder.buildConditionsSupportedGwc()
+	builder.buildConditionsIgnoredGwc()
 }
 
 // CategorizedK8sGatewayClasses is a struct that contains the categorized GatewayClass resources.
