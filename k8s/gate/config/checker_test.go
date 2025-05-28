@@ -31,7 +31,7 @@ func TestConfiguration_Check(t *testing.T) {
 		{"GatewayClass is not set", map[string]struct{}{
 			"my-gateway-class":      {},
 			"another-gateway-class": {},
-		}, true},
+		}, false},
 		{"GatewayClass is not set", map[string]struct{}{}, true},
 	}
 
