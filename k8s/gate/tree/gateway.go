@@ -60,9 +60,23 @@ func NewGatewayBuilder(params GatewayBuilderParams) *GatewayBuilderImpl {
 	}
 }
 
-func (*GatewayBuilderImpl) Build() map[types.NamespacedName]*Gateway {
+func (b *GatewayBuilderImpl) Build() map[types.NamespacedName]*Gateway {
+	gateways := b.FilterGatewaysByGatewayClass()
 	// do all checks...
 	// merge HaproxyGate from GatewayClass and Gateway
 	// compute Conditions, Status, Valid
-	return nil
+	return gateways
+}
+
+func (b *GatewayBuilderImpl) FilterGatewaysByGatewayClass() map[types.NamespacedName]*Gateway {
+	gateways := make(map[types.NamespacedName]*Gateway)
+	for _, gateway := range b.clusterStore.Gateways {
+		gatewayClassNsName := types.NamespacedName{Name: string(gateway.Spec.GatewayClassName)}
+		if _, ok := b.gatewayclasses[gatewayClassNsName]; !ok {
+			continue
+		}
+		gatewayNsName := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
+		gateways[gatewayNsName] = &Gateway{K8sResource: gateway}
+	}
+	return gateways
 }

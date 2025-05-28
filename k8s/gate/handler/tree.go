@@ -161,10 +161,7 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 
 	// --------------
 	// GatewayClass
-	// gatewayClassCategorizer := &tree.GatewayClassCategorizerImpl{}
-	// TODO :
 	gatewayClassCategorizer := &tree.GatewayClassCategorizerImpl{}
-	// for EE. To discusse
 
 	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
 		ClusterStore: b.clusterStore,
@@ -176,6 +173,8 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 	categorizedGatewayClasses := gatewayClassBuilder.Build()
 	newTree.GatewayClasses = categorizedGatewayClasses
 
+	// --------------
+	// Gateway
 	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
 		ClusterStore:   b.clusterStore,
 		GatewayClasses: categorizedGatewayClasses.Supported,
