@@ -30,14 +30,24 @@ type HaproxyGateCtrlCfg struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=all;k8s;gate;status
-type Category string
+type (
+	// +kubebuilder:validation:Enum=all;k8s;gate;status
+	Category string
+	// +kubebuilder:validation:Enum=Debug;Info;Warn;Error;
+	// +kubebuilder:validation:Required
+	Level string
+)
+
+type CategoryLevel struct {
+	Category Category `json:"category"`
+	Level    Level    `json:"level"`
+}
 
 type Logging struct {
-	// +kubebuilder:validation:Enum=Debug;Info;Warn;Error
-	Level string `json:"level"`
-	// +kubebuilder:validation:MinItems=1
-	Categories []Category `json:"categories"`
+	DefaultLevel Level `json:"defaultLevel,omitempty"`
+	// CategoryLevelList is a list of categories and their levels
+	// if a category is not present, the default level is used
+	CategoryLevelList []CategoryLevel `json:"categoryLevelList,omitempty"`
 }
 type ControllerConfSpec struct {
 	Logging Logging `json:"logging"`

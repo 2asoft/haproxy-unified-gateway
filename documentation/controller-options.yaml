@@ -38,10 +38,10 @@ Logging:
     name: Logging
     comment: ""
     args:
-        - name: level
+        - name: defaultLevel
           type: slog.Level
-        - name: allowedCategories
-          type: '*ast.ArrayType'
+        - name: logSettings
+          type: '*ast.MapType'
 MetricsConfig:
     name: MetricsConfig
     comment: |

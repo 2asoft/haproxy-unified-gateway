@@ -17,11 +17,15 @@ import (
 	"log/slog"
 	"testing"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 )
 
 func TestLogging(t *testing.T) {
-	_, err := controller.New(Logging(slog.LevelDebug, []string{"all"}))
+	settings := map[v3.Category]slog.Level{
+		v3.Category("k8s"): slog.LevelDebug,
+	}
+	_, err := controller.New(Logging(slog.LevelDebug, settings))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

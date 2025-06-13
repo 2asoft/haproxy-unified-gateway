@@ -4,8 +4,11 @@ metadata:
   name: haproxyctrlconf
 spec:
   logging:
-    level: Debug
-    categories:
-      - gate
-      - k8s
-      - status
+    defaultLevel: "Debug"
+    categoryLevelList:
+      # - category: "gate"
+      #   level: "Debug"
+      # - category: "status"
+      #   level: "Debug"
+      - category: "k8s"
+        level: "Info"

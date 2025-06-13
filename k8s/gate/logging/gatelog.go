@@ -16,9 +16,9 @@ package logging
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,7 +28,7 @@ const (
 	LogCategoryKey = "category"
 )
 
-func LogAttrCategory(category LogCategory) slog.Attr {
+func LogAttrCategory(category v3.Category) slog.Attr {
 	return slog.String("category", string(category))
 }
 
@@ -72,16 +72,17 @@ func LogAttrError(err error) slog.Attr {
 	return slog.String("error", err.Error())
 }
 
-func LogAttrLogLevel(level string) slog.Attr {
-	return slog.String("logLevel", level)
+func LogAttrLogLevel(level slog.Level) slog.Attr {
+	return slog.String("logLevel", level.String())
 }
 
-func LogAttrLogCategories(catogories []string) slog.Attr {
-	s := strings.Join(catogories, ", ")
-	return slog.String("categories", s)
+func LogAttrLogSettings(level slog.Level, settings map[v3.Category]slog.Level) slog.Attr {
+	return slog.Group("logSettings",
+		slog.String("defaultLevel", level.String()),
+		slog.Any("categoryLevels", settings))
 }
 
-func LogAttrInstalledVersions(versions map[string]struct{}) slog.Attr {
+func LogAttrInstalledVersions(versions map[string]int) slog.Attr {
 	return slog.String("installedVersions", fmt.Sprintf("%v", versions))
 }
 
@@ -89,5 +90,12 @@ func LogAttrFileSource(file string, line int) slog.Attr {
 	return slog.Group("sourceFile",
 		slog.String("file", file),
 		slog.Int("line", line),
+	)
+}
+
+func LogAttrNsName(nsName types.NamespacedName) slog.Attr {
+	return slog.Group("nsname",
+		slog.String("name", nsName.Name),
+		slog.String("namespace", nsName.Namespace),
 	)
 }

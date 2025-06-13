@@ -16,12 +16,10 @@ package tree
 import (
 	"context"
 	"log/slog"
-	"strings"
 
 	semver "github.com/Masterminds/semver/v3"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
@@ -30,17 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
-
-type SupportedVersions []string
-
-var (
-	SupportedGatewayAPIBundleVersion       = SupportedVersions{"v1.2", "v1.3"}
-	SupportedGatewayClassParametersRefKind = v1.Kind("HaproxyGate")
-)
-
-func (s SupportedVersions) String() string {
-	return strings.Join(s, ", ")
-}
 
 type GatewayClassBuilder interface {
 	Build() CategorizedGatewayClasses
@@ -54,6 +41,7 @@ type GatewayClassBuilderImpl struct {
 	categorizer         GatewayClassCategorizer
 	categorizedGwAPI    CategorizedGatewayClasses
 	clusterStore        *store.ClusterStore
+	tree                *GateTree
 	logger              *slog.Logger
 	gcNames             map[string]struct{}
 	isGwAPIVersionValid bool
@@ -88,6 +76,7 @@ var _ GatewayClassBuilder = &GatewayClassBuilderImpl{}
 type GatewayClassBuilderParams struct {
 	Categorizer  GatewayClassCategorizer
 	ClusterStore *store.ClusterStore
+	Tree         *GateTree
 	Logger       *slog.Logger
 	GcNames      map[string]struct{}
 }
@@ -95,6 +84,7 @@ type GatewayClassBuilderParams struct {
 func NewGatewayClassBuilder(params GatewayClassBuilderParams) *GatewayClassBuilderImpl {
 	return &GatewayClassBuilderImpl{
 		clusterStore: params.ClusterStore,
+		tree:         params.Tree,
 		gcNames:      params.GcNames,
 		categorizer:  params.Categorizer,
 		logger:       params.Logger,
@@ -109,7 +99,9 @@ func (builder *GatewayClassBuilderImpl) Build() CategorizedGatewayClasses {
 
 	// Retrieve Gateway API bundle version
 	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
-	installedVersions := getGatewayAPIBundleVersions(builder.clusterStore.GatewayAPICRDs)
+	// installedVersions := getGatewayAPIBundleVersions(builder.clusterStore.GatewayAPICRDs)
+	installedVersions := builder.tree.InstalledGwAPIVersions
+
 	builder.logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"Installed versions",
 		logging.LogAttrCategory(logging.LogCategoryGate),
@@ -170,8 +162,6 @@ func (builder *GatewayClassBuilderImpl) BuildStatus() {
 // It contains two maps:
 // - Supported: GatewayClass resources that are supported by the controller.
 // - Ignored: GatewayClass resources that are ignored by the controller.
-// Only 1 GatewayClass is supported by the controller.
-// The one that has this name
 func (*GatewayClassCategorizerImpl) Categorize(gatewayClasses map[types.NamespacedName]*v1.GatewayClass, gcNames map[string]struct{}) CategorizedGatewayClasses {
 	filteredGc := CategorizedGatewayClasses{}
 
@@ -199,20 +189,18 @@ func (*GatewayClassCategorizerImpl) Categorize(gatewayClasses map[types.Namespac
 	return filteredGc
 }
 
-type installedGwAPIVersions map[types.NamespacedName]*metav1.PartialObjectMetadata
+// func getGatewayAPIBundleVersions(gatewayAPICRDs installedGwAPIVersions) map[string]struct{} {
+// 	versions := map[string]struct{}{}
 
-func getGatewayAPIBundleVersions(gatewayAPICRDs installedGwAPIVersions) map[string]struct{} {
-	versions := map[string]struct{}{}
-
-	for _, md := range gatewayAPICRDs {
-		bundleVersion := md.Annotations[constants.BundleVersionAnnotation]
-		versions[bundleVersion] = struct{}{}
-	}
-	return versions
-}
+// 	for _, md := range gatewayAPICRDs {
+// 		bundleVersion := md.Annotations[constants.BundleVersionAnnotation]
+// 		versions[bundleVersion] = struct{}{}
+// 	}
+// 	return versions
+// }
 
 type validateVersionsParams struct {
-	installedGwAPIVersions map[string]struct{}
+	installedGwAPIVersions map[string]int
 	supportedVersions      []string
 }
 

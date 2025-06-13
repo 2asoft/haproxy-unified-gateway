@@ -1,0 +1,64 @@
+// Copyright 2025 HAProxy Technologies LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package store
+
+import (
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+)
+
+type Status string
+
+const (
+	StatusUpserted Status = "UPSERTED"
+	StatusDeleted  Status = "DELETED"
+)
+
+type Update[T client.Object] struct {
+	PreviousObject T
+	Status         Status
+}
+
+// ClusterUpdated contains the udpates that happened to cluster objects during a sync cycle
+type ClusterUpdates struct {
+	GatewayClasses  map[types.NamespacedName]Update[*gatewayv1.GatewayClass]
+	Gateways        map[types.NamespacedName]Update[*gatewayv1.Gateway]
+	HTTPRoutes      map[types.NamespacedName]Update[*gatewayv1.HTTPRoute]
+	Services        map[types.NamespacedName]Update[*v1.Service]
+	Namespaces      map[types.NamespacedName]Update[*v1.Namespace]
+	Secrets         map[types.NamespacedName]Update[*v1.Secret]
+	ConfigMaps      map[types.NamespacedName]Update[*v1.ConfigMap]
+	GatewayAPICRDs  map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]
+	HaproxyGates    map[types.NamespacedName]Update[*v3.HaproxyGate]
+	ControllerConfs map[types.NamespacedName]Update[*v3.HaproxyGateCtrlCfg]
+}
+
+func NewClusterUpdates() ClusterUpdates {
+	return ClusterUpdates{
+		GatewayClasses:  make(map[types.NamespacedName]Update[*gatewayv1.GatewayClass]),
+		Gateways:        make(map[types.NamespacedName]Update[*gatewayv1.Gateway]),
+		HTTPRoutes:      make(map[types.NamespacedName]Update[*gatewayv1.HTTPRoute]),
+		Services:        make(map[types.NamespacedName]Update[*v1.Service]),
+		Namespaces:      make(map[types.NamespacedName]Update[*v1.Namespace]),
+		Secrets:         make(map[types.NamespacedName]Update[*v1.Secret]),
+		ConfigMaps:      make(map[types.NamespacedName]Update[*v1.ConfigMap]),
+		GatewayAPICRDs:  make(map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]),
+		HaproxyGates:    make(map[types.NamespacedName]Update[*v3.HaproxyGate]),
+		ControllerConfs: make(map[types.NamespacedName]Update[*v3.HaproxyGateCtrlCfg]),
+	}
+}

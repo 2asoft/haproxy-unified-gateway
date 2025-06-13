@@ -73,7 +73,6 @@ func (el *EventLoop) Start(ctx context.Context) error {
 	handleBatch := func() {
 		go func(batch events.EventBatch) {
 			el.SetHandling(true)
-
 			el.handler.HandleEventBatch(ctx, batch)
 
 			time.Sleep(el.loopCfg.SyncPeriod)

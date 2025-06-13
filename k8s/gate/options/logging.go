@@ -16,12 +16,13 @@ package opt
 import (
 	"log/slog"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 )
 
-func Logging(level slog.Level, allowedCategories []string) func(o *config.Configuration) error {
+func Logging(defaultLevel slog.Level, logSettings map[v3.Category]slog.Level) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		slogLogger, handler := config.NewGateLogger(level, allowedCategories)
+		slogLogger, handler := config.NewGateLogger(defaultLevel, logSettings)
 		o.Logger = slogLogger
 		o.LogHandler = handler
 

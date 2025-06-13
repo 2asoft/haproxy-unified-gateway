@@ -17,7 +17,6 @@ package base
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -152,8 +151,6 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	kubeconfig := ""
 
 	syncPeriod := 1 * time.Second
-	logLevel := slog.LevelDebug
-	logCategories := []string{"all"}
 
 	leaderElectionLockName := "kubernetes-controller-leader-election-lock"
 	leaderElectionConfig := config.LeaderElectionConfig{
@@ -172,7 +169,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		opt.LeaderElectionConfig(leaderElectionConfig),
 		opt.ControllerName(controllerName),
 		opt.WhiteListNamespaces(whiteListNs),
-		opt.Logging(logLevel, logCategories),
+		opt.Logging(logging.DefaultLevel, logging.DefaultLogLevelPerCategory),
 	}
 	gatecontrollercfg := config.Configuration{}
 
@@ -181,7 +178,6 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	}
 	logrLoggerFromSlog := logr.FromSlogHandler(gatecontrollercfg.LogHandler)
 	logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
-	logrLoggerFromSlog.WithCallStackHelper()
 	ctrlruntime.SetLogger(logrLoggerFromSlog)
 
 	err = gate.Add(test.Ctx, gatecontrollercfg, mgr)

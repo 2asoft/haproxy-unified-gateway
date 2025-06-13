@@ -89,3 +89,10 @@ func ParseNamespacedName(s string) (types.NamespacedName, error) {
 	}
 	return types.NamespacedName{Namespace: parts[0], Name: parts[1]}, nil
 }
+
+// Generic function to clear a map in place
+func ClearMap[K comparable, V any](m map[K]V) {
+	for k := range m {
+		delete(m, k)
+	}
+}

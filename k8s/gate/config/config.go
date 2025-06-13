@@ -18,6 +18,7 @@ import (
 	"os"
 	"time"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"k8s.io/apimachinery/pkg/types"
@@ -90,16 +91,17 @@ type LeaderElectionConfig struct {
 	Enabled bool
 }
 
-func NewGateLogger(level slog.Level, allowedCategories []string) (*slog.Logger, *logging.CategoryFilterHandler) {
+func NewGateLogger(defaultLevel slog.Level, categoryLevels map[v3.Category]slog.Level) (*slog.Logger, *logging.CategoryFilterHandler) {
 	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
+		Level: defaultLevel,
 		// AddSource: true,
 	})
+
 	handlerParams := logging.CategoryFilterHandlerParams{
-		Base:              base,
-		InitialLevel:      level,
-		AllowedCategories: allowedCategories,
-		CategoryKey:       logging.LogCategoryKey,
+		Base:                  base,
+		DefaultLevel:          defaultLevel,
+		DefaultCategoryLevels: categoryLevels,
+		CategoryKey:           logging.LogCategoryKey,
 	}
 	handler := logging.NewCategoryFilterHandler(handlerParams)
 	slogLogger := slog.New(handler)

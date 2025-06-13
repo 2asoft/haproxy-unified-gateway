@@ -77,10 +77,15 @@ func NewEventHandlerImpl(
 		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
 		HaproxyGates:    make(map[types.NamespacedName]*v3.HaproxyGate),
 		ControllerConfs: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
+		Updates:         store.NewClusterUpdates(),
 	}
+
+	currentTree := tree.NewGateTree()
 
 	treeBuilder := NewGateTreeBuilder(
 		clusterStore,
+		currentTree,
+		config.LogCategoryFilterHandler,
 		treeBuilderConfig,
 		config.Logger,
 	)
@@ -114,13 +119,13 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 
 	// Process each event in the batch
 	_ = h.treeBuilder.ProcessBatch(batch)
-	h.ReconcileLogLevelAndCategory()
 
 	// Build the GateTree
-	newTree := h.treeBuilder.buildGateTree()
-	// Send the newTree to the TreeChannel if the channel is configured
+	h.treeBuilder.buildGateTree()
+	gatetree := h.treeBuilder.GetTree()
+	// // Send the newTree to the TreeChannel if the channel is configured
 	if h.config.TreeChannel != nil {
-		h.config.TreeChannel <- newTree
+		h.config.TreeChannel <- gatetree
 	}
 
 	// START EXAMPLE
@@ -153,49 +158,12 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 			h.config.ExtractGVK,
 			h.config.Logger,
 		),
-		newTree.GatewayClasses.Supported,
-		newTree.GatewayClasses.Ignored,
+		gatetree.GatewayClasses.Supported,
+		gatetree.GatewayClasses.Ignored,
 	)
 
 	statusUpdater.UpdateStatus(ctx)
 
 	// h.updateHAProxy(ctx, logger)  //revive:disable:unused-parameters
 	// h.updateStatuses(ctx, logger) //revive:disable:unused-parameter
-}
-
-func (h *eventHandlerImpl) ReconcileLogLevelAndCategory() {
-	conf := h.treeBuilder.clusterStore.ControllerConfs
-	if conf == nil {
-		return
-	}
-	// conf size should be 1
-	if len(conf) != 1 {
-		return
-	}
-	logConf, ok := conf[h.config.ControllerConfNsName]
-	if !ok {
-		return
-	}
-
-	changed := h.config.LogCategoryFilterHandler.ReconcileLevel(logConf.Spec.Logging.Level)
-	if changed {
-		h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
-			"Reconciled log level",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrLogLevel(logConf.Spec.Logging.Level),
-		)
-	}
-
-	expectedCategories := make([]string, 0, len(logConf.Spec.Logging.Categories))
-	for _, cat := range logConf.Spec.Logging.Categories {
-		expectedCategories = append(expectedCategories, string(cat))
-	}
-	changed = h.config.LogCategoryFilterHandler.ReconcileAllowedCategories(expectedCategories)
-	if changed {
-		h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
-			"Reconciled log categories",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrLogCategories(expectedCategories),
-		)
-	}
 }

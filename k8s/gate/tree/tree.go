@@ -22,6 +22,9 @@ import (
 
 // GateTree is a Graph-like representation of Gateway API resources.
 type GateTree struct {
+	// A Map of installed GwApi CRDs versions
+	InstalledGwAPIVersions map[string]int // map GwApi CRD version -> counter
+
 	// // GatewayClasses holds the GatewayClasses resource that are accepted and ignored
 	GatewayClasses CategorizedGatewayClasses
 	// ReferencedSecrets includes Secrets referenced by Gateway Listeners, including invalid ones.
@@ -34,6 +37,16 @@ type GateTree struct {
 	ReferencedNamespaces map[types.NamespacedName]*v1.Namespace
 	// ReferencedServices includes the NamespacedNames of all the Services that are referenced by at least one Route.
 	ReferencedServices map[types.NamespacedName]*Service
+}
+
+func NewGateTree() *GateTree {
+	return &GateTree{
+		InstalledGwAPIVersions: make(map[string]int),
+		Gateways:               make(map[types.NamespacedName]*Gateway),
+		ReferencedSecrets:      make(map[types.NamespacedName]*Secret),
+		ReferencedNamespaces:   make(map[types.NamespacedName]*v1.Namespace),
+		ReferencedServices:     make(map[types.NamespacedName]*Service),
+	}
 }
 
 // IsReferenced returns true if the Tree references the resource.

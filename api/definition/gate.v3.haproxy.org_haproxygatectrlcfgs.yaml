@@ -41,26 +41,38 @@ spec:
             properties:
               logging:
                 properties:
-                  categories:
+                  categoryLevelList:
+                    description: |-
+                      CategoryLevelList is a list of categories and their levels
+                      if a category is not present, the default level is used
                     items:
-                      enum:
-                      - all
-                      - k8s
-                      - gate
-                      - status
-                      type: string
-                    minItems: 1
+                      properties:
+                        category:
+                          enum:
+                          - all
+                          - k8s
+                          - gate
+                          - status
+                          type: string
+                        level:
+                          enum:
+                          - Debug
+                          - Info
+                          - Warn
+                          - Error
+                          type: string
+                      required:
+                      - category
+                      - level
+                      type: object
                     type: array
-                  level:
+                  defaultLevel:
                     enum:
                     - Debug
                     - Info
                     - Warn
                     - Error
                     type: string
-                required:
-                - categories
-                - level
                 type: object
             required:
             - logging

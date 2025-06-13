@@ -26,7 +26,7 @@ Available options:
 | GatewayClass | `gatewayClass`(*ast.ArrayType) |
 | KubeConfig | `kubeconfig`(string) |
 | LeaderElectionConfig | `leaderElection`(config.LeaderElectionConfig) |
-| Logging | `level`(slog.Level), `allowedCategories`(*ast.ArrayType) |
+| Logging | `defaultLevel`(slog.Level), `logSettings`(*ast.MapType) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | SyncPeriod | `syncPeriod`(time.Duration) |
 | TreeChannel | `treeCh`(*ast.ChanType) |
@@ -120,7 +120,7 @@ import (
   github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
-controller, err := controller.New(opt.Logging(level, allowedCategories))
+controller, err := controller.New(opt.Logging(defaultLevel, logSettings))
 ```
 
 ### MetricsConfig

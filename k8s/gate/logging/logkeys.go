@@ -13,10 +13,10 @@
 // limitations under the License.
 package logging
 
-type LogCategory string
+import v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 
 var (
-	LogCategoryK8s    LogCategory = "k8s"
-	LogCategoryGate   LogCategory = "gate"
-	LogCategoryStatus LogCategory = "status"
+	LogCategoryK8s    v3.Category = "k8s"
+	LogCategoryGate   v3.Category = "gate"
+	LogCategoryStatus v3.Category = "status"
 )

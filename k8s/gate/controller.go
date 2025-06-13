@@ -48,7 +48,7 @@ type Controller struct {
 }
 
 func New(options ...func(c *config.Configuration) error) (Controller, error) {
-	slogger, logHandler := config.NewGateLogger(slog.LevelError, []string{"all"})
+	slogger, logHandler := config.NewGateLogger(logging.DefaultLevel, logging.DefaultLogLevelPerCategory)
 	ctrl := Controller{
 		Configuration: config.Configuration{
 			Logger:     slogger,
@@ -61,9 +61,9 @@ func New(options ...func(c *config.Configuration) error) (Controller, error) {
 			return Controller{}, err
 		}
 	}
+
 	logrLoggerFromSlog := logr.FromSlogHandler(ctrl.Configuration.LogHandler)
-	logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
-	logrLoggerFromSlog.WithCallStackHelper()
+	// logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
 	runtimelog.SetLogger(logrLoggerFromSlog)
 
 	return ctrl, nil
@@ -115,7 +115,9 @@ func Add(
 		mgr.GetClient(),
 		mgr.GetAPIReader(),
 		cfg.GatewayClasses,
+		cfg.ControllerConfNsName,
 		extractGVK,
+		cfg.Logger,
 	)
 
 	eventHandlerConfig := handler.EventHandlerImplConfig{

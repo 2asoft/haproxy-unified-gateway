@@ -43,22 +43,31 @@ type GateTreeBuilderConfig struct {
 	// gatewayClassName is the name of the supported GatewayClass.
 	// If empty, all GatewayClasses are supported that match the controller name
 	gatewayClassNames map[string]struct{}
+	logger            *slog.Logger
+	// ControllerConfNsName is the namespace and name of the controller configuration CRD.
+	ControllerConfNsName types.NamespacedName
 }
 
 type GateTreeBuilder struct {
-	clusterStoreUpdater  store.ClusterStoreUpdater
-	clusterStore         *store.ClusterStore
-	currentTree          *tree.GateTree
-	isRelevantChangeFunc map[schema.GroupVersionKind]IsRelevantChangeFunc
-	logger               *slog.Logger
-	cfg                  GateTreeBuilderConfig
+	clusterStoreUpdater    store.ClusterStoreUpdater
+	clusterStore           *store.ClusterStore
+	catefgoryFilterHandler *logging.CategoryFilterHandler
+	tree                   *tree.GateTree
+	isRelevantChangeFunc   map[schema.GroupVersionKind]IsRelevantChangeFunc
+	cfg                    GateTreeBuilderConfig
 }
 
 // IsRelevantChangeFunc is a function that checks if the object has relevant changes.
 type IsRelevantChangeFunc func(object client.Object, nsname types.NamespacedName) bool
 
+func (b *GateTreeBuilder) GetTree() *tree.GateTree {
+	return b.tree
+}
+
 func NewGateTreeBuilder(
 	clusterStore *store.ClusterStore,
+	currentTree *tree.GateTree,
+	categoryFilterHandler *logging.CategoryFilterHandler,
 	cfg GateTreeBuilderConfig,
 	logger *slog.Logger,
 ) *GateTreeBuilder {
@@ -68,21 +77,22 @@ func NewGateTreeBuilder(
 		logger.WithGroup("clusterStoreUpdater"),
 	)
 	treeBuilder := GateTreeBuilder{
-		clusterStoreUpdater: clusterStoreUpdater,
-		clusterStore:        clusterStore,
-		cfg:                 cfg,
-		logger:              logger,
+		clusterStoreUpdater:    clusterStoreUpdater,
+		clusterStore:           clusterStore,
+		catefgoryFilterHandler: categoryFilterHandler,
+		cfg:                    cfg,
+		tree:                   currentTree,
 	}
 
 	hasRelevantChanges := map[schema.GroupVersionKind]IsRelevantChangeFunc{
 		cfg.extractGVK(&gatewayv1.GatewayClass{}):    nil,
 		cfg.extractGVK(&gatewayv1.Gateway{}):         nil,
 		cfg.extractGVK(&gatewayv1.HTTPRoute{}):       nil,
-		cfg.extractGVK(&apiv1.Service{}):             treeBuilder.currentTree.IsReferenced,
-		cfg.extractGVK(&apiv1.Namespace{}):           treeBuilder.currentTree.IsReferenced,
-		cfg.extractGVK(&apiv1.Secret{}):              treeBuilder.currentTree.IsReferenced,
-		cfg.extractGVK(&apiv1.ConfigMap{}):           treeBuilder.currentTree.IsReferenced,
-		cfg.extractGVK(&discoveryV1.EndpointSlice{}): treeBuilder.currentTree.IsReferenced,
+		cfg.extractGVK(&apiv1.Service{}):             treeBuilder.tree.IsReferenced,
+		cfg.extractGVK(&apiv1.Namespace{}):           treeBuilder.tree.IsReferenced,
+		cfg.extractGVK(&apiv1.Secret{}):              treeBuilder.tree.IsReferenced,
+		cfg.extractGVK(&apiv1.ConfigMap{}):           treeBuilder.tree.IsReferenced,
+		cfg.extractGVK(&discoveryV1.EndpointSlice{}): treeBuilder.tree.IsReferenced,
 	}
 	treeBuilder.isRelevantChangeFunc = hasRelevantChanges
 
@@ -94,21 +104,27 @@ func NewGateTreeBuilderConfig(
 	k8sClient client.Client,
 	k8sReader client.Reader,
 	gatewayClassNames map[string]struct{},
+	controllerConfNsName types.NamespacedName,
 	extractGVK utils.ExtractGVK,
+	logger *slog.Logger,
 ) GateTreeBuilderConfig {
 	eventHandlerConfig := GateTreeBuilderConfig{
-		k8sClient:         k8sClient,
-		k8sReader:         k8sReader,
-		gatewayClassNames: gatewayClassNames,
-		extractGVK:        extractGVK,
+		k8sClient:            k8sClient,
+		k8sReader:            k8sReader,
+		gatewayClassNames:    gatewayClassNames,
+		ControllerConfNsName: controllerConfNsName,
+		extractGVK:           extractGVK,
+		logger:               logger,
 	}
 	return eventHandlerConfig
 }
 
 func (b *GateTreeBuilder) ProcessBatch(batch events.EventBatch) bool {
+	b.clusterStoreUpdater.ResetUpdates()
+
 	relevantChanges := false
 	for _, e := range batch.Events {
-		change := b.updateClusterStore(e, b.logger)
+		change := b.updateClusterStore(e, b.cfg.logger)
 		relevantChanges = relevantChanges || change
 	}
 	return relevantChanges
@@ -156,8 +172,21 @@ func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) (re
 	return relevantChanges
 }
 
-func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
-	newTree := &tree.GateTree{}
+func (b *GateTreeBuilder) buildGateTree() {
+	// controllerConf
+	controllerConfBuilderParams := tree.ControllerConfBuilderParams{
+		ClusterStore:             b.clusterStore,
+		Tree:                     b.tree,
+		LogCategoryFilterHandler: b.catefgoryFilterHandler,
+		Logger:                   b.cfg.logger,
+		ControllerConfNsName:     b.cfg.ControllerConfNsName,
+	}
+	controllerConfBuilder := tree.NewControllerConfBuilder(controllerConfBuilderParams)
+	controllerConfBuilder.Build()
+
+	// installed Versions
+	installedVersionBuilder := tree.NewInstalledVersionsBuilder(b.clusterStore, b.tree, b.cfg.logger)
+	installedVersionBuilder.Build()
 
 	// --------------
 	// GatewayClass
@@ -165,22 +194,23 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 
 	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
 		ClusterStore: b.clusterStore,
+		Tree:         b.tree,
 		GcNames:      b.cfg.gatewayClassNames,
 		Categorizer:  gatewayClassCategorizer,
-		Logger:       b.logger,
+		Logger:       b.cfg.logger,
 	}
 	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
 	categorizedGatewayClasses := gatewayClassBuilder.Build()
-	newTree.GatewayClasses = categorizedGatewayClasses
+	b.tree.GatewayClasses = categorizedGatewayClasses
 
 	// --------------
 	// Gateway
 	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
 		ClusterStore:   b.clusterStore,
 		GatewayClasses: categorizedGatewayClasses.Supported,
-		Logger:         b.logger,
+		Logger:         b.cfg.logger,
 	})
-	newTree.Gateways = gatewayBuilder.Build()
+	b.tree.Gateways = gatewayBuilder.Build()
 
 	// -------------------
 	// Status compute
@@ -189,6 +219,4 @@ func (b *GateTreeBuilder) buildGateTree() *tree.GateTree {
 	// with some info on whereas the config was correctly applied
 	// or if they are conflicts
 	gatewayClassBuilder.BuildStatus()
-
-	return newTree
 }

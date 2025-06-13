@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,22 +31,25 @@ import (
 type ObjectStoreUpdater interface {
 	upsert(obj client.Object)
 	delete(obj client.Object, nsname types.NamespacedName)
+	resetUpdates()
 }
 
-// to ensure that objectStoreImpl implements ObjectSore interface
+// to ensure that objectStoreImpl implements ObjectStoreUpdater interface
 var _ ObjectStoreUpdater = &objectStoreImpl[*gatewayv1.GatewayClass]{}
 
 // objectStoreImpl wraps maps of types.NamespacedName to Kubernetes resources
 // (e.g. map[types.NamespacedName]*v1.Gateway) so that they can be used through Updater interface.
 type objectStoreImpl[T client.Object] struct {
 	objects map[types.NamespacedName]T
+	updates map[types.NamespacedName]Update[T]
 	logger  *slog.Logger
 	mu      sync.Mutex
 }
 
-func newObjectStoreImpl[T client.Object](objects map[types.NamespacedName]T, slogger *slog.Logger) *objectStoreImpl[T] {
+func newObjectStoreImpl[T client.Object](objects map[types.NamespacedName]T, updates map[types.NamespacedName]Update[T], slogger *slog.Logger) *objectStoreImpl[T] {
 	return &objectStoreImpl[T]{
 		objects: objects,
+		updates: updates,
 		logger:  slogger,
 	}
 }
@@ -59,14 +63,40 @@ func (m *objectStoreImpl[T]) upsert(obj client.Object) {
 			fmt.Sprintf("obj type mismatch. got %T, expected %T", obj, t),
 			logging.LogAttrCategory(logging.LogCategoryGate),
 		)
+		return
 	}
-	m.objects[client.ObjectKeyFromObject(obj)] = t
+	key := client.ObjectKeyFromObject(obj)
+	previousObj := m.objects[key]
+	m.objects[key] = t
+
+	firstUpdate, firstUpdateOk := m.updates[key]
+	// if not ok, this means that it's the first time we receive an event on this object
+	// keep the initial version of the object
+	if !firstUpdateOk {
+		firstUpdate.PreviousObject = previousObj
+	}
+	firstUpdate.Status = StatusUpserted
+	m.updates[key] = firstUpdate
 }
 
 func (m *objectStoreImpl[T]) delete(_ client.Object, nsname types.NamespacedName) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	previousObj := m.objects[nsname]
 	delete(m.objects, nsname)
+	// update := Update[T]{}
+	firstUpdate, firstUpdateOk := m.updates[nsname]
+	if !firstUpdateOk {
+		firstUpdate.PreviousObject = previousObj
+	}
+	firstUpdate.Status = StatusDeleted
+	m.updates[nsname] = firstUpdate
+}
+
+func (m *objectStoreImpl[T]) resetUpdates() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	utils.ClearMap(m.updates)
 }
 
 type storeAdapter struct {

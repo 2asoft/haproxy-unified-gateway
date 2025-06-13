@@ -80,8 +80,8 @@ func main() {
 	kubeconfig := ""
 
 	syncPeriod := 1 * time.Second
-	logLevel := slog.LevelDebug
-	logCategories := []string{"all"}
+	logLevelIfCategoryEmpty := logging.DefaultLevel
+	logCategoryLevels := logging.DefaultLogLevelPerCategory
 
 	leaderElectionLockName := "kubernetes-controller-leader-election-lock"
 	leaderElectionConfig := config.LeaderElectionConfig{
@@ -102,7 +102,7 @@ func main() {
 		opt.LeaderElectionConfig(leaderElectionConfig),
 		opt.ControllerName(controllerName),
 		opt.WhiteListNamespaces(whiteListNs),
-		opt.Logging(logLevel, logCategories),
+		opt.Logging(logLevelIfCategoryEmpty, logCategoryLevels),
 		opt.TreeChannel(treeCh),
 	)
 	if err != nil {

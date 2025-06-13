@@ -16,73 +16,98 @@ package logging
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"runtime"
 	"sync"
+
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+)
+
+var (
+	DefaultLogLevelPerCategory = map[v3.Category]slog.Level{
+		LogCategoryK8s:    slog.LevelInfo,
+		LogCategoryGate:   slog.LevelInfo,
+		LogCategoryStatus: slog.LevelInfo,
+	}
+	DefaultLevel = slog.LevelInfo
+
+	// logLevelPerCategory contains the seetings if a CR is deployed
+	// if no CR is deployed, it's set to defaultLogLevelPerCategory
+	logLevelPerCategory = make(map[v3.Category]slog.Level)
+	// level is the level used when no category is set with this value if the conf CR
+	level slog.Level
+	mu    sync.RWMutex
 )
 
 // CategoryFilterHandler filters log records by level and key-value category.
 type CategoryFilterHandler struct {
-	base              slog.Handler
-	level             *slog.LevelVar
-	allowedCategories map[string]bool
-	categoryKey       string
-	mu                sync.RWMutex
+	base        slog.Handler
+	categoryKey string
 }
 
 type CategoryFilterHandlerParams struct {
-	Base              slog.Handler
-	CategoryKey       string
-	AllowedCategories []string
-	InitialLevel      slog.Level
+	Base                  slog.Handler
+	DefaultCategoryLevels map[v3.Category]slog.Level
+	CategoryKey           string
+	DefaultLevel          slog.Level
 }
 
 // NewCategoryFilterHandler wraps an existing handler and filters by level and category.
 func NewCategoryFilterHandler(params CategoryFilterHandlerParams) *CategoryFilterHandler {
-	allowed := make(map[string]bool, len(params.AllowedCategories))
-	for _, cat := range params.AllowedCategories {
-		allowed[cat] = true
-	}
-	alevel := &slog.LevelVar{}
-	alevel.Set(params.InitialLevel)
+	mu.Lock()
+	defer mu.Unlock()
+	DefaultLogLevelPerCategory = copyCategoryLevels(params.DefaultCategoryLevels)
+	DefaultLevel = params.DefaultLevel
+	logLevelPerCategory = copyCategoryLevels(params.DefaultCategoryLevels)
+
 	return &CategoryFilterHandler{
-		base:              params.Base,
-		level:             alevel,
-		allowedCategories: allowed,
-		categoryKey:       params.CategoryKey,
+		base:        params.Base,
+		categoryKey: params.CategoryKey,
 	}
 }
 
-func (h *CategoryFilterHandler) Enabled(_ context.Context, level slog.Level) bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return level >= h.level.Level()
+func copyCategoryLevels(m map[v3.Category]slog.Level) map[v3.Category]slog.Level {
+	cp := make(map[v3.Category]slog.Level, len(m))
+	maps.Copy(cp, m)
+	return cp
+}
+
+func GetLogSettings() (slog.Level, map[v3.Category]slog.Level) {
+	mu.RLock()
+	defer mu.RUnlock()
+	return level, logLevelPerCategory
+}
+
+func (*CategoryFilterHandler) Enabled(_ context.Context, _ slog.Level) bool {
+	return true // decision deferred to Handle
 }
 
 func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error {
-	if !h.Enabled(ctx, r.Level) {
-		return nil
-	}
-
+	mu.Lock()
+	defer mu.Unlock()
 	_, file, no, _ := runtime.Caller(3)
-	// Still to do: format correctly the "file" by extracting only useful information
 	r.AddAttrs(LogAttrFileSource(file, no))
 
-	allowed := true
+	// Empty Category should happen only for k8s Logs
+	category := LogCategoryK8s
 	r.Attrs(func(a slog.Attr) bool {
-		if a.Key == h.categoryKey {
-			if a.Value.Kind() == slog.KindString {
-				strVal := a.Value.String()
-				allowed = h.allowedCategories[strVal] || h.allowedCategories["all"]
-			} else {
-				allowed = false
-			}
-			return false // Stop scanning attributes early
+		if a.Value.Kind() == slog.KindString && (a.Key == h.categoryKey || a.Key == "all") {
+			category = v3.Category(a.Value.String())
+			return false
 		}
-		// allowed = false // do not log if key categoryKey is not present
 		return true
 	})
+	if category == LogCategoryK8s {
+		// If no category is set, we use the default level
+		r.AddAttrs(slog.String(h.categoryKey, string(category)))
+	}
 
-	if !allowed {
+	catLevel, ok := logLevelPerCategory[category]
+	if !ok {
+		catLevel = level
+	}
+
+	if r.Level < catLevel {
 		return nil
 	}
 
@@ -91,82 +116,55 @@ func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error
 
 func (h *CategoryFilterHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &CategoryFilterHandler{
-		base:              h.base.WithAttrs(attrs),
-		level:             h.level,
-		allowedCategories: h.allowedCategories,
-		categoryKey:       h.categoryKey,
+		base:        h.base.WithAttrs(attrs),
+		categoryKey: h.categoryKey,
 	}
 }
 
 func (h *CategoryFilterHandler) WithGroup(name string) slog.Handler {
 	return &CategoryFilterHandler{
-		base:              h.base.WithGroup(name),
-		level:             h.level,
-		allowedCategories: h.allowedCategories,
-		categoryKey:       h.categoryKey,
+		base:        h.base.WithGroup(name),
+		categoryKey: h.categoryKey,
 	}
 }
 
-func (h *CategoryFilterHandler) SetLevel(level slog.Level) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.level.Set(level)
+func (h *CategoryFilterHandler) ResetToDefaults() {
+	_ = h.ReconcileLogSettings(DefaultLevel, DefaultLogLevelPerCategory)
 }
 
-func (h *CategoryFilterHandler) GetLevel() slog.Level {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.level.Level()
-}
-
-func (h *CategoryFilterHandler) ReconcileAllowedCategories(categories []string) bool {
-	newSet := make(map[string]bool, len(categories))
-	for _, c := range categories {
-		newSet[c] = true
+func (*CategoryFilterHandler) ReconcileLogSettings(aLevel slog.Level, categories map[v3.Category]slog.Level) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	levelChanged := level != aLevel
+	if levelChanged {
+		level = aLevel
 	}
 
-	h.mu.RLock()
-	unchanged := mapsEqual(h.allowedCategories, newSet)
-	h.mu.RUnlock()
-
-	if unchanged {
-		return false
+	newSet := make(map[v3.Category]slog.Level, len(categories))
+	maps.Copy(newSet, categories)
+	changed := !mapsEqual(logLevelPerCategory, newSet)
+	if changed {
+		logLevelPerCategory = newSet
 	}
-
-	h.mu.Lock()
-	h.allowedCategories = newSet
-	h.mu.Unlock()
-	return true
+	return levelChanged || changed
 }
 
-func (h *CategoryFilterHandler) ReconcileLevel(level string) bool {
-	var expectedLevel slog.Level
+func LogLevelString2SlogLevel(level string) slog.Level {
 	switch level {
 	case "Info":
-		expectedLevel = slog.LevelInfo
+		return slog.LevelInfo
 	case "Warn":
-		expectedLevel = slog.LevelWarn
+		return slog.LevelWarn
 	case "Error":
-		expectedLevel = slog.LevelError
+		return slog.LevelError
 	case "Debug":
-		expectedLevel = slog.LevelDebug
+		return slog.LevelDebug
+	default:
+		return slog.LevelInfo // Default to Info if unknown level
 	}
-
-	h.mu.RLock()
-	unchanged := h.level.Level() == expectedLevel
-	h.mu.RUnlock()
-
-	if unchanged {
-		return false
-	}
-
-	h.mu.Lock()
-	h.level.Set(expectedLevel)
-	h.mu.Unlock()
-	return true
 }
 
-func mapsEqual(a, b map[string]bool) bool {
+func mapsEqual(a, b map[v3.Category]slog.Level) bool {
 	if len(a) != len(b) {
 		return false
 	}

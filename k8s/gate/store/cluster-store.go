@@ -27,7 +27,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-// ClusterStore includes cluster resources necessary to build the Graph.
+// ClusterStore includes cluster resources necessary to build the Tree.
 type ClusterStore struct {
 	GatewayClasses  map[types.NamespacedName]*gatewayv1.GatewayClass
 	Gateways        map[types.NamespacedName]*gatewayv1.Gateway
@@ -39,12 +39,14 @@ type ClusterStore struct {
 	GatewayAPICRDs  map[types.NamespacedName]*metav1.PartialObjectMetadata
 	HaproxyGates    map[types.NamespacedName]*v3.HaproxyGate
 	ControllerConfs map[types.NamespacedName]*v3.HaproxyGateCtrlCfg
+	Updates         ClusterUpdates
 }
 
 // ClusterStoreUpdater updates the cluster store.
 type ClusterStoreUpdater interface {
 	Upsert(obj client.Object)
 	Delete(obj client.Object, nsname types.NamespacedName)
+	ResetUpdates()
 }
 
 type ClusterStoreUpdaterImpl struct {
@@ -66,16 +68,16 @@ func NewClusterStoreUpdaterImpl(
 		clusterStore: clusterStore,
 		storeAdapter: &storeAdapter{
 			stores: map[schema.GroupVersionKind]ObjectStoreUpdater{
-				extractGVK(&gatewayv1.GatewayClass{}):          newObjectStoreImpl(clusterStore.GatewayClasses, logger),
-				extractGVK(&gatewayv1.Gateway{}):               newObjectStoreImpl(clusterStore.Gateways, logger),
-				extractGVK(&gatewayv1.HTTPRoute{}):             newObjectStoreImpl(clusterStore.HTTPRoutes, logger),
-				extractGVK(&v1.Service{}):                      newObjectStoreImpl(clusterStore.Services, logger),
-				extractGVK(&v1.Namespace{}):                    newObjectStoreImpl(clusterStore.Namespaces, logger),
-				extractGVK(&v1.Secret{}):                       newObjectStoreImpl(clusterStore.Secrets, logger),
-				extractGVK(&v1.ConfigMap{}):                    newObjectStoreImpl(clusterStore.ConfigMaps, logger),
-				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, logger),
-				extractGVK(&v3.HaproxyGate{}):                  newObjectStoreImpl(clusterStore.HaproxyGates, logger),
-				extractGVK(&v3.HaproxyGateCtrlCfg{}):           newObjectStoreImpl(clusterStore.ControllerConfs, logger),
+				extractGVK(&gatewayv1.GatewayClass{}):          newObjectStoreImpl(clusterStore.GatewayClasses, clusterStore.Updates.GatewayClasses, logger),
+				extractGVK(&gatewayv1.Gateway{}):               newObjectStoreImpl(clusterStore.Gateways, clusterStore.Updates.Gateways, logger),
+				extractGVK(&gatewayv1.HTTPRoute{}):             newObjectStoreImpl(clusterStore.HTTPRoutes, clusterStore.Updates.HTTPRoutes, logger),
+				extractGVK(&v1.Service{}):                      newObjectStoreImpl(clusterStore.Services, clusterStore.Updates.Services, logger),
+				extractGVK(&v1.Namespace{}):                    newObjectStoreImpl(clusterStore.Namespaces, clusterStore.Updates.Namespaces, logger),
+				extractGVK(&v1.Secret{}):                       newObjectStoreImpl(clusterStore.Secrets, clusterStore.Updates.Secrets, logger),
+				extractGVK(&v1.ConfigMap{}):                    newObjectStoreImpl(clusterStore.ConfigMaps, clusterStore.Updates.ConfigMaps, logger),
+				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, clusterStore.Updates.GatewayAPICRDs, logger),
+				extractGVK(&v3.HaproxyGate{}):                  newObjectStoreImpl(clusterStore.HaproxyGates, clusterStore.Updates.HaproxyGates, logger),
+				extractGVK(&v3.HaproxyGateCtrlCfg{}):           newObjectStoreImpl(clusterStore.ControllerConfs, clusterStore.Updates.ControllerConfs, logger),
 			},
 		},
 		extractGVK: extractGVK,
@@ -99,4 +101,10 @@ func (cs *ClusterStoreUpdaterImpl) Delete(obj client.Object, nsname types.Namesp
 		return
 	}
 	objectStore.delete(obj, nsname)
+}
+
+func (cs *ClusterStoreUpdaterImpl) ResetUpdates() {
+	for _, v := range cs.storeAdapter.stores {
+		v.resetUpdates()
+	}
 }

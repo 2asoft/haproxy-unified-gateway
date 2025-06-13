@@ -66,42 +66,42 @@ func TestValidateVersion(t *testing.T) {
 	tests := []struct {
 		name              string
 		supportedVersions []string
-		installedVersion  map[string]struct{}
+		installedVersion  map[string]int
 		expectedResult    bool
 	}{
 		{
 			name:              "Matching version 1",
 			supportedVersions: []string{"v1.2", "v1.3"},
-			installedVersion: map[string]struct{}{
-				"v1.2.5": {},
-				"v1.2.4": {},
+			installedVersion: map[string]int{
+				"v1.2.5": 2,
+				"v1.2.4": 3,
 			},
 			expectedResult: true,
 		},
 		{
 			name:              "Matching version 2",
 			supportedVersions: []string{"v1.2", "v1.3"},
-			installedVersion: map[string]struct{}{
-				"v1.3.5": {},
-				"v1.3.4": {},
+			installedVersion: map[string]int{
+				"v1.3.5": 7,
+				"v1.3.4": 4,
 			},
 			expectedResult: true,
 		},
 		{
 			name:              "Matching version 1 and 2",
 			supportedVersions: []string{"v1.2", "v1.3"},
-			installedVersion: map[string]struct{}{
-				"v1.2.5": {},
-				"v1.3.4": {},
+			installedVersion: map[string]int{
+				"v1.2.5": 4,
+				"v1.3.4": 2,
 			},
 			expectedResult: true,
 		},
 		{
 			name:              "At least one does not match",
 			supportedVersions: []string{"v1.2", "v1.3"},
-			installedVersion: map[string]struct{}{
-				"v1.2.5": {},
-				"v1.4.5": {},
+			installedVersion: map[string]int{
+				"v1.2.5": 1,
+				"v1.4.5": 3,
 			},
 			expectedResult: false,
 		},
