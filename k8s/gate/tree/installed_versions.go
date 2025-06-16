@@ -34,6 +34,24 @@ var (
 	SupportedGatewayClassParametersRefKind = v1.Kind("HaproxyGate")
 )
 
+type InstalledVersions struct {
+	// Versions contains the count of installed Gateway API versions.
+	Versions        map[string]int // map GwApi CRD version -> counter
+	observers       []func(InstalledVersions)
+	versionsUpdated bool
+}
+
+func (iv *InstalledVersions) RegisterObserver(callback func(InstalledVersions)) {
+	iv.observers = append(iv.observers, callback)
+}
+
+func (iv *InstalledVersions) NotifyObervers() {
+	for _, observer := range iv.observers {
+		observer(*iv)
+	}
+	iv.versionsUpdated = false
+}
+
 func (s SupportedVersions) String() string {
 	return strings.Join(s, ", ")
 }
@@ -44,7 +62,7 @@ type InstalledVersionsBuilder interface {
 
 type InstalledVersionsBuilderImpl struct {
 	clusterStore *store.ClusterStore
-	tree         *GateTree
+	gateTree     *GateTree
 	logger       *slog.Logger
 }
 
@@ -52,7 +70,7 @@ func NewInstalledVersionsBuilder(clusterStore *store.ClusterStore, tree *GateTre
 	return &InstalledVersionsBuilderImpl{
 		clusterStore: clusterStore,
 		logger:       logger,
-		tree:         tree,
+		gateTree:     tree,
 	}
 }
 
@@ -62,9 +80,15 @@ func (b *InstalledVersionsBuilderImpl) Build() {
 		case store.StatusUpserted:
 			b.buildUpserted(nsname, update)
 		case store.StatusDeleted:
-			b.buildDeleted(update.PreviousObject)
+			b.buildDeleted(update.OldObject)
 		}
 	}
+	b.logger.LogAttrs(context.Background(), slog.LevelDebug,
+		"Installed versions",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrInstalledVersions(b.gateTree.InstalledGwAPIVersions.Versions),
+	)
+	b.gateTree.InstalledGwAPIVersions.NotifyObervers()
 }
 
 func (b *InstalledVersionsBuilderImpl) buildUpserted(nsname types.NamespacedName, update store.Update[*metav1.PartialObjectMetadata]) {
@@ -81,25 +105,26 @@ func (b *InstalledVersionsBuilderImpl) buildUpserted(nsname types.NamespacedName
 	}
 	bundleVersion := gwapiCRD.Annotations[constants.BundleVersionAnnotation]
 
-	if update.PreviousObject != nil {
-		previousBundleVersion := update.PreviousObject.Annotations[constants.BundleVersionAnnotation]
+	if update.OldObject != nil {
+		previousBundleVersion := update.OldObject.Annotations[constants.BundleVersionAnnotation]
 		if previousBundleVersion == bundleVersion {
 			return
 		}
-		b.tree.InstalledGwAPIVersions[previousBundleVersion]--
-		if b.tree.InstalledGwAPIVersions[previousBundleVersion] == 0 {
-			delete(b.tree.InstalledGwAPIVersions, previousBundleVersion)
+		b.gateTree.InstalledGwAPIVersions.Versions[previousBundleVersion]--
+		b.gateTree.InstalledGwAPIVersions.versionsUpdated = true
+		if b.gateTree.InstalledGwAPIVersions.Versions[previousBundleVersion] == 0 {
+			delete(b.gateTree.InstalledGwAPIVersions.Versions, previousBundleVersion)
 		}
 	}
-	b.tree.InstalledGwAPIVersions[bundleVersion]++
+	b.gateTree.InstalledGwAPIVersions.versionsUpdated = true
+	b.gateTree.InstalledGwAPIVersions.Versions[bundleVersion]++
 }
 
 func (b *InstalledVersionsBuilderImpl) buildDeleted(previous *metav1.PartialObjectMetadata) {
-	// this is wrong, to change
-	// implement a ref counter
 	bundleVersion := previous.Annotations[constants.BundleVersionAnnotation]
-	b.tree.InstalledGwAPIVersions[bundleVersion]--
-	if b.tree.InstalledGwAPIVersions[bundleVersion] == 0 {
-		delete(b.tree.InstalledGwAPIVersions, bundleVersion)
+	b.gateTree.InstalledGwAPIVersions.Versions[bundleVersion]--
+	b.gateTree.InstalledGwAPIVersions.versionsUpdated = true
+	if b.gateTree.InstalledGwAPIVersions.Versions[bundleVersion] == 0 {
+		delete(b.gateTree.InstalledGwAPIVersions.Versions, bundleVersion)
 	}
 }

@@ -69,14 +69,15 @@ func (m *objectStoreImpl[T]) upsert(obj client.Object) {
 	previousObj := m.objects[key]
 	m.objects[key] = t
 
-	firstUpdate, firstUpdateOk := m.updates[key]
+	update, firstUpdateOk := m.updates[key]
 	// if not ok, this means that it's the first time we receive an event on this object
 	// keep the initial version of the object
 	if !firstUpdateOk {
-		firstUpdate.PreviousObject = previousObj
+		update.OldObject = previousObj
 	}
-	firstUpdate.Status = StatusUpserted
-	m.updates[key] = firstUpdate
+	update.Status = StatusUpserted
+	update.NewObject = t
+	m.updates[key] = update
 }
 
 func (m *objectStoreImpl[T]) delete(_ client.Object, nsname types.NamespacedName) {
@@ -84,13 +85,14 @@ func (m *objectStoreImpl[T]) delete(_ client.Object, nsname types.NamespacedName
 	defer m.mu.Unlock()
 	previousObj := m.objects[nsname]
 	delete(m.objects, nsname)
-	// update := Update[T]{}
-	firstUpdate, firstUpdateOk := m.updates[nsname]
+	update, firstUpdateOk := m.updates[nsname]
 	if !firstUpdateOk {
-		firstUpdate.PreviousObject = previousObj
+		update.OldObject = previousObj
 	}
-	firstUpdate.Status = StatusDeleted
-	m.updates[nsname] = firstUpdate
+	update.Status = StatusDeleted
+	var zeroValue T
+	update.NewObject = zeroValue // Reset the new object to zero value
+	m.updates[nsname] = update
 }
 
 func (m *objectStoreImpl[T]) resetUpdates() {

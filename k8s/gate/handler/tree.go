@@ -23,13 +23,9 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
-	apiv1 "k8s.io/api/core/v1"
-	discoveryV1 "k8s.io/api/discovery/v1"
-
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // GateTreeBuilderConfig holds configuration parameters for the Gate Tree builder.
@@ -66,7 +62,7 @@ func (b *GateTreeBuilder) GetTree() *tree.GateTree {
 
 func NewGateTreeBuilder(
 	clusterStore *store.ClusterStore,
-	currentTree *tree.GateTree,
+	gateTree *tree.GateTree,
 	categoryFilterHandler *logging.CategoryFilterHandler,
 	cfg GateTreeBuilderConfig,
 	logger *slog.Logger,
@@ -81,20 +77,8 @@ func NewGateTreeBuilder(
 		clusterStore:           clusterStore,
 		catefgoryFilterHandler: categoryFilterHandler,
 		cfg:                    cfg,
-		tree:                   currentTree,
+		tree:                   gateTree,
 	}
-
-	hasRelevantChanges := map[schema.GroupVersionKind]IsRelevantChangeFunc{
-		cfg.extractGVK(&gatewayv1.GatewayClass{}):    nil,
-		cfg.extractGVK(&gatewayv1.Gateway{}):         nil,
-		cfg.extractGVK(&gatewayv1.HTTPRoute{}):       nil,
-		cfg.extractGVK(&apiv1.Service{}):             treeBuilder.tree.IsReferenced,
-		cfg.extractGVK(&apiv1.Namespace{}):           treeBuilder.tree.IsReferenced,
-		cfg.extractGVK(&apiv1.Secret{}):              treeBuilder.tree.IsReferenced,
-		cfg.extractGVK(&apiv1.ConfigMap{}):           treeBuilder.tree.IsReferenced,
-		cfg.extractGVK(&discoveryV1.EndpointSlice{}): treeBuilder.tree.IsReferenced,
-	}
-	treeBuilder.isRelevantChangeFunc = hasRelevantChanges
 
 	return &treeBuilder
 }
@@ -184,30 +168,27 @@ func (b *GateTreeBuilder) buildGateTree() {
 	controllerConfBuilder := tree.NewControllerConfBuilder(controllerConfBuilderParams)
 	controllerConfBuilder.Build()
 
+	// --------------
+	// GatewayClass
+	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
+		ClusterStore: b.clusterStore,
+		Tree:         b.tree,
+		GcNames:      b.cfg.gatewayClassNames,
+		Logger:       b.cfg.logger,
+	}
+	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
+	gatewayClassBuilder.Build()
+
+	// --------------
 	// installed Versions
 	installedVersionBuilder := tree.NewInstalledVersionsBuilder(b.clusterStore, b.tree, b.cfg.logger)
 	installedVersionBuilder.Build()
 
 	// --------------
-	// GatewayClass
-	gatewayClassCategorizer := &tree.GatewayClassCategorizerImpl{}
-
-	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
-		ClusterStore: b.clusterStore,
-		Tree:         b.tree,
-		GcNames:      b.cfg.gatewayClassNames,
-		Categorizer:  gatewayClassCategorizer,
-		Logger:       b.cfg.logger,
-	}
-	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
-	categorizedGatewayClasses := gatewayClassBuilder.Build()
-	b.tree.GatewayClasses = categorizedGatewayClasses
-
-	// --------------
 	// Gateway
 	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
 		ClusterStore:   b.clusterStore,
-		GatewayClasses: categorizedGatewayClasses.Supported,
+		GatewayClasses: b.tree.GatewayClasses.Supported,
 		Logger:         b.cfg.logger,
 	})
 	b.tree.Gateways = gatewayBuilder.Build()

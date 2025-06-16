@@ -67,46 +67,50 @@ func (b *ControllerConfBuilderImpl) Build() {
 	}
 
 	// Reconcile the controller configuration
-	// Case DELETED
-	if confUpdate.Status == store.StatusDeleted {
-		b.logger.LogAttrs(context.Background(), slog.LevelInfo,
-			"Resetting controller log configuration to defaults",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-		)
-		b.logCategoryFilterHandler.ResetToDefaults()
-		l, m := logging.GetLogSettings()
-		b.logger.LogAttrs(context.Background(), slog.LevelInfo,
-			"Reconciled controller log configuration",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrLogSettings(l, m),
-		)
-		return
-	}
+	switch confUpdate.Status {
+	case store.StatusDeleted:
+		// Case DELETED
+		if confUpdate.Status == store.StatusDeleted {
+			b.logger.LogAttrs(context.Background(), slog.LevelInfo,
+				"Resetting controller log configuration to defaults",
+				logging.LogAttrCategory(logging.LogCategoryGate),
+			)
+			// Reset the log category filter handler to defaults
+			b.logCategoryFilterHandler.ResetToDefaults()
+			l, m := logging.GetLogSettings()
+			b.logger.LogAttrs(context.Background(), slog.LevelInfo,
+				"Reconciled controller log configuration",
+				logging.LogAttrCategory(logging.LogCategoryGate),
+				logging.LogAttrLogSettings(l, m),
+			)
+			return
+		}
+	case store.StatusUpserted:
+		// Case UPSERTED
+		newConf := b.clusterStore.ControllerConfs[b.controllerConfNsName]
+		if newConf == nil {
+			b.logger.LogAttrs(context.Background(), slog.LevelError,
+				"Controller configuration not found",
+				logging.LogAttrCategory(logging.LogCategoryGate),
+				logging.LogAttrNsName(b.controllerConfNsName),
+			)
+			return
+		}
 
-	// Case UPSERTED
-	newConf := b.clusterStore.ControllerConfs[b.controllerConfNsName]
-	if newConf == nil {
-		b.logger.LogAttrs(context.Background(), slog.LevelError,
-			"Controller configuration not found",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrNsName(b.controllerConfNsName),
-		)
-		return
-	}
+		expectedLogCategoryPerLevel := make(map[v3.Category]slog.Level)
+		for _, catLevel := range newConf.Spec.Logging.CategoryLevelList {
+			expectedLogCategoryPerLevel[catLevel.Category] = logging.LogLevelString2SlogLevel(string(catLevel.Level))
+		}
+		expectedLevel := logging.LogLevelString2SlogLevel(string(newConf.Spec.Logging.DefaultLevel))
 
-	expectedLogCategoryPerLevel := make(map[v3.Category]slog.Level)
-	for _, catLevel := range newConf.Spec.Logging.CategoryLevelList {
-		expectedLogCategoryPerLevel[catLevel.Category] = logging.LogLevelString2SlogLevel(string(catLevel.Level))
-	}
-	expectedLevel := logging.LogLevelString2SlogLevel(string(newConf.Spec.Logging.DefaultLevel))
-
-	changed := b.logCategoryFilterHandler.ReconcileLogSettings(expectedLevel, expectedLogCategoryPerLevel)
-	if changed {
-		l, m := logging.GetLogSettings()
-		b.logger.LogAttrs(context.Background(), slog.LevelInfo,
-			"Reconciled controller log configuration",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrLogSettings(l, m),
-		)
+		changed := b.logCategoryFilterHandler.ReconcileLogSettings(expectedLevel, expectedLogCategoryPerLevel)
+		if changed {
+			l, m := logging.GetLogSettings()
+			b.logger.LogAttrs(context.Background(), slog.LevelInfo,
+				"Reconciled controller log configuration",
+				logging.LogAttrCategory(logging.LogCategoryGate),
+				logging.LogAttrLogSettings(l, m),
+			)
+		}
 	}
 }

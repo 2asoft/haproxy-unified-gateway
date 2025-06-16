@@ -24,22 +24,14 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type GatewayClassBuilder interface {
-	Build() CategorizedGatewayClasses
-}
-
-type GatewayClassCategorizer interface {
-	Categorize(map[types.NamespacedName]*v1.GatewayClass, map[string]struct{}) CategorizedGatewayClasses
+	Build()
 }
 
 type GatewayClassBuilderImpl struct {
-	categorizer         GatewayClassCategorizer
-	categorizedGwAPI    CategorizedGatewayClasses
 	clusterStore        *store.ClusterStore
 	tree                *GateTree
 	logger              *slog.Logger
@@ -59,22 +51,9 @@ type GatewayClass struct {
 	Valid bool
 }
 
-// Supported contains the GatewayClasses that are accepted
-// Ignored holds the ignored GatewayClass resources, which reference Haproxy Gateway API controller in
-// // `.spec.controllerName`,
-// // Those GatewayClass are needed as GatewayAPI spec
-// // This is used to update the status of the those GatewayClass resources
-type CategorizedGatewayClasses struct {
-	Supported map[types.NamespacedName]*GatewayClass
-	Ignored   map[types.NamespacedName]*GatewayClass
-}
-
-type GatewayClassCategorizerImpl struct{}
-
 var _ GatewayClassBuilder = &GatewayClassBuilderImpl{}
 
 type GatewayClassBuilderParams struct {
-	Categorizer  GatewayClassCategorizer
 	ClusterStore *store.ClusterStore
 	Tree         *GateTree
 	Logger       *slog.Logger
@@ -82,49 +61,52 @@ type GatewayClassBuilderParams struct {
 }
 
 func NewGatewayClassBuilder(params GatewayClassBuilderParams) *GatewayClassBuilderImpl {
-	return &GatewayClassBuilderImpl{
+	builder := &GatewayClassBuilderImpl{
 		clusterStore: params.ClusterStore,
 		tree:         params.Tree,
 		gcNames:      params.GcNames,
-		categorizer:  params.Categorizer,
 		logger:       params.Logger,
 	}
+	builder.tree.InstalledGwAPIVersions.RegisterObserver(builder.UpdateOnInstalledVersion)
+
+	return builder
+	// Register observers
 }
 
-func (builder *GatewayClassBuilderImpl) Build() CategorizedGatewayClasses {
+func (b *GatewayClassBuilderImpl) Build() {
 	// First categorize:
 	// - accepted
 	// - ignored
-	builder.categorizedGwAPI = builder.categorizer.Categorize(builder.clusterStore.GatewayClasses, builder.gcNames)
-
-	// Retrieve Gateway API bundle version
-	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
-	// installedVersions := getGatewayAPIBundleVersions(builder.clusterStore.GatewayAPICRDs)
-	installedVersions := builder.tree.InstalledGwAPIVersions
-
-	builder.logger.LogAttrs(context.Background(), slog.LevelDebug,
-		"Installed versions",
-		logging.LogAttrCategory(logging.LogCategoryGate),
-		logging.LogAttrInstalledVersions(installedVersions),
-	)
-	validateVersionsParams := validateVersionsParams{
-		supportedVersions:      SupportedGatewayAPIBundleVersion,
-		installedGwAPIVersions: installedVersions,
-	}
-	builder.checkSupportedVersion(validateVersionsParams)
-
-	return builder.categorizedGwAPI
+	categorizer := &GatewayClassCategorizerImpl{gcNames: b.gcNames, gateTree: b.tree}
+	categorizer.Categorize(b.clusterStore.Updates.GatewayClasses)
 }
 
-func (builder *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
-	for _, gwc := range builder.categorizedGwAPI.Supported {
+// Some params to add (reload status, conflicts....)
+func (b *GatewayClassBuilderImpl) BuildStatus() {
+	// Last build conditions
+	b.buildConditionsSupportedGwc()
+	b.buildConditionsIgnoredGwc()
+}
+
+type validateVersionsParams struct {
+	installedGwAPIVersions map[string]int
+	supportedVersions      []string
+}
+
+func (b *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
+	for gwcNsName := range b.clusterStore.Updates.GatewayClasses {
 		validVersions := true
 		validParamRef := true
+
+		gwc, ok := b.tree.GatewayClasses.Supported[gwcNsName]
+		if !ok {
+			continue
+		}
 
 		gwc.Conditions = conditions.NewDefaultGatewayClassConditions()
 
 		// Checks on Supported Versions
-		if !builder.isGwAPIVersionValid {
+		if !b.isGwAPIVersionValid {
 			gwc.Conditions.MergeOverrideConditions(
 				conditions.NewGatewayClassUnsupportedVersion(SupportedGatewayAPIBundleVersion.String()))
 			validVersions = false
@@ -134,7 +116,7 @@ func (builder *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
 		paramRef := gwc.K8sResource.Spec.ParametersRef
 		checker := HaproxyGateParamsRefChecker{
 			ParamRef:          paramRef,
-			StoreHaproxyGates: builder.clusterStore.HaproxyGates,
+			StoreHaproxyGates: b.clusterStore.HaproxyGates,
 		}
 		refCheckResults := CheckHaproxyGateParamsRef(checker)
 		if refCheckResults.Valid {
@@ -145,78 +127,29 @@ func (builder *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
 	}
 }
 
-func (builder *GatewayClassBuilderImpl) buildConditionsIgnoredGwc() {
-	for _, gwc := range builder.categorizedGwAPI.Ignored {
+func (b *GatewayClassBuilderImpl) buildConditionsIgnoredGwc() {
+	for gwcNsName := range b.clusterStore.Updates.GatewayClasses {
+		gwc, ok := b.tree.GatewayClasses.Ignored[gwcNsName]
+		if !ok {
+			continue
+		}
 		gwc.Conditions = conditions.NewGatewayClassConflict()
 	}
 }
 
-// Some params to add (reload status, conflicts....)
-func (builder *GatewayClassBuilderImpl) BuildStatus() {
-	// Last build conditions
-	builder.buildConditionsSupportedGwc()
-	builder.buildConditionsIgnoredGwc()
-}
-
-// CategorizedK8sGatewayClasses is a struct that contains the categorized GatewayClass resources.
-// It contains two maps:
-// - Supported: GatewayClass resources that are supported by the controller.
-// - Ignored: GatewayClass resources that are ignored by the controller.
-func (*GatewayClassCategorizerImpl) Categorize(gatewayClasses map[types.NamespacedName]*v1.GatewayClass, gcNames map[string]struct{}) CategorizedGatewayClasses {
-	filteredGc := CategorizedGatewayClasses{}
-
-	for _, gc := range gatewayClasses {
-		_, allowedGcName := gcNames[gc.Name]
-		if allowedGcName {
-			if filteredGc.Supported == nil {
-				filteredGc.Supported = make(map[types.NamespacedName]*GatewayClass)
-			}
-			treeGc := GatewayClass{
-				K8sResource: gc,
-			}
-			filteredGc.Supported[client.ObjectKeyFromObject(gc)] = &treeGc
-		} else {
-			if filteredGc.Ignored == nil {
-				filteredGc.Ignored = make(map[types.NamespacedName]*GatewayClass)
-			}
-			treeGc := GatewayClass{
-				K8sResource: gc,
-			}
-			filteredGc.Ignored[client.ObjectKeyFromObject(gc)] = &treeGc
-		}
-	}
-
-	return filteredGc
-}
-
-// func getGatewayAPIBundleVersions(gatewayAPICRDs installedGwAPIVersions) map[string]struct{} {
-// 	versions := map[string]struct{}{}
-
-// 	for _, md := range gatewayAPICRDs {
-// 		bundleVersion := md.Annotations[constants.BundleVersionAnnotation]
-// 		versions[bundleVersion] = struct{}{}
-// 	}
-// 	return versions
-// }
-
-type validateVersionsParams struct {
-	installedGwAPIVersions map[string]int
-	supportedVersions      []string
-}
-
-func (builder *GatewayClassBuilderImpl) checkSupportedVersion(params validateVersionsParams) {
+func (b *GatewayClassBuilderImpl) checkSupportedVersion(params validateVersionsParams) {
 	for v := range params.installedGwAPIVersions {
 		params := validateOneGwAPIVersionParams{
 			supportedVersions: params.supportedVersions,
 			installedVersion:  v,
 		}
-		valid := builder.validateOneInstalledGwAPIVersion(params)
+		valid := b.validateOneInstalledGwAPIVersion(params)
 		if !valid {
-			builder.isGwAPIVersionValid = false
+			b.isGwAPIVersionValid = false
 			return
 		}
 	}
-	builder.isGwAPIVersionValid = true
+	b.isGwAPIVersionValid = true
 }
 
 type validateOneGwAPIVersionParams struct {
@@ -224,13 +157,13 @@ type validateOneGwAPIVersionParams struct {
 	supportedVersions []string
 }
 
-func (builder *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params validateOneGwAPIVersionParams) bool {
+func (b *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params validateOneGwAPIVersionParams) bool {
 	constraints := make([]*semver.Constraints, 0)
 
 	for _, v := range params.supportedVersions {
 		constraint, err := semver.NewConstraint("~" + v)
 		if err != nil {
-			builder.logger.LogAttrs(context.Background(), slog.LevelError,
+			b.logger.LogAttrs(context.Background(), slog.LevelError,
 				"cannot build semver constraint",
 				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrError(err),
@@ -243,7 +176,7 @@ func (builder *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params 
 	sv, err := semver.NewVersion(params.installedVersion)
 	if err != nil {
 		// If a version string is invalid, we should not consider it as a supported version.
-		builder.logger.LogAttrs(context.Background(), slog.LevelError,
+		b.logger.LogAttrs(context.Background(), slog.LevelError,
 			"cannot parse version string",
 			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrError(err),
@@ -267,4 +200,20 @@ func (g *GatewayClass) GetCreationTimestamp() metav1.Time {
 
 func (g *GatewayClass) GetName() string {
 	return g.K8sResource.GetName()
+}
+
+// UpdateOnInstalledVersion callback function to be called when the installed versions are updated.
+func (b *GatewayClassBuilderImpl) UpdateOnInstalledVersion(iv InstalledVersions) {
+	b.logger.LogAttrs(context.Background(), slog.LevelDebug,
+		"UpdateOnInstalledVersion",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrInstalledVersions(iv.Versions),
+	)
+	// Retrieve Gateway API bundle version
+	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
+	validateVersionsParams := validateVersionsParams{
+		supportedVersions:      SupportedGatewayAPIBundleVersion,
+		installedGwAPIVersions: b.tree.InstalledGwAPIVersions.Versions,
+	}
+	b.checkSupportedVersion(validateVersionsParams)
 }

@@ -70,7 +70,7 @@ func TestObjectStoreImpl_Upsert(t *testing.T) {
 		update, ok := store.updates[nsName]
 		require.True(t, ok)
 		assert.Equal(t, StatusUpserted, update.Status)
-		assert.Nil(t, update.PreviousObject, "PreviousObject should be nil for a new object")
+		assert.Nil(t, update.OldObject, "PreviousObject should be nil for a new object")
 	})
 
 	t.Run("update existing object - first op in batch", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestObjectStoreImpl_Upsert(t *testing.T) {
 		update, ok := store.updates[nsName]
 		require.True(t, ok)
 		assert.Equal(t, StatusUpserted, update.Status)
-		assert.Equal(t, gc1, update.PreviousObject, "PreviousObject should be the initial state")
+		assert.Equal(t, gc1, update.OldObject, "PreviousObject should be the initial state")
 	})
 
 	t.Run("update existing object - subsequent op in batch", func(t *testing.T) {
@@ -93,14 +93,14 @@ func TestObjectStoreImpl_Upsert(t *testing.T) {
 		store.upsert(gc2) // First upsert
 		update1, ok1 := store.updates[nsName]
 		require.True(t, ok1)
-		assert.Equal(t, gc1, update1.PreviousObject, "PreviousObject after first upsert")
+		assert.Equal(t, gc1, update1.OldObject, "PreviousObject after first upsert")
 
 		store.upsert(gc3) // Second upsert
 		assert.Equal(t, gc3, store.objects[nsName])
 		update2, ok2 := store.updates[nsName]
 		require.True(t, ok2)
 		assert.Equal(t, StatusUpserted, update2.Status)
-		assert.Equal(t, gc1, update2.PreviousObject, "PreviousObject should remain from the first operation in the batch")
+		assert.Equal(t, gc1, update2.OldObject, "PreviousObject should remain from the first operation in the batch")
 	})
 
 	t.Run("wrong object type", func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestObjectStoreImpl_Delete(t *testing.T) {
 		update, ok := store.updates[nsName]
 		require.True(t, ok)
 		assert.Equal(t, StatusDeleted, update.Status)
-		assert.Equal(t, gc1, update.PreviousObject, "PreviousObject should be the state before deletion")
+		assert.Equal(t, gc1, update.OldObject, "PreviousObject should be the state before deletion")
 	})
 
 	t.Run("delete non-existing object", func(t *testing.T) {
@@ -151,7 +151,7 @@ func TestObjectStoreImpl_Delete(t *testing.T) {
 		update, ok := store.updates[nonExistentNsName]
 		require.True(t, ok)
 		assert.Equal(t, StatusDeleted, update.Status)
-		assert.Nil(t, update.PreviousObject, "PreviousObject should be nil for non-existing object")
+		assert.Nil(t, update.OldObject, "PreviousObject should be nil for non-existing object")
 	})
 
 	t.Run("upsert then delete in same batch", func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestObjectStoreImpl_Delete(t *testing.T) {
 		updateUpsert, okUpsert := store.updates[nsName]
 		require.True(t, okUpsert)
 		assert.Equal(t, StatusUpserted, updateUpsert.Status)
-		assert.Equal(t, gc1, updateUpsert.PreviousObject, "PreviousObject after upsert should be initial state")
+		assert.Equal(t, gc1, updateUpsert.OldObject, "PreviousObject after upsert should be initial state")
 
 		// 2. Delete (second operation in batch for this object)
 		store.delete(&gatewayv1.GatewayClass{}, nsName)
@@ -175,7 +175,7 @@ func TestObjectStoreImpl_Delete(t *testing.T) {
 		require.True(t, okDelete)
 		assert.Equal(t, StatusDeleted, updateDelete.Status)
 		// PreviousObject should still be the state from before the *first* operation in the batch
-		assert.Equal(t, gc1, updateDelete.PreviousObject, "PreviousObject after delete should remain from the first operation in the batch")
+		assert.Equal(t, gc1, updateDelete.OldObject, "PreviousObject after delete should remain from the first operation in the batch")
 	})
 
 	t.Run("delete then upsert in same batch", func(t *testing.T) {
@@ -189,7 +189,7 @@ func TestObjectStoreImpl_Delete(t *testing.T) {
 		updateDelete, okDelete := store.updates[nsName]
 		require.True(t, okDelete)
 		assert.Equal(t, StatusDeleted, updateDelete.Status)
-		assert.Equal(t, gc1, updateDelete.PreviousObject, "PreviousObject after delete should be initial state")
+		assert.Equal(t, gc1, updateDelete.OldObject, "PreviousObject after delete should be initial state")
 
 		// 2. Upsert (second operation in batch for this object, re-adding)
 		store.upsert(gc2)
@@ -199,7 +199,7 @@ func TestObjectStoreImpl_Delete(t *testing.T) {
 		require.True(t, okUpsert)
 		assert.Equal(t, StatusUpserted, updateUpsert.Status)
 		// PreviousObject should still be the state from before the *first* operation in the batch
-		assert.Equal(t, gc1, updateUpsert.PreviousObject, "PreviousObject after upsert should remain from the first operation in the batch")
+		assert.Equal(t, gc1, updateUpsert.OldObject, "PreviousObject after upsert should remain from the first operation in the batch")
 	})
 }
 

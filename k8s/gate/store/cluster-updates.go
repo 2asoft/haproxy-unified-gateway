@@ -30,8 +30,13 @@ const (
 )
 
 type Update[T client.Object] struct {
-	PreviousObject T
-	Status         Status
+	// OldObject is the previous version of the object before any update
+	// The first time we receive an update, we keep the object as it is
+	// This is useful to compare the previous version with the current version
+	OldObject T
+	// NewObject is the new version of the object after all updated, the latest value
+	NewObject T
+	Status    Status
 }
 
 // ClusterUpdated contains the udpates that happened to cluster objects during a sync cycle
