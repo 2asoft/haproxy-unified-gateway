@@ -23,7 +23,6 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -45,16 +44,13 @@ type GateTreeBuilderConfig struct {
 }
 
 type GateTreeBuilder struct {
-	clusterStoreUpdater    store.ClusterStoreUpdater
-	clusterStore           *store.ClusterStore
-	catefgoryFilterHandler *logging.CategoryFilterHandler
-	tree                   *tree.GateTree
-	isRelevantChangeFunc   map[schema.GroupVersionKind]IsRelevantChangeFunc
-	cfg                    GateTreeBuilderConfig
+	clusterStoreUpdater   store.ClusterStoreUpdater
+	clusterStore          *store.ClusterStore
+	categoryFilterHandler *logging.CategoryFilterHandler
+	tree                  *tree.GateTree
+	cfg                   GateTreeBuilderConfig
+	builders              []tree.Builder
 }
-
-// IsRelevantChangeFunc is a function that checks if the object has relevant changes.
-type IsRelevantChangeFunc func(object client.Object, nsname types.NamespacedName) bool
 
 func (b *GateTreeBuilder) GetTree() *tree.GateTree {
 	return b.tree
@@ -72,12 +68,59 @@ func NewGateTreeBuilder(
 		cfg.extractGVK,
 		logger.WithGroup("clusterStoreUpdater"),
 	)
+
+	builderParams := tree.BuilderParams{
+		ClusterStore: clusterStore,
+		GateTree:     gateTree,
+		ExtractGVK:   cfg.extractGVK,
+		Logger:       logger,
+	}
+
+	// --------------
+	// controllerConf
+	controllerConfBuilderParams := tree.ControllerConfBuilderParams{
+		BuilderParams:            builderParams,
+		LogCategoryFilterHandler: categoryFilterHandler,
+		ControllerConfNsName:     cfg.ControllerConfNsName,
+	}
+	controllerConfBuilder := tree.NewControllerConfBuilder(controllerConfBuilderParams)
+
+	// --------------
+	// GatewayClass
+	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
+		BuilderParams: builderParams,
+		GcNames:       cfg.gatewayClassNames,
+	}
+	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
+
+	// --------------
+	// installed Versions
+	installedVersionBuilder := tree.NewInstalledVersionsBuilder(builderParams)
+
+	// Gate
+	gateBuilder := tree.NewGateBuilder(builderParams)
+
+	// --------------
+	// Gateway
+	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
+		ClusterStore:   clusterStore,
+		GatewayClasses: gateTree.GatewayClasses.Supported,
+		Logger:         cfg.logger,
+	})
+
 	treeBuilder := GateTreeBuilder{
-		clusterStoreUpdater:    clusterStoreUpdater,
-		clusterStore:           clusterStore,
-		catefgoryFilterHandler: categoryFilterHandler,
-		cfg:                    cfg,
-		tree:                   gateTree,
+		clusterStoreUpdater:   clusterStoreUpdater,
+		clusterStore:          clusterStore,
+		categoryFilterHandler: categoryFilterHandler,
+		cfg:                   cfg,
+		tree:                  gateTree,
+		builders: []tree.Builder{
+			controllerConfBuilder,
+			gatewayClassBuilder,
+			installedVersionBuilder,
+			gateBuilder,
+			gatewayBuilder,
+		},
 	}
 
 	return &treeBuilder
@@ -106,15 +149,13 @@ func NewGateTreeBuilderConfig(
 func (b *GateTreeBuilder) ProcessBatch(batch events.EventBatch) bool {
 	b.clusterStoreUpdater.ResetUpdates()
 
-	relevantChanges := false
 	for _, e := range batch.Events {
-		change := b.updateClusterStore(e, b.cfg.logger)
-		relevantChanges = relevantChanges || change
+		b.updateClusterStore(e, b.cfg.logger)
 	}
-	return relevantChanges
+	return true
 }
 
-func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) (relevantChanges bool) {
+func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) {
 	switch obj := event.(type) {
 	case *events.UpsertEvent:
 		gvk := b.cfg.extractGVK(obj.Resource)
@@ -126,13 +167,6 @@ func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) (re
 		)
 
 		b.clusterStoreUpdater.Upsert(obj.Resource)
-		relevantChangeFunc, ok := b.isRelevantChangeFunc[gvk]
-		if !ok {
-			return true
-		}
-		if relevantChangeFunc != nil {
-			relevantChanges = relevantChangeFunc(obj.Resource, client.ObjectKeyFromObject(obj.Resource))
-		}
 
 	case *events.DeleteEvent:
 		gvk := b.cfg.extractGVK(obj.Type)
@@ -145,59 +179,21 @@ func (b *GateTreeBuilder) updateClusterStore(event any, logger *slog.Logger) (re
 		)
 
 		b.clusterStoreUpdater.Delete(obj.Type, obj.NamespacedName)
-		relevantChangeFunc, ok := b.isRelevantChangeFunc[gvk]
-		if !ok {
-			return true
-		}
-		if relevantChangeFunc != nil {
-			relevantChanges = relevantChangeFunc(obj.Type, obj.NamespacedName)
-		}
 	}
-	return relevantChanges
 }
 
 func (b *GateTreeBuilder) buildGateTree() {
-	// controllerConf
-	controllerConfBuilderParams := tree.ControllerConfBuilderParams{
-		ClusterStore:             b.clusterStore,
-		Tree:                     b.tree,
-		LogCategoryFilterHandler: b.catefgoryFilterHandler,
-		Logger:                   b.cfg.logger,
-		ControllerConfNsName:     b.cfg.ControllerConfNsName,
+	for _, builder := range b.builders {
+		builder.Build()
 	}
-	controllerConfBuilder := tree.NewControllerConfBuilder(controllerConfBuilderParams)
-	controllerConfBuilder.Build()
-
-	// --------------
-	// GatewayClass
-	gatewayClassBuilderParams := tree.GatewayClassBuilderParams{
-		ClusterStore: b.clusterStore,
-		Tree:         b.tree,
-		GcNames:      b.cfg.gatewayClassNames,
-		Logger:       b.cfg.logger,
-	}
-	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
-	gatewayClassBuilder.Build()
-
-	// --------------
-	// installed Versions
-	installedVersionBuilder := tree.NewInstalledVersionsBuilder(b.clusterStore, b.tree, b.cfg.logger)
-	installedVersionBuilder.Build()
-
-	// --------------
-	// Gateway
-	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
-		ClusterStore:   b.clusterStore,
-		GatewayClasses: b.tree.GatewayClasses.Supported,
-		Logger:         b.cfg.logger,
-	})
-	b.tree.Gateways = gatewayBuilder.Build()
 
 	// -------------------
 	// Status compute
 	// -------------------
-	// This should be called from the lib called
+	// This should be called from the lib
 	// with some info on whereas the config was correctly applied
 	// or if they are conflicts
-	gatewayClassBuilder.BuildStatus()
+	for _, builder := range b.builders {
+		builder.BuildStatus()
+	}
 }

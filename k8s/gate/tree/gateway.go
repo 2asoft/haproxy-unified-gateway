@@ -37,6 +37,8 @@ type Gateway struct {
 	Valid bool
 }
 
+var _ Builder = &GatewayBuilderImpl{}
+
 type GatewayBuilderImpl struct {
 	clusterStore   *store.ClusterStore
 	gatewayclasses map[types.NamespacedName]*GatewayClass
@@ -60,12 +62,11 @@ func NewGatewayBuilder(params GatewayBuilderParams) *GatewayBuilderImpl {
 	}
 }
 
-func (b *GatewayBuilderImpl) Build() map[types.NamespacedName]*Gateway {
-	gateways := b.FilterGatewaysByGatewayClass()
+func (*GatewayBuilderImpl) Build() {
+	// _ := b.FilterGatewaysByGatewayClass()
 	// do all checks...
 	// merge HaproxyGate from GatewayClass and Gateway
 	// compute Conditions, Status, Valid
-	return gateways
 }
 
 func (b *GatewayBuilderImpl) FilterGatewaysByGatewayClass() map[types.NamespacedName]*Gateway {
@@ -79,4 +80,7 @@ func (b *GatewayBuilderImpl) FilterGatewaysByGatewayClass() map[types.Namespaced
 		gateways[gatewayNsName] = &Gateway{K8sResource: gateway}
 	}
 	return gateways
+}
+
+func (*GatewayBuilderImpl) BuildStatus() {
 }

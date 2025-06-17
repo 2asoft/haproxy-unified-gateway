@@ -23,38 +23,30 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-type ControllerConfBuilder interface {
-	Build()
-}
+var _ Builder = &ControllerConfBuilderImpl{}
 
 type ControllerConfBuilderImpl struct {
-	clusterStore             *store.ClusterStore
-	tree                     *GateTree
+	BuilderParams
 	logCategoryFilterHandler *logging.CategoryFilterHandler
-	logger                   *slog.Logger
 	controllerConfNsName     types.NamespacedName
 }
 
 type ControllerConfBuilderParams struct {
-	ClusterStore             *store.ClusterStore
-	Tree                     *GateTree
+	BuilderParams
 	LogCategoryFilterHandler *logging.CategoryFilterHandler
-	Logger                   *slog.Logger
 	ControllerConfNsName     types.NamespacedName
 }
 
 func NewControllerConfBuilder(params ControllerConfBuilderParams) *ControllerConfBuilderImpl {
 	return &ControllerConfBuilderImpl{
-		clusterStore:             params.ClusterStore,
-		tree:                     params.Tree,
+		BuilderParams:            params.BuilderParams,
 		logCategoryFilterHandler: params.LogCategoryFilterHandler,
-		logger:                   params.Logger,
 		controllerConfNsName:     params.ControllerConfNsName,
 	}
 }
 
 func (b *ControllerConfBuilderImpl) Build() {
-	controllerConfUpdates := b.clusterStore.Updates.ControllerConfs
+	controllerConfUpdates := b.ClusterStore.Updates.ControllerConfs
 	if len(controllerConfUpdates) == 0 {
 		// no controller confs, nothing to do
 		return
@@ -71,14 +63,14 @@ func (b *ControllerConfBuilderImpl) Build() {
 	case store.StatusDeleted:
 		// Case DELETED
 		if confUpdate.Status == store.StatusDeleted {
-			b.logger.LogAttrs(context.Background(), slog.LevelInfo,
+			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 				"Resetting controller log configuration to defaults",
 				logging.LogAttrCategory(logging.LogCategoryGate),
 			)
 			// Reset the log category filter handler to defaults
 			b.logCategoryFilterHandler.ResetToDefaults()
 			l, m := logging.GetLogSettings()
-			b.logger.LogAttrs(context.Background(), slog.LevelInfo,
+			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 				"Reconciled controller log configuration",
 				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrLogSettings(l, m),
@@ -87,9 +79,9 @@ func (b *ControllerConfBuilderImpl) Build() {
 		}
 	case store.StatusUpserted:
 		// Case UPSERTED
-		newConf := b.clusterStore.ControllerConfs[b.controllerConfNsName]
+		newConf := b.ClusterStore.ControllerConfs[b.controllerConfNsName]
 		if newConf == nil {
-			b.logger.LogAttrs(context.Background(), slog.LevelError,
+			b.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Controller configuration not found",
 				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrNsName(b.controllerConfNsName),
@@ -106,11 +98,14 @@ func (b *ControllerConfBuilderImpl) Build() {
 		changed := b.logCategoryFilterHandler.ReconcileLogSettings(expectedLevel, expectedLogCategoryPerLevel)
 		if changed {
 			l, m := logging.GetLogSettings()
-			b.logger.LogAttrs(context.Background(), slog.LevelInfo,
+			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 				"Reconciled controller log configuration",
 				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrLogSettings(l, m),
 			)
 		}
 	}
+}
+
+func (*ControllerConfBuilderImpl) BuildStatus() {
 }

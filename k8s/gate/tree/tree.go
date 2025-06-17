@@ -14,11 +14,25 @@
 package tree
 
 import (
+	"log/slog"
+
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	v1 "k8s.io/api/core/v1"
-	discoveryV1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type Builder interface {
+	Build()
+	BuildStatus()
+}
+
+type BuilderParams struct {
+	ClusterStore *store.ClusterStore
+	GateTree     *GateTree
+	Logger       *slog.Logger
+	ExtractGVK   utils.ExtractGVK
+}
 
 // GateTree is a Graph-like representation of Gateway API resources.
 type GateTree struct {
@@ -28,8 +42,10 @@ type GateTree struct {
 	// It is different from the other maps, because it includes entries for Secrets that do not exist
 	// in the cluster. We need such entries so that we can query the Graph to determine if a Secret is referenced
 	// by the Gateway, including the case when the Secret is newly created.
-	Gateways          map[types.NamespacedName]*Gateway
-	ReferencedSecrets map[types.NamespacedName]*Secret
+	Gateways map[types.NamespacedName]*Gateway
+	// ReferencedHaproxyGates includes the Gates that are references by GatewayClasses and Gateways
+	ReferencedHaproxyGates ReferencedBy
+	ReferencedSecrets      map[types.NamespacedName]*Secret
 	// ReferencedNamespaces includes Namespaces with labels that match the Gateway Listener's label selector.
 	ReferencedNamespaces map[types.NamespacedName]*v1.Namespace
 	// ReferencedServices includes the NamespacedNames of all the Services that are referenced by at least one Route.
@@ -38,7 +54,7 @@ type GateTree struct {
 	InstalledGwAPIVersions InstalledVersions
 }
 
-func NewGateTree() *GateTree {
+func NewGateTree(extractGVK utils.ExtractGVK) *GateTree {
 	return &GateTree{
 		InstalledGwAPIVersions: InstalledVersions{
 			Versions: make(map[string]int),
@@ -47,38 +63,10 @@ func NewGateTree() *GateTree {
 			Supported: make(map[types.NamespacedName]*GatewayClass),
 			Ignored:   make(map[types.NamespacedName]*GatewayClass),
 		},
-		Gateways:             make(map[types.NamespacedName]*Gateway),
-		ReferencedSecrets:    make(map[types.NamespacedName]*Secret),
-		ReferencedNamespaces: make(map[types.NamespacedName]*v1.Namespace),
-		ReferencedServices:   make(map[types.NamespacedName]*Service),
-	}
-}
-
-// IsReferenced returns true if the Tree references the resource.
-func (g *GateTree) IsReferenced(resourceType client.Object, nsname types.NamespacedName) bool {
-	if g == nil {
-		return false
-	}
-	// switch obj := resourceType.(type) {
-	switch resourceType.(type) {
-	case *v1.Secret:
-		// Check if secret is a Gateway-referenced Secret
-		_, exists := g.ReferencedSecrets[nsname]
-		return exists
-	case *v1.Namespace:
-		// implement this
-		exists := true
-		return exists
-	// Service reference exists if at least one HTTPRoute references it.
-	case *v1.Service:
-		_, exists := g.ReferencedServices[nsname]
-		return exists
-	// EndpointSlice reference exists if its Service owner is referenced by at least one HTTPRoute.
-	case *discoveryV1.EndpointSlice:
-		// implement this
-		exists := true
-		return exists
-	default:
-		return false
+		Gateways:               make(map[types.NamespacedName]*Gateway),
+		ReferencedHaproxyGates: NewReferencedBy(extractGVK),
+		ReferencedSecrets:      make(map[types.NamespacedName]*Secret),
+		ReferencedNamespaces:   make(map[types.NamespacedName]*v1.Namespace),
+		ReferencedServices:     make(map[types.NamespacedName]*Service),
 	}
 }

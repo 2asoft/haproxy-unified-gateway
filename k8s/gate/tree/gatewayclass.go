@@ -27,16 +27,11 @@ import (
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-type GatewayClassBuilder interface {
-	Build()
-}
-
 type GatewayClassBuilderImpl struct {
-	clusterStore        *store.ClusterStore
-	tree                *GateTree
-	logger              *slog.Logger
+	BuilderParams
 	gcNames             map[string]struct{}
 	isGwAPIVersionValid bool
+	// isParamRefValid     bool
 }
 
 // GatewayClass represents the GatewayClass resource.
@@ -51,34 +46,44 @@ type GatewayClass struct {
 	Valid bool
 }
 
-var _ GatewayClassBuilder = &GatewayClassBuilderImpl{}
+var _ Builder = &GatewayClassBuilderImpl{}
 
 type GatewayClassBuilderParams struct {
-	ClusterStore *store.ClusterStore
-	Tree         *GateTree
-	Logger       *slog.Logger
-	GcNames      map[string]struct{}
+	BuilderParams
+	GcNames map[string]struct{}
 }
 
 func NewGatewayClassBuilder(params GatewayClassBuilderParams) *GatewayClassBuilderImpl {
 	builder := &GatewayClassBuilderImpl{
-		clusterStore: params.ClusterStore,
-		tree:         params.Tree,
-		gcNames:      params.GcNames,
-		logger:       params.Logger,
+		BuilderParams: params.BuilderParams,
+		gcNames:       params.GcNames,
 	}
-	builder.tree.InstalledGwAPIVersions.RegisterObserver(builder.UpdateOnInstalledVersion)
+	// Register observers
+	builder.GateTree.InstalledGwAPIVersions.RegisterObserver(builder.OnUpdateInstalledVersion)
 
 	return builder
-	// Register observers
 }
 
 func (b *GatewayClassBuilderImpl) Build() {
 	// First categorize:
 	// - accepted
 	// - ignored
-	categorizer := &GatewayClassCategorizerImpl{gcNames: b.gcNames, gateTree: b.tree}
-	categorizer.Categorize(b.clusterStore.Updates.GatewayClasses)
+	categorizer := &GatewayClassCategorizerImpl{gcNames: b.gcNames, gateTree: b.GateTree}
+	categorizer.Categorize(b.ClusterStore.Updates.GatewayClasses)
+
+	// Update the references: Gate
+	b.updateGateReferences()
+}
+
+func (b *GatewayClassBuilderImpl) updateGateReferences() {
+	for _, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
+		switch gwcUpdate.Status {
+		case store.StatusUpserted:
+			b.GateTree.ReferencedHaproxyGates.AddReference(gwcUpdate.NewObject)
+		case store.StatusDeleted:
+			b.GateTree.ReferencedHaproxyGates.RemoveReference(gwcUpdate.OldObject)
+		}
+	}
 }
 
 // Some params to add (reload status, conflicts....)
@@ -94,11 +99,11 @@ type validateVersionsParams struct {
 }
 
 func (b *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
-	for gwcNsName := range b.clusterStore.Updates.GatewayClasses {
+	for gwcNsName := range b.ClusterStore.Updates.GatewayClasses {
 		validVersions := true
 		validParamRef := true
 
-		gwc, ok := b.tree.GatewayClasses.Supported[gwcNsName]
+		gwc, ok := b.GateTree.GatewayClasses.Supported[gwcNsName]
 		if !ok {
 			continue
 		}
@@ -116,7 +121,7 @@ func (b *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
 		paramRef := gwc.K8sResource.Spec.ParametersRef
 		checker := HaproxyGateParamsRefChecker{
 			ParamRef:          paramRef,
-			StoreHaproxyGates: b.clusterStore.HaproxyGates,
+			StoreHaproxyGates: b.ClusterStore.HaproxyGates,
 		}
 		refCheckResults := CheckHaproxyGateParamsRef(checker)
 		if refCheckResults.Valid {
@@ -128,8 +133,8 @@ func (b *GatewayClassBuilderImpl) buildConditionsSupportedGwc() {
 }
 
 func (b *GatewayClassBuilderImpl) buildConditionsIgnoredGwc() {
-	for gwcNsName := range b.clusterStore.Updates.GatewayClasses {
-		gwc, ok := b.tree.GatewayClasses.Ignored[gwcNsName]
+	for gwcNsName := range b.ClusterStore.Updates.GatewayClasses {
+		gwc, ok := b.GateTree.GatewayClasses.Ignored[gwcNsName]
 		if !ok {
 			continue
 		}
@@ -163,7 +168,7 @@ func (b *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params valida
 	for _, v := range params.supportedVersions {
 		constraint, err := semver.NewConstraint("~" + v)
 		if err != nil {
-			b.logger.LogAttrs(context.Background(), slog.LevelError,
+			b.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"cannot build semver constraint",
 				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrError(err),
@@ -176,7 +181,7 @@ func (b *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params valida
 	sv, err := semver.NewVersion(params.installedVersion)
 	if err != nil {
 		// If a version string is invalid, we should not consider it as a supported version.
-		b.logger.LogAttrs(context.Background(), slog.LevelError,
+		b.Logger.LogAttrs(context.Background(), slog.LevelError,
 			"cannot parse version string",
 			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrError(err),
@@ -202,9 +207,9 @@ func (g *GatewayClass) GetName() string {
 	return g.K8sResource.GetName()
 }
 
-// UpdateOnInstalledVersion callback function to be called when the installed versions are updated.
-func (b *GatewayClassBuilderImpl) UpdateOnInstalledVersion(iv InstalledVersions) {
-	b.logger.LogAttrs(context.Background(), slog.LevelDebug,
+// OnUpdateInstalledVersion callback function to be called when the installed versions are updated.
+func (b *GatewayClassBuilderImpl) OnUpdateInstalledVersion(iv InstalledVersions) {
+	b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"UpdateOnInstalledVersion",
 		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrInstalledVersions(iv.Versions),
@@ -213,7 +218,7 @@ func (b *GatewayClassBuilderImpl) UpdateOnInstalledVersion(iv InstalledVersions)
 	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
 	validateVersionsParams := validateVersionsParams{
 		supportedVersions:      SupportedGatewayAPIBundleVersion,
-		installedGwAPIVersions: b.tree.InstalledGwAPIVersions.Versions,
+		installedGwAPIVersions: b.GateTree.InstalledGwAPIVersions.Versions,
 	}
 	b.checkSupportedVersion(validateVersionsParams)
 }

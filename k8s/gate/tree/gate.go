@@ -22,6 +22,28 @@ import (
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+type GateBuilderImpl struct {
+	BuilderParams
+}
+
+var _ Builder = &GateBuilderImpl{}
+
+func (*GateBuilderImpl) Build() {
+	// for gateNsName, gateUpdate := range b.ClusterStore.Updates.HaproxyGates {
+	// 	// Find the owner: GatewayClasses
+	// 	gwcParents := b.GateTree.ReferencedHaproxyGatesgate
+
+	// 	// Find the owner: Gateways
+	// }
+}
+
+func NewGateBuilder(params BuilderParams) *GateBuilderImpl {
+	builder := &GateBuilderImpl{
+		BuilderParams: params,
+	}
+	return builder
+}
+
 type HaproxyGateParamsRefChecker struct {
 	ParamRef          *v1.ParametersReference
 	StoreHaproxyGates map[types.NamespacedName]*v3.HaproxyGate
@@ -79,4 +101,7 @@ func CheckHaproxyGateParamsRef(checker HaproxyGateParamsRefChecker) HaproxyGateP
 		Conditions:  conds,
 		Valid:       valid,
 	}
+}
+
+func (*GateBuilderImpl) BuildStatus() {
 }

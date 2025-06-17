@@ -79,7 +79,7 @@ func NewEventHandlerImpl(
 		ControllerConfs: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
 		Updates:         store.NewClusterUpdates(),
 	}
-	gateTree := tree.NewGateTree()
+	gateTree := tree.NewGateTree(config.ExtractGVK)
 
 	treeBuilder := NewGateTreeBuilder(
 		clusterStore,
