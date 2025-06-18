@@ -21,30 +21,48 @@ import (
 
 type ReferencedBy struct {
 	exctractGVK utils.ExtractGVK
-	owner       map[schema.GroupVersionKind]map[client.ObjectKey]struct{}
+	// owner: Gate Key -> GVK of owner -> Owner Key
+	owner map[client.ObjectKey]map[schema.GroupVersionKind]map[client.ObjectKey]struct{}
 }
 
 func NewReferencedBy(exctractGVK utils.ExtractGVK) ReferencedBy {
 	return ReferencedBy{
 		exctractGVK: exctractGVK,
-		owner:       make(map[schema.GroupVersionKind]map[client.ObjectKey]struct{}),
+		owner:       make(map[client.ObjectKey]map[schema.GroupVersionKind]map[client.ObjectKey]struct{}),
 	}
 }
 
-func (r ReferencedBy) AddReference(owner client.Object) {
+func (r ReferencedBy) AddReferencedBy(ownedKey client.ObjectKey, owner client.Object) {
 	ownerGVK := r.exctractGVK(owner)
 	ownerKey := client.ObjectKeyFromObject(owner)
-	if _, ok := r.owner[ownerGVK]; !ok {
-		r.owner[ownerGVK] = make(map[client.ObjectKey]struct{})
+	if _, ok := r.owner[ownedKey]; !ok {
+		r.owner[ownedKey] = make(map[schema.GroupVersionKind]map[client.ObjectKey]struct{})
 	}
-	r.owner[ownerGVK][ownerKey] = struct{}{}
+	if _, ok := r.owner[ownedKey][ownerGVK]; !ok {
+		r.owner[ownedKey][ownerGVK] = make(map[client.ObjectKey]struct{})
+	}
+	r.owner[ownedKey][ownerGVK][ownerKey] = struct{}{}
 }
 
-func (r ReferencedBy) RemoveReference(owner client.Object) {
+func (r ReferencedBy) RemoveReferencedBy(ownedKey client.ObjectKey, owner client.Object) {
 	ownerGVK := r.exctractGVK(owner)
 	ownerKey := client.ObjectKeyFromObject(owner)
-	if _, ok := r.owner[ownerGVK]; !ok {
+	if _, ok := r.owner[ownedKey]; !ok {
 		return
 	}
-	delete(r.owner[ownerGVK], ownerKey)
+	if _, ok := r.owner[ownedKey][ownerGVK]; !ok {
+		return
+	}
+	delete(r.owner[ownedKey][ownerGVK], ownerKey)
+}
+
+func (r ReferencedBy) ReferencedBy(owned client.Object, ownerGVK schema.GroupVersionKind) map[client.ObjectKey]struct{} {
+	ownedKey := client.ObjectKeyFromObject(owned)
+	if _, ok := r.owner[ownedKey]; !ok {
+		return map[client.ObjectKey]struct{}{}
+	}
+	if _, ok := r.owner[ownedKey][ownerGVK]; !ok {
+		return map[client.ObjectKey]struct{}{}
+	}
+	return r.owner[ownedKey][ownerGVK]
 }

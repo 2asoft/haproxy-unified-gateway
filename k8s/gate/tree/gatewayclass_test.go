@@ -61,7 +61,11 @@ func TestValidateOneInstalledGwApiVersion(t *testing.T) {
 }
 
 func TestValidateVersion(t *testing.T) {
-	builder := &GatewayClassBuilderImpl{}
+	builder := &GatewayClassBuilderImpl{
+		BuilderParams: BuilderParams{
+			GateTree: &GateTree{},
+		},
+	}
 
 	tests := []struct {
 		name              string
@@ -115,7 +119,7 @@ func TestValidateVersion(t *testing.T) {
 					installedGwAPIVersions: tt.installedVersion,
 				},
 			)
-			assert.Equal(t, tt.expectedResult, builder.isGwAPIVersionValid)
+			assert.Equal(t, tt.expectedResult, builder.GateTree.IsGwAPIVersionValid)
 		})
 	}
 }

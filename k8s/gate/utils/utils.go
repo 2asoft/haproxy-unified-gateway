@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // Ptr return pointer to a given value
@@ -95,4 +96,11 @@ func ClearMap[K comparable, V any](m map[K]V) {
 	for k := range m {
 		delete(m, k)
 	}
+}
+
+func NamespaceAsString(ns *gatewayv1.Namespace) string {
+	if ns == nil {
+		return ""
+	}
+	return string(*ns)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Builder interface {
@@ -52,6 +53,7 @@ type GateTree struct {
 	ReferencedServices map[types.NamespacedName]*Service
 	// A Map of installed GwApi CRDs versions
 	InstalledGwAPIVersions InstalledVersions
+	IsGwAPIVersionValid    bool
 }
 
 func NewGateTree(extractGVK utils.ExtractGVK) *GateTree {
@@ -69,4 +71,14 @@ func NewGateTree(extractGVK utils.ExtractGVK) *GateTree {
 		ReferencedNamespaces:   make(map[types.NamespacedName]*v1.Namespace),
 		ReferencedServices:     make(map[types.NamespacedName]*Service),
 	}
+}
+
+func (t *GateTree) IsSupportedGatewayClass(gwcNsName client.ObjectKey) bool {
+	_, ok := t.GatewayClasses.Supported[gwcNsName]
+	return ok
+}
+
+func (t *GateTree) IsIgnoredGatewayClass(gwcNsName client.ObjectKey) bool {
+	_, ok := t.GatewayClasses.Ignored[gwcNsName]
+	return ok
 }

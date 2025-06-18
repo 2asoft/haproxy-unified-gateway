@@ -2,3 +2,7 @@
   reason: GatewayClassConflict
   status: "False"
   type: Accepted
+- message: Gateway API CRD versions are supported
+  reason: SupportedVersion
+  status: "True"
+  type: SupportedVersion

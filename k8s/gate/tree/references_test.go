@@ -16,121 +16,204 @@ package tree
 import (
 	"testing"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-var mockExtractGVK utils.ExtractGVK = func(obj client.Object) schema.GroupVersionKind {
-	if _, ok := obj.(*gatewayv1.Gateway); ok {
-		return schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "Gateway"}
+type mockObject struct {
+	client.Object
+	name      string
+	namespace string
+	gvk       schema.GroupVersionKind
+}
+
+func (m *mockObject) GetName() string {
+	return m.name
+}
+
+func (m *mockObject) GetNamespace() string {
+	return m.namespace
+}
+
+func (m *mockObject) GroupVersionKind() schema.GroupVersionKind {
+	return m.gvk
+}
+
+func mockExtractGVK(obj client.Object) schema.GroupVersionKind {
+	if mo, ok := obj.(*mockObject); ok {
+		return mo.gvk
 	}
-	if _, ok := obj.(*gatewayv1.HTTPRoute); ok {
-		return schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "HTTPRoute"}
+	// Fallback for actual types if needed, though mocks are preferred for isolation
+	switch obj.(type) {
+	case *gatewayv1.GatewayClass:
+		return gatewayv1.SchemeGroupVersion.WithKind("GatewayClass")
+	case *gatewayv1.Gateway:
+		return gatewayv1.SchemeGroupVersion.WithKind("Gateway")
 	}
 	return schema.GroupVersionKind{}
 }
 
-func TestNewReferencedBy(t *testing.T) {
+func TestReferencedBy_Add(t *testing.T) {
+	gvkGatewayClass := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "GatewayClass"}
+	gvkGateway := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "Gateway"}
+
+	owned1 := &mockObject{name: "owned-gate-1", namespace: "default", gvk: gvkGatewayClass} // A HaproxyGate CR
+	owned1Key := client.ObjectKeyFromObject(owned1)
+
+	ownerGWC1 := &mockObject{name: "gwc-1", namespace: "", gvk: gvkGatewayClass}
+	ownerGWC2 := &mockObject{name: "gwc-2", namespace: "", gvk: gvkGatewayClass}
+	ownerGW1 := &mockObject{name: "gw-1", namespace: "ns1", gvk: gvkGateway}
+
+	ownedKey1 := client.ObjectKeyFromObject(owned1)
+	ownerGWCKey1 := client.ObjectKeyFromObject(ownerGWC1)
+	ownerGWCKey2 := client.ObjectKeyFromObject(ownerGWC2)
+	ownerGWKey1 := client.ObjectKeyFromObject(ownerGW1)
+
 	rb := NewReferencedBy(mockExtractGVK)
-	assert.NotNil(t, rb.owner, "owner map should be initialized")
-	assert.NotNil(t, rb.exctractGVK, "exctractGVK function should be set")
+
+	t.Run("initial state", func(t *testing.T) {
+		assert.Empty(t, rb.owner)
+		refs := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Empty(t, refs)
+	})
+
+	t.Run("add first reference", func(t *testing.T) {
+		rb.AddReferencedBy(owned1Key, ownerGWC1)
+		assert.Contains(t, rb.owner, ownedKey1)
+		assert.Contains(t, rb.owner[ownedKey1], gvkGatewayClass)
+		assert.Contains(t, rb.owner[ownedKey1][gvkGatewayClass], ownerGWCKey1)
+
+		refs := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Len(t, refs, 1)
+		assert.Contains(t, refs, ownerGWCKey1)
+	})
+
+	t.Run("add second reference of same GVK", func(t *testing.T) {
+		rb.AddReferencedBy(owned1Key, ownerGWC2)
+		assert.Contains(t, rb.owner[ownedKey1][gvkGatewayClass], ownerGWCKey2)
+
+		refs := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Len(t, refs, 2)
+		assert.Contains(t, refs, ownerGWCKey1)
+		assert.Contains(t, refs, ownerGWCKey2)
+	})
+
+	t.Run("add reference of different GVK", func(t *testing.T) {
+		rb.AddReferencedBy(owned1Key, ownerGW1)
+		assert.Contains(t, rb.owner[ownedKey1], gvkGateway)
+		assert.Contains(t, rb.owner[ownedKey1][gvkGateway], ownerGWKey1)
+
+		refsGWC := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Len(t, refsGWC, 2)
+
+		refsGW := rb.ReferencedBy(owned1, gvkGateway)
+		assert.Len(t, refsGW, 1)
+		assert.Contains(t, refsGW, ownerGWKey1)
+	})
+
+	t.Run("add existing reference (idempotency)", func(t *testing.T) {
+		rb.AddReferencedBy(owned1Key, ownerGWC1)
+		refs := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Len(t, refs, 2) // Should not add a duplicate
+	})
+
+	t.Run("referenced by non-existent owned object or GVK", func(t *testing.T) {
+		nonExistentOwned := &mockObject{name: "owned-does-not-exist", gvk: gvkGatewayClass}
+		assert.Empty(t, rb.ReferencedBy(nonExistentOwned, gvkGatewayClass))
+
+		// Add a reference to re-populate
+		rb.AddReferencedBy(owned1Key, ownerGWC1)
+		nonExistentGVK := schema.GroupVersionKind{Group: "foo", Version: "v1", Kind: "Bar"}
+		assert.Empty(t, rb.ReferencedBy(owned1, nonExistentGVK))
+	})
 }
 
-func TestReferencedBy_AddReference(t *testing.T) {
+func TestReferencedBy_Remove(t *testing.T) {
+	gvkGatewayClass := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "GatewayClass"}
+	gvkGateway := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "Gateway"}
+
+	owned1 := &mockObject{name: "owned-gate-1", namespace: "default", gvk: gvkGatewayClass} // A HaproxyGate CR
+	owned1Key := client.ObjectKeyFromObject(owned1)
+
+	ownerGWC1 := &mockObject{name: "gwc-1", namespace: "", gvk: gvkGatewayClass}
+	ownerGWC2 := &mockObject{name: "gwc-2", namespace: "", gvk: gvkGatewayClass}
+	ownerGW1 := &mockObject{name: "gw-1", namespace: "ns1", gvk: gvkGateway}
+
+	ownedKey1 := client.ObjectKeyFromObject(owned1)
+	ownerGWCKey1 := client.ObjectKeyFromObject(ownerGWC1)
+	ownerGWCKey2 := client.ObjectKeyFromObject(ownerGWC2)
+
 	rb := NewReferencedBy(mockExtractGVK)
 
-	gw1 := &gatewayv1.Gateway{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "gw1",
-			Namespace: "ns1",
-		},
-	}
-	gwGVK := mockExtractGVK(gw1)
-	gwKey := client.ObjectKeyFromObject(gw1)
+	t.Run("initial state", func(t *testing.T) {
+		assert.Empty(t, rb.owner)
+		refs := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Empty(t, refs)
+	})
 
-	// Add first reference
-	rb.AddReference(gw1)
-	assert.Contains(t, rb.owner, gwGVK, "GVK should be added to owner map")
-	assert.Contains(t, rb.owner[gwGVK], gwKey, "ObjectKey should be added under GVK")
+	rb.AddReferencedBy(owned1Key, ownerGWC1)
+	rb.AddReferencedBy(owned1Key, ownerGWC2)
+	rb.AddReferencedBy(owned1Key, ownerGW1)
 
-	// Add another reference with same GVK but different ObjectKey
-	gw2 := &gatewayv1.Gateway{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "gw2",
-			Namespace: "ns1",
-		},
-	}
-	gw2Key := client.ObjectKeyFromObject(gw2)
-	rb.AddReference(gw2)
-	assert.Contains(t, rb.owner[gwGVK], gw2Key, "Second ObjectKey should be added under the same GVK")
-	assert.Len(t, rb.owner[gwGVK], 2, "Should be two owners for the GVK")
+	t.Run("remove reference", func(t *testing.T) {
+		rb.RemoveReferencedBy(owned1Key, ownerGWC1)
+		refs := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Len(t, refs, 1)
+		assert.NotContains(t, refs, ownerGWCKey1)
+		assert.Contains(t, refs, ownerGWCKey2)
+		assert.Contains(t, rb.owner[ownedKey1], gvkGatewayClass) // GVK map should still exist
+	})
 
-	// Add reference with a different GVK
-	hr1 := &gatewayv1.HTTPRoute{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "hr1",
-			Namespace: "ns1",
-		},
-	}
-	hrGVK := mockExtractGVK(hr1)
-	hrKey := client.ObjectKeyFromObject(hr1)
-	rb.AddReference(hr1)
-	assert.Contains(t, rb.owner, hrGVK, "New GVK should be added to owner map")
-	assert.Contains(t, rb.owner[hrGVK], hrKey, "ObjectKey should be added under the new GVK")
-	assert.Len(t, rb.owner, 2, "Should be two GVKs in the owner map")
+	t.Run("remove last reference for a GVK", func(t *testing.T) {
+		rb.RemoveReferencedBy(owned1Key, ownerGWC2)
+		refs := rb.ReferencedBy(owned1, gvkGatewayClass)
+		assert.Empty(t, refs)
+		// The map for gvkGatewayClass might or might not be deleted,
+		// current implementation keeps it if other GVKs exist for the owned object.
+		// Let's check that the specific key is gone.
+		assert.NotContains(t, rb.owner[ownedKey1][gvkGatewayClass], ownerGWCKey2)
 
-	// Add duplicate reference
-	rb.AddReference(gw1)
-	assert.Len(t, rb.owner[gwGVK], 2, "Adding a duplicate reference should not change the count")
-}
+		// Check that other GVKs are unaffected
+		refsGW := rb.ReferencedBy(owned1, gvkGateway)
+		assert.Len(t, refsGW, 1)
+	})
 
-func TestReferencedBy_RemoveReference(t *testing.T) {
-	rb := NewReferencedBy(mockExtractGVK)
+	t.Run("remove last reference for an owned object", func(t *testing.T) {
+		rb.RemoveReferencedBy(owned1Key, ownerGW1)
+		refs := rb.ReferencedBy(owned1, gvkGateway)
+		assert.Empty(t, refs)
 
-	gw1 := &gatewayv1.Gateway{
-		ObjectMeta: metav1.ObjectMeta{Name: "gw1", Namespace: "ns1"},
-	}
-	gwGVK := mockExtractGVK(gw1)
-	gwKey := client.ObjectKeyFromObject(gw1)
+		// The ownedKey1 entry might or might not be deleted from rb.owner based on implementation.
+		// Current implementation keeps the ownedKey entry with empty GVK maps.
+		// Let's ensure no references are returned.
+		assert.Empty(t, rb.ReferencedBy(owned1, gvkGatewayClass))
+		assert.Empty(t, rb.ReferencedBy(owned1, gvkGateway))
+	})
 
-	gw2 := &gatewayv1.Gateway{
-		ObjectMeta: metav1.ObjectMeta{Name: "gw2", Namespace: "ns1"},
-	}
-	gw2Key := client.ObjectKeyFromObject(gw2)
+	t.Run("remove non-existent reference", func(t *testing.T) {
+		nonExistentOwner := &mockObject{name: "does-not-exist", gvk: gvkGatewayClass}
+		rb.RemoveReferencedBy(owned1Key, nonExistentOwner) // Should not panic
+		// State should be unchanged from previous test
+		assert.Empty(t, rb.ReferencedBy(owned1, gvkGatewayClass))
+		assert.Empty(t, rb.ReferencedBy(owned1, gvkGateway))
+	})
 
-	hr1 := &gatewayv1.HTTPRoute{
-		ObjectMeta: metav1.ObjectMeta{Name: "hr1", Namespace: "ns1"},
-	}
+	t.Run("remove from non-existent owned object", func(t *testing.T) {
+		nonExistentOwned := &mockObject{name: "owned-does-not-exist", gvk: gvkGatewayClass}
+		nonExistentOwnedKey := client.ObjectKeyFromObject(nonExistentOwned)
+		rb.RemoveReferencedBy(nonExistentOwnedKey, ownerGWC1) // Should not panic
+		assert.NotContains(t, rb.owner, client.ObjectKeyFromObject(nonExistentOwned))
+	})
 
-	// Setup: Add some references
-	rb.AddReference(gw1)
-	rb.AddReference(gw2)
+	t.Run("referenced by non-existent owned object or GVK", func(t *testing.T) {
+		nonExistentOwned := &mockObject{name: "owned-does-not-exist", gvk: gvkGatewayClass}
+		assert.Empty(t, rb.ReferencedBy(nonExistentOwned, gvkGatewayClass))
 
-	// Remove an existing reference
-	rb.RemoveReference(gw1)
-	assert.Contains(t, rb.owner, gwGVK, "GVK should still exist")
-	assert.NotContains(t, rb.owner[gwGVK], gwKey, "gw1 should be removed")
-	assert.Contains(t, rb.owner[gwGVK], gw2Key, "gw2 should still exist")
-	assert.Len(t, rb.owner[gwGVK], 1, "Only one owner should remain for GVK")
-
-	// Remove the last reference for a GVK
-	rb.RemoveReference(gw2)
-	assert.Contains(t, rb.owner, gwGVK, "GVK should still exist even if empty")
-	assert.NotContains(t, rb.owner[gwGVK], gw2Key, "gw2 should be removed")
-	assert.Empty(t, rb.owner[gwGVK], "The map for GVK should be empty")
-
-	// Try to remove a reference that doesn't exist (GVK exists, ObjectKey doesn't)
-	rb.AddReference(gw1) // Re-add gw1
-	rb.RemoveReference(&gatewayv1.Gateway{ObjectMeta: metav1.ObjectMeta{Name: "nonexistent", Namespace: "ns1"}})
-	assert.Contains(t, rb.owner[gwGVK], gwKey, "gw1 should still be present after trying to remove non-existent key")
-	assert.Len(t, rb.owner[gwGVK], 1)
-
-	// Try to remove a reference whose GVK doesn't exist
-	rb.RemoveReference(hr1) // HTTPRoute GVK was never added
-	assert.NotContains(t, rb.owner, mockExtractGVK(hr1), "HTTPRoute GVK should not exist")
-	assert.Len(t, rb.owner, 1, "Owner map should still have one GVK (Gateway)")
+		// Add a reference to re-populate
+		rb.AddReferencedBy(owned1Key, ownerGWC1)
+		nonExistentGVK := schema.GroupVersionKind{Group: "foo", Version: "v1", Kind: "Bar"}
+		assert.Empty(t, rb.ReferencedBy(owned1, nonExistentGVK))
+	})
 }

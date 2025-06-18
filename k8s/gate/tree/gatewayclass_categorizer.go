@@ -57,14 +57,12 @@ func (c *GatewayClassCategorizerImpl) Categorize(gcUpdates map[types.NamespacedN
 func (c *GatewayClassCategorizerImpl) processUpserted(gcUpdate store.Update[*gatewayv1.GatewayClass]) {
 	gc := gcUpdate.NewObject
 	_, allowedGcName := c.gcNames[gc.Name]
-	treeGc := GatewayClass{
-		K8sResource: gc,
-	}
+	treeGc := NewGatewayClass(gc)
 
 	if allowedGcName {
-		c.gateTree.GatewayClasses.Supported[client.ObjectKeyFromObject(gc)] = &treeGc
+		c.gateTree.GatewayClasses.Supported[client.ObjectKeyFromObject(gc)] = treeGc
 	} else {
-		c.gateTree.GatewayClasses.Ignored[client.ObjectKeyFromObject(gc)] = &treeGc
+		c.gateTree.GatewayClasses.Ignored[client.ObjectKeyFromObject(gc)] = treeGc
 	}
 }
 

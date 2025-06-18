@@ -32,6 +32,7 @@ type SupportedVersions []string
 var (
 	SupportedGatewayAPIBundleVersion       = SupportedVersions{"v1.2", "v1.3"}
 	SupportedGatewayClassParametersRefKind = v1.Kind("HaproxyGate")
+	SupportGatewayClassPamatersRefGroup    = v1.Group("gate.v3.haproxy.org")
 )
 
 var _ Builder = &InstalledVersionsBuilderImpl{}
