@@ -20,9 +20,6 @@ includes:
   generate:
     taskfile: taskfile/generate.yml
     flatten: true
-  haproxy:
-    taskfile: taskfile/haproxy.yml
-    flatten: true
   go-tools:
     taskfile: taskfile/go-tools.yml
     flatten: true

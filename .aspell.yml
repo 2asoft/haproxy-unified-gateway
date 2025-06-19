@@ -5,6 +5,7 @@ allowed:
   - backends
   - betteralign
   - categorizer
+  - cfg
   - config
   - crd
   - env
