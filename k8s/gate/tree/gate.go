@@ -88,15 +88,15 @@ type HaproxyGateParamsRefChecker struct {
 }
 
 type HaproxyGateParamsRefCheckResult struct {
-	HaproxyGate *v3.HaproxyGate
-	Conditions  conditions.Conditions
-	Valid       bool
+	// HaproxyGate *v3.HaproxyGate
+	Conditions conditions.Conditions
+	Valid      bool
 }
 
 func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 	conds := conditions.Conditions{}
 	valid := true
-	var haproxyGate *v3.HaproxyGate
+	// var haproxyGate *v3.HaproxyGate
 	var gateFound bool
 
 	if c.ParamRef != nil {
@@ -111,9 +111,9 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(unsupportedKind),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				HaproxyGate: haproxyGate,
-				Conditions:  conds,
-				Valid:       false,
+				// HaproxyGate: haproxyGate,
+				Conditions: conds,
+				Valid:      false,
 			}
 		}
 		if c.ParamRef.Group != SupportGatewayClassPamatersRefGroup {
@@ -125,9 +125,9 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(unsupportedGroup),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				HaproxyGate: haproxyGate,
-				Conditions:  conds,
-				Valid:       false,
+				// HaproxyGate: haproxyGate,
+				Conditions: conds,
+				Valid:      false,
 			}
 		}
 		// Checks that the CR does exist
@@ -138,12 +138,12 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(nsrequired),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				HaproxyGate: haproxyGate,
-				Conditions:  conds,
-				Valid:       valid,
+				// HaproxyGate: haproxyGate,
+				Conditions: conds,
+				Valid:      valid,
 			}
 		}
-		haproxyGate, gateFound = c.StoreHaproxyGates[types.NamespacedName{
+		_, gateFound = c.StoreHaproxyGates[types.NamespacedName{
 			Name:      c.ParamRef.Name,
 			Namespace: string(*c.ParamRef.Namespace),
 		}]
@@ -153,16 +153,16 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(notFound),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				HaproxyGate: haproxyGate,
-				Conditions:  conds,
-				Valid:       false,
+				//	HaproxyGate: haproxyGate,
+				Conditions: conds,
+				Valid:      false,
 			}
 		}
 	}
 	return HaproxyGateParamsRefCheckResult{
-		HaproxyGate: haproxyGate,
-		Conditions:  conditions.NewGatewayClassAcceptedConditions(),
-		Valid:       valid,
+		// HaproxyGate: haproxyGate,
+		Conditions: conditions.NewGatewayClassAcceptedConditions(),
+		Valid:      valid,
 	}
 }
 

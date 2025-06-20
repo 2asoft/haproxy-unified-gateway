@@ -35,7 +35,7 @@ type GatewayClass struct {
 	// Conditions include Conditions for the GatewayClass.
 	Conditions conditions.Conditions
 	// HaproxyGate contains the HaproxyGate (confguration CRD)
-	HaproxyGate *v3.HaproxyGate
+	// HaproxyGate *v3.HaproxyGate
 	// ParamsRefCheckResult shows whether the GatewayClass is valid as for ParamsRef
 	ParamsRefCheckResult HaproxyGateParamsRefCheckResult
 	Valid                bool
@@ -88,13 +88,7 @@ func (g *GatewayClass) OnGateUpserted(logger *slog.Logger, extractGVK utils.Extr
 		fmt.Sprintf("OnGateUpserted %s", gateKey),
 		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrResource(g.K8sResource, extractGVK(g.K8sResource)))
-	paramRef := g.K8sResource.Spec.ParametersRef
-	checker := HaproxyGateParamsRefChecker{
-		ParamRef:          paramRef,
-		StoreHaproxyGates: clusterStore.HaproxyGates,
-	}
-	g.ParamsRefCheckResult = checker.Check()
-	g.BuildConditions(gateTree)
+	g.BuildConditions(logger, clusterStore, gateTree)
 }
 
 func (g *GatewayClass) OnGateDeleted(logger *slog.Logger, extractGVK utils.ExtractGVK, gate *v3.HaproxyGate,
@@ -106,13 +100,7 @@ func (g *GatewayClass) OnGateDeleted(logger *slog.Logger, extractGVK utils.Extra
 		fmt.Sprintf("OnGateDeleted %s", gateKey),
 		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrResource(g.K8sResource, extractGVK(g.K8sResource)))
-	paramRef := g.K8sResource.Spec.ParametersRef
-	checker := HaproxyGateParamsRefChecker{
-		ParamRef:          paramRef,
-		StoreHaproxyGates: clusterStore.HaproxyGates,
-	}
-	g.ParamsRefCheckResult = checker.Check()
-	g.BuildConditions(gateTree)
+	g.BuildConditions(logger, clusterStore, gateTree)
 }
 
 func checkGateRefConsistency(extractGVK utils.ExtractGVK, gwc *GatewayClass, gate *v3.HaproxyGate) error {
@@ -137,22 +125,28 @@ func checkGateRefConsistency(extractGVK utils.ExtractGVK, gwc *GatewayClass, gat
 	return nil
 }
 
-func (g *GatewayClass) BuildConditions(gateTree *GateTree) {
+func (g *GatewayClass) BuildConditions(logger *slog.Logger, clusterStore *store.ClusterStore, gateTree *GateTree) {
+	paramRef := g.K8sResource.Spec.ParametersRef
+	checker := HaproxyGateParamsRefChecker{
+		ParamRef:          paramRef,
+		StoreHaproxyGates: clusterStore.HaproxyGates,
+	}
+	g.ParamsRefCheckResult = checker.Check()
 	gwcNsName := client.ObjectKeyFromObject(g.K8sResource)
 	// for gwcNsName := range b.ClusterStore.Updates.GatewayClasses {
 	isSupported := gateTree.IsSupportedGatewayClass(gwcNsName)
 	isIgnored := gateTree.IsIgnoredGatewayClass(gwcNsName)
 
 	if isSupported {
-		g.buildConditionsSupported(gateTree)
+		g.buildConditionsSupported(logger, gateTree)
 	}
 
 	if isIgnored {
-		g.buildConditionsIgnored(gateTree)
+		g.buildConditionsIgnored(logger, gateTree)
 	}
 }
 
-func (g *GatewayClass) buildConditionsSupported(gateTree *GateTree) {
+func (g *GatewayClass) buildConditionsSupported(_ *slog.Logger, gateTree *GateTree) {
 	// Checks on Supported Versions
 	switch gateTree.IsGwAPIVersionValid {
 	case true:
@@ -168,6 +162,6 @@ func (g *GatewayClass) buildConditionsSupported(gateTree *GateTree) {
 	g.Valid = gateTree.IsGwAPIVersionValid && g.ParamsRefCheckResult.Valid
 }
 
-func (g *GatewayClass) buildConditionsIgnored(_ *GateTree) {
+func (g *GatewayClass) buildConditionsIgnored(_ *slog.Logger, _ *GateTree) {
 	g.Conditions.MergeOverrideConditions(conditions.NewGatewayClassConflict())
 }

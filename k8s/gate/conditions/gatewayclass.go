@@ -35,19 +35,8 @@ func (*GatewayClassConditionImpl) SetConditions(obj *v1.GatewayClass, conds Cond
 
 // NewGatewayClassUnsupportedVersion returns Conditions to indicate:
 // - the Gateway API CRD versions are not supported.
-// Only applies to Accepted GatewayClasses
-// Ignored GatewayClasses will have a Conflict Condition
 func NewGatewayClassUnsupportedVersion(recommendedVersion string) Conditions {
 	return Conditions{
-		ConditionType(v1.GatewayClassConditionStatusAccepted): {
-			Type:   ConditionType(v1.GatewayClassConditionStatusAccepted),
-			Status: metav1.ConditionTrue,
-			Reason: string(v1.GatewayClassReasonUnsupportedVersion),
-			Message: fmt.Sprintf(
-				"Gateway API CRD versions are not supported. Best effort. Please install version %s",
-				recommendedVersion,
-			),
-		},
 		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
 			Type:   ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
 			Status: metav1.ConditionFalse,

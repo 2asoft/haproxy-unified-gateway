@@ -82,10 +82,10 @@ func (b *GatewayClassBuilderImpl) OnUpdateInstalledVersion(iv InstalledVersions)
 	b.checkSupportedVersion(validateVersionsParams)
 	// Update status of all GewayClasses
 	for _, gwc := range b.GateTree.GatewayClasses.Supported {
-		gwc.buildConditionsSupported(b.GateTree)
+		gwc.buildConditionsSupported(b.Logger, b.GateTree)
 	}
 	for _, gwc := range b.GateTree.GatewayClasses.Ignored {
-		gwc.buildConditionsIgnored(b.GateTree)
+		gwc.buildConditionsIgnored(b.Logger, b.GateTree)
 	}
 }
 
@@ -142,10 +142,10 @@ func (b *GatewayClassBuilderImpl) BuildStatus() {
 			var gwcTree *GatewayClass
 			var ok bool
 			if gwcTree, ok = b.GateTree.GatewayClasses.Supported[client.ObjectKeyFromObject(gwc)]; ok {
-				gwcTree.buildConditionsSupported(b.GateTree)
+				gwcTree.buildConditionsSupported(b.Logger, b.GateTree)
 			}
 			if gwcTree, ok = b.GateTree.GatewayClasses.Ignored[client.ObjectKeyFromObject(gwc)]; ok {
-				gwcTree.buildConditionsIgnored(b.GateTree)
+				gwcTree.buildConditionsIgnored(b.Logger, b.GateTree)
 			}
 		case store.StatusDeleted:
 			// nothing to do
