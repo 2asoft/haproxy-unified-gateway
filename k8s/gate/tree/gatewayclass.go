@@ -154,7 +154,11 @@ func (g *GatewayClass) BuildConditions(gateTree *GateTree) {
 
 func (g *GatewayClass) buildConditionsSupported(gateTree *GateTree) {
 	// Checks on Supported Versions
-	if !gateTree.IsGwAPIVersionValid {
+	switch gateTree.IsGwAPIVersionValid {
+	case true:
+		g.Conditions.MergeOverrideConditions(
+			conditions.NewGatewayClassSupportedVersionConditions())
+	case false:
 		g.Conditions.MergeOverrideConditions(
 			conditions.NewGatewayClassUnsupportedVersion(SupportedGatewayAPIBundleVersion.String()))
 	}

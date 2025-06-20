@@ -77,13 +77,13 @@ func (b *InstalledVersionsBuilderImpl) Build() {
 		case store.StatusDeleted:
 			b.buildDeleted(update.OldObject)
 		}
+		b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Installed versions",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrInstalledVersions(b.GateTree.InstalledGwAPIVersions.Versions),
+		)
+		b.GateTree.InstalledGwAPIVersions.NotifyObervers()
 	}
-	b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
-		"Installed versions",
-		logging.LogAttrCategory(logging.LogCategoryGate),
-		logging.LogAttrInstalledVersions(b.GateTree.InstalledGwAPIVersions.Versions),
-	)
-	b.GateTree.InstalledGwAPIVersions.NotifyObervers()
 }
 
 func (b *InstalledVersionsBuilderImpl) buildUpserted(nsname types.NamespacedName, update store.Update[*metav1.PartialObjectMetadata]) {

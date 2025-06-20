@@ -80,6 +80,13 @@ func (b *GatewayClassBuilderImpl) OnUpdateInstalledVersion(iv InstalledVersions)
 		installedGwAPIVersions: b.GateTree.InstalledGwAPIVersions.Versions,
 	}
 	b.checkSupportedVersion(validateVersionsParams)
+	// Update staus of all GewayClasses
+	for _, gwc := range b.GateTree.GatewayClasses.Supported {
+		gwc.buildConditionsSupported(b.GateTree)
+	}
+	for _, gwc := range b.GateTree.GatewayClasses.Ignored {
+		gwc.buildConditionsIgnored(b.GateTree)
+	}
 }
 
 func (b *GatewayClassBuilderImpl) checkParametersRef() {
