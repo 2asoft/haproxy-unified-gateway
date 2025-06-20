@@ -42,10 +42,20 @@ tasks:
     cmds:
       - CGO_ENABLED=0 go build -o ../../build/kubernetes-controller .
 
-  kind-build-controller-image:
+  kind-build-controller-image-dev:
     #internal: true
     desc: 'build docker image of controller'
-    #dir: build
+    deps:
+      - task: kind-controller-build
+    status:
+      - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
+    cmds:
+      - docker build -t haproxytech/kubernetes-controller -f build/Dockerfile.dev .
+      - rm build/kubernetes-controller
+
+  kind-build-controller-image-build-in-docker:
+    #internal: true
+    desc: 'build docker image of controller'
     deps:
       - task: kind-controller-build
     status:
@@ -77,11 +87,15 @@ tasks:
   kind-create:
     desc: 'create a KinD cluster with IC and one example app'
     silent: true
+    vars:
+      # can be set to 'kind-build-controller-image-build-in-docker' if you want to build in the docker image
+      CONTROLLER_BUILD_TASK: 'kind-build-controller-image-dev'
+    deps:
     cmds:
       - task: delimiter
       - task: kind-create-cluster
       - task: delimiter
-      - task: kind-build-controller-image
+      - task: '{{ .CONTROLLER_BUILD_TASK }}'
       - task: kind-build-echo-image
       - task: delimiter
       - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
