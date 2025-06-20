@@ -20,8 +20,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 	"github.com/stretchr/testify/suite"
+	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -112,4 +115,52 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_Ignored() {
 	expectedConditions2 := s.YamlToConditions(expectedCondPath2)
 	gwcName = "haproxy2"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions2)
+}
+
+func (s *GatewayClassTestSuite) Test_GatewayClass_Dynamic_InstalledVersions() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "dynamic-installedversions"
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
+
+	currentVersion := s.setGatewayClassCRToUnsupportedVersion("v1.1")
+
+	// Expected Conditions
+	// unsupported version
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions-ko.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+	gwcName := "haproxy"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
+
+	// Expected Conditions
+	// supported version
+	s.resetGatewayClassCRToSupportedVersion(currentVersion)
+	expectedCondPath = path.Join(expectationsPath, "conditions-ok.yaml")
+	expectedConditions = s.YamlToConditions(expectedCondPath)
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
+}
+
+func (s *GatewayClassTestSuite) setGatewayClassCRToUnsupportedVersion(newVersion string) string {
+	var gatewayClassCRD apiext.CustomResourceDefinition
+	err := s.Test().Client.Get(s.Test().Ctx, client.ObjectKey{Name: "gatewayclasses.gateway.networking.k8s.io"}, &gatewayClassCRD)
+	s.Require().NoError(err)
+	currentVersion := gatewayClassCRD.Annotations[constants.BundleVersionAnnotation]
+
+	gatewayClassCRD.Annotations[constants.BundleVersionAnnotation] = newVersion
+	err = s.Test().Client.Update(s.Test().Ctx, &gatewayClassCRD)
+	s.Require().NoError(err)
+
+	return currentVersion
+}
+
+func (s *GatewayClassTestSuite) resetGatewayClassCRToSupportedVersion(version string) {
+	var gatewayClassCRD apiext.CustomResourceDefinition
+	err := s.Test().Client.Get(s.Test().Ctx, client.ObjectKey{Name: "gatewayclasses.gateway.networking.k8s.io"}, &gatewayClassCRD)
+	s.Require().NoError(err)
+
+	gatewayClassCRD.Annotations[constants.BundleVersionAnnotation] = version
+	err = s.Test().Client.Update(s.Test().Ctx, &gatewayClassCRD)
+	s.Require().NoError(err)
 }
