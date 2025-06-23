@@ -8,13 +8,19 @@ tasks:
       - task: check-go-tool
         vars:
           PACKAGE: controller-gen
+    vars:
+      CG_VERSION:
+        sh: yq eval '.controller-gen.version' taskfile-tools.yml
     cmds:
-      - controller-gen object:headerFile="assets/license-header.txt" paths="./..." output:artifacts:config=./api
+      - /{{.TMP}}/controller-gen/{{.CG_VERSION}}/controller-gen object:headerFile="assets/license-header.txt" paths="./..." output:artifacts:config=./api
   controller-gen-manifest:
     desc: "Generate CustomResourceDefinition objects."
     deps:
       - task: check-go-tool
         vars:
           PACKAGE: controller-gen
+    vars:
+      CG_VERSION:
+        sh: yq eval '.controller-gen.version' taskfile-tools.yml
     cmds:
-      - controller-gen crd webhook paths="./api/gate/..." output:crd:artifacts:config=./api/definition
+      - /{{.TMP}}/controller-gen/{{.CG_VERSION}}/controller-gen crd webhook paths="./api/gate/..." output:crd:artifacts:config=./api/definition
