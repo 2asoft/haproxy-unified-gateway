@@ -2,10 +2,10 @@ yq:
   version: v4.45.1
   install: github.com/mikefarah/yq/v4
 betteralign:
-  version: v0.7.0
+  version: v0.7.1
   install: github.com/dkorunic/betteralign/cmd/betteralign
 revive:
-  version: v1.9.0
+  version: v1.10.0
   install: github.com/mgechev/revive
 staticcheck:
   version: v0.6.1
