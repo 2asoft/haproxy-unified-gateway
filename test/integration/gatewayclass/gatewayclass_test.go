@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 	"github.com/stretchr/testify/suite"
@@ -162,5 +163,57 @@ func (s *GatewayClassTestSuite) resetGatewayClassCRToSupportedVersion(version st
 
 	gatewayClassCRD.Annotations[constants.BundleVersionAnnotation] = version
 	err = s.Test().Client.Update(s.Test().Ctx, &gatewayClassCRD)
+	s.Require().NoError(err)
+}
+
+func (s *GatewayClassTestSuite) Test_GatewayClass_Dynamic_Gate() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "dynamic-gate"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions-ok.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+
+	gwcName := "haproxy"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
+
+	// Remove gate
+	gate := s.removeGate("haproxygate")
+
+	// Expected Conditions
+	expectationsPath = path.Join(fixturePath, "expectations")
+	expectedCondPath = path.Join(expectationsPath, "conditions-ko.yaml")
+	expectedConditions = s.YamlToConditions(expectedCondPath)
+
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
+
+	// Re-add Gate
+	s.createGate(gate)
+	expectationsPath = path.Join(fixturePath, "expectations")
+	expectedCondPath = path.Join(expectationsPath, "conditions-ok.yaml")
+	expectedConditions = s.YamlToConditions(expectedCondPath)
+
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
+}
+
+func (s *GatewayClassTestSuite) removeGate(name string) *v3.HaproxyGate {
+	var gate v3.HaproxyGate
+	err := s.Test().Client.Get(s.Test().Ctx, client.ObjectKey{Name: name, Namespace: s.Test().Namespace}, &gate)
+	s.Require().NoError(err)
+
+	err = s.Test().Client.Delete(s.Test().Ctx, &gate)
+	s.Require().NoError(err)
+
+	return &gate
+}
+
+func (s *GatewayClassTestSuite) createGate(gate *v3.HaproxyGate) {
+	gate.ResourceVersion = ""
+	err := s.Test().Client.Create(s.Test().Ctx, gate)
 	s.Require().NoError(err)
 }
