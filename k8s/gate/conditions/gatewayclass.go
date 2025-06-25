@@ -33,35 +33,6 @@ func (*GatewayClassConditionImpl) SetConditions(obj *v1.GatewayClass, conds Cond
 	obj.Status.Conditions = conds.ToMetav1Conditions()
 }
 
-// NewGatewayClassUnsupportedVersion returns Conditions to indicate:
-// - the Gateway API CRD versions are not supported.
-func NewGatewayClassUnsupportedVersion(recommendedVersion string) Conditions {
-	return Conditions{
-		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
-			Type:   ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
-			Status: metav1.ConditionFalse,
-			Reason: string(v1.GatewayClassReasonUnsupportedVersion),
-			Message: fmt.Sprintf(
-				"Gateway API CRD versions are not supported. Please install version %s",
-				recommendedVersion,
-			),
-		},
-	}
-}
-
-// NewGatewayClassConflict returns a Condition that indicates that the GatewayClass is not accepted
-// due to a conflict with another GatewayClass.
-func NewGatewayClassConflict() Conditions {
-	return Conditions{
-		ConditionType(v1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
-			Status:  metav1.ConditionFalse,
-			Reason:  string(GatewayClassReasonGatewayClassConflict),
-			Message: GatewayClassMessageGatewayClassConflict,
-		},
-	}
-}
-
 // NewDefaultGatewayClassConditions returns Conditions that indicate that the GatewayClass is accepted and that the
 // Gateway API CRD versions are supported.
 func NewDefaultGatewayClassConditions() Conditions {
@@ -81,6 +52,11 @@ func NewDefaultGatewayClassConditions() Conditions {
 	}
 }
 
+// ---------------------------------------------------------
+// GatewayClassConditionStatusAccepted
+
+// NewGatewayClassConflict returns a Condition that indicates that the GatewayClass is not accepted
+// due to a conflict with another GatewayClass.
 func NewGatewayClassAcceptedConditions() Conditions {
 	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
@@ -92,13 +68,13 @@ func NewGatewayClassAcceptedConditions() Conditions {
 	}
 }
 
-func NewGatewayClassSupportedVersionConditions() Conditions {
+func NewGatewayClassConflict() Conditions {
 	return Conditions{
-		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
-			Type:    ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
-			Status:  metav1.ConditionTrue,
-			Reason:  string(v1.GatewayClassReasonSupportedVersion),
-			Message: "Gateway API CRD versions are supported",
+		ConditionType(v1.GatewayClassConditionStatusAccepted): {
+			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(GatewayClassReasonGatewayClassConflict),
+			Message: GatewayClassMessageGatewayClassConflict,
 		},
 	}
 }
@@ -111,6 +87,36 @@ func NewGatewayClassInvalidParameters(err *field.Error) Conditions {
 			Status:  metav1.ConditionFalse,
 			Reason:  string(v1.GatewayClassReasonInvalidParameters),
 			Message: fmt.Sprintf("invalid parametersRef: %s", err),
+		},
+	}
+}
+
+// ---------------------------------------------------------
+// GatewayClassConditionStatusSupportedVersion
+
+// NewGatewayClassUnsupportedVersion returns Conditions to indicate:
+// - the Gateway API CRD versions are not supported.
+func NewGatewayClassUnsupportedVersion(recommendedVersion string) Conditions {
+	return Conditions{
+		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
+			Type:   ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
+			Status: metav1.ConditionFalse,
+			Reason: string(v1.GatewayClassReasonUnsupportedVersion),
+			Message: fmt.Sprintf(
+				"Gateway API CRD versions are not supported. Please install version %s",
+				recommendedVersion,
+			),
+		},
+	}
+}
+
+func NewGatewayClassSupportedVersionConditions() Conditions {
+	return Conditions{
+		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
+			Type:    ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(v1.GatewayClassReasonSupportedVersion),
+			Message: "Gateway API CRD versions are supported",
 		},
 	}
 }

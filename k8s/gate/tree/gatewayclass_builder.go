@@ -22,6 +22,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type GatewayClassBuilderImpl struct {
@@ -64,6 +65,15 @@ func (b *GatewayClassBuilderImpl) Build() {
 	})
 	// Check Gate reference
 	b.checkParametersRef()
+
+	// --------------
+	// installed Versions
+	installedVersionBuilder := NewInstalledVersionsBuilder(b.BuilderParams)
+	installedVersionBuilder.Build()
+
+	// Gate
+	gateBuilder := NewGateBuilder(b.BuilderParams)
+	gateBuilder.Build()
 }
 
 // OnUpdateInstalledVersion callback function to be called when the installed versions are updated.
@@ -112,23 +122,21 @@ func (b *GatewayClassBuilderImpl) checkParametersRef() {
 
 func (b *GatewayClassBuilderImpl) updateReferencedGates() {
 	for _, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
+		gwc, ok := gwcUpdate.GetObject().(*v1.GatewayClass)
+		if !ok {
+			continue
+		}
+		paramsRef := gwc.Spec.ParametersRef
+		if paramsRef == nil {
+			continue
+		}
+		ownedKey := client.ObjectKey{Namespace: utils.NamespaceAsString(paramsRef.Namespace), Name: paramsRef.Name}
+
 		switch gwcUpdate.Status {
 		case store.StatusUpserted:
-			gwc := gwcUpdate.NewObject
-			paramsRef := gwc.Spec.ParametersRef
-			if paramsRef == nil {
-				continue
-			}
-			ownedKey := client.ObjectKey{Namespace: utils.NamespaceAsString(paramsRef.Namespace), Name: paramsRef.Name}
-			b.GateTree.ReferencedHaproxyGates.AddReferencedBy(ownedKey, gwcUpdate.NewObject)
+			b.GateTree.ReferencedHaproxyGates.AddReferencedBy(ownedKey, gwc)
 		case store.StatusDeleted:
-			gwc := gwcUpdate.OldObject
-			paramsRef := gwc.Spec.ParametersRef
-			if paramsRef == nil {
-				continue
-			}
-			ownedKey := client.ObjectKey{Namespace: utils.NamespaceAsString(paramsRef.Namespace), Name: paramsRef.Name}
-			b.GateTree.ReferencedHaproxyGates.RemoveReferencedBy(ownedKey, gwcUpdate.OldObject)
+			b.GateTree.ReferencedHaproxyGates.RemoveReferencedBy(ownedKey, gwc)
 		}
 	}
 }

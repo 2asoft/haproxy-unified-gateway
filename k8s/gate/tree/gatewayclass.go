@@ -133,7 +133,6 @@ func (g *GatewayClass) BuildConditions(logger *slog.Logger, clusterStore *store.
 	}
 	g.ParamsRefCheckResult = checker.Check()
 	gwcNsName := client.ObjectKeyFromObject(g.K8sResource)
-	// for gwcNsName := range b.ClusterStore.Updates.GatewayClasses {
 	isSupported := gateTree.IsSupportedGatewayClass(gwcNsName)
 	isIgnored := gateTree.IsIgnoredGatewayClass(gwcNsName)
 

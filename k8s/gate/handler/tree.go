@@ -94,13 +94,6 @@ func NewGateTreeBuilder(
 	gatewayClassBuilder := tree.NewGatewayClassBuilder(gatewayClassBuilderParams)
 
 	// --------------
-	// installed Versions
-	installedVersionBuilder := tree.NewInstalledVersionsBuilder(builderParams)
-
-	// Gate
-	gateBuilder := tree.NewGateBuilder(builderParams)
-
-	// --------------
 	// Gateway
 	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
 		ClusterStore:   clusterStore,
@@ -117,8 +110,6 @@ func NewGateTreeBuilder(
 		builders: []tree.Builder{
 			controllerConfBuilder,
 			gatewayClassBuilder,
-			installedVersionBuilder,
-			gateBuilder,
 			gatewayBuilder,
 		},
 	}

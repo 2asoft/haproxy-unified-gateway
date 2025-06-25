@@ -32,12 +32,9 @@ var _ Builder = &GateBuilderImpl{}
 
 func (b *GateBuilderImpl) Build() {
 	for _, gateUpdate := range b.ClusterStore.Updates.HaproxyGates {
-		var gate *v3.HaproxyGate
-		switch gateUpdate.Status {
-		case store.StatusUpserted:
-			gate = gateUpdate.NewObject
-		case store.StatusDeleted:
-			gate = gateUpdate.OldObject
+		gate, ok := gateUpdate.GetObject().(*v3.HaproxyGate)
+		if !ok {
+			continue
 		}
 		impactedGwcs := FindImpactedGatewayClasses(b.ExtractGVK, gate, *b.ClusterStore, b.GateTree)
 		for _, gwc := range impactedGwcs {
@@ -88,7 +85,6 @@ type HaproxyGateParamsRefChecker struct {
 }
 
 type HaproxyGateParamsRefCheckResult struct {
-	// HaproxyGate *v3.HaproxyGate
 	Conditions conditions.Conditions
 	Valid      bool
 }
@@ -96,7 +92,6 @@ type HaproxyGateParamsRefCheckResult struct {
 func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 	conds := conditions.Conditions{}
 	valid := true
-	// var haproxyGate *v3.HaproxyGate
 	var gateFound bool
 
 	if c.ParamRef != nil {
@@ -111,7 +106,6 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(unsupportedKind),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				// HaproxyGate: haproxyGate,
 				Conditions: conds,
 				Valid:      false,
 			}
@@ -125,7 +119,6 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(unsupportedGroup),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				// HaproxyGate: haproxyGate,
 				Conditions: conds,
 				Valid:      false,
 			}
@@ -138,7 +131,6 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(nsrequired),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				// HaproxyGate: haproxyGate,
 				Conditions: conds,
 				Valid:      valid,
 			}
@@ -153,14 +145,12 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 				conditions.NewGatewayClassInvalidParameters(notFound),
 			)
 			return HaproxyGateParamsRefCheckResult{
-				//	HaproxyGate: haproxyGate,
 				Conditions: conds,
 				Valid:      false,
 			}
 		}
 	}
 	return HaproxyGateParamsRefCheckResult{
-		// HaproxyGate: haproxyGate,
 		Conditions: conditions.NewGatewayClassAcceptedConditions(),
 		Valid:      valid,
 	}

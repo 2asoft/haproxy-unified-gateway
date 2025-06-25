@@ -41,7 +41,6 @@ type InstalledVersions struct {
 	// Versions contains the count of installed Gateway API versions.
 	Versions  map[string]int // map GwApi CRD version -> counter
 	observers []func(InstalledVersions)
-	// versionsUpdated bool
 }
 
 func (iv *InstalledVersions) RegisterObserver(callback func(InstalledVersions)) {
@@ -52,7 +51,6 @@ func (iv *InstalledVersions) NotifyObervers() {
 	for _, observer := range iv.observers {
 		observer(*iv)
 	}
-	// iv.versionsUpdated = false
 }
 
 func (s SupportedVersions) String() string {
@@ -106,19 +104,16 @@ func (b *InstalledVersionsBuilderImpl) buildUpserted(nsname types.NamespacedName
 			return
 		}
 		b.GateTree.InstalledGwAPIVersions.Versions[previousBundleVersion]--
-		// b.GateTree.InstalledGwAPIVersions.versionsUpdated = true
 		if b.GateTree.InstalledGwAPIVersions.Versions[previousBundleVersion] == 0 {
 			delete(b.GateTree.InstalledGwAPIVersions.Versions, previousBundleVersion)
 		}
 	}
-	// b.GateTree.InstalledGwAPIVersions.versionsUpdated = true
 	b.GateTree.InstalledGwAPIVersions.Versions[bundleVersion]++
 }
 
 func (b *InstalledVersionsBuilderImpl) buildDeleted(previous *metav1.PartialObjectMetadata) {
 	bundleVersion := previous.Annotations[constants.BundleVersionAnnotation]
 	b.GateTree.InstalledGwAPIVersions.Versions[bundleVersion]--
-	// b.GateTree.InstalledGwAPIVersions.versionsUpdated = true
 	if b.GateTree.InstalledGwAPIVersions.Versions[bundleVersion] == 0 {
 		delete(b.GateTree.InstalledGwAPIVersions.Versions, bundleVersion)
 	}

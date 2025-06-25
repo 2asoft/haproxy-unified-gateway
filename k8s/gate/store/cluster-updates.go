@@ -67,3 +67,13 @@ func NewClusterUpdates() ClusterUpdates {
 		ControllerConfs: make(map[types.NamespacedName]Update[*v3.HaproxyGateCtrlCfg]),
 	}
 }
+
+func (u *Update[T]) GetObject() client.Object {
+	switch u.Status {
+	case StatusUpserted:
+		return u.NewObject
+	case StatusDeleted:
+		return u.OldObject
+	}
+	return nil
+}
