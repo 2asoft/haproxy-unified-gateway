@@ -21,6 +21,10 @@ ENV S6_OVERLAY_VERSION=$S6_OVERLAY_VERSION
 ENV S6_READ_ONLY_ROOT=1
 ENV S6_USER=haproxy
 ENV S6_GROUP=haproxy
+RUN mkdir -p /usr/local/etc/unified-controller/aux && \
+    chgrp -R haproxy /usr/local/etc/unified-controller/aux && \
+    chmod -R ug+rwx /usr/local/etc/unified-controller/aux && \
+    ln -s /usr/local/etc/unified-controller /etc/unified-controller
 
 COPY /fs /
 
@@ -48,11 +52,7 @@ RUN apk --no-cache add socat openssl util-linux htop tzdata curl libcap && \
     rm -f /tmp/s6-overlay-scripts.tar.xz /tmp/s6-overlay-binaries.tar.xz && \
     chown -R "${S6_USER}:${S6_GROUP}" /init /etc/s6-overlay && \
     chmod u+x /init /etc/s6-overlay/scripts/* && \
-    rm -rf /var/lib/pebble && \
-    mkdir -p /usr/local/etc/unified-controller/aux && \
-    chgrp -R haproxy /usr/local/etc/unified-controller/aux && \
-    chmod -R ug+rwx /usr/local/etc/unified-controller/aux && \
-    ln -s /usr/local/etc/unified-controller /etc/unified-controller
+    rm -rf /var/lib/pebble
 
 COPY build/kubernetes-controller  ./kubernetes-controller
 
