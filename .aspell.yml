@@ -43,11 +43,13 @@ allowed:
   - slogger
   - ssl
   - sudo
+  - symlink
   - taskfile
   - testenv
   - tcp
   - tls
   - ubuntu
   - unix
+  - usr
   - workdir
   - yaml

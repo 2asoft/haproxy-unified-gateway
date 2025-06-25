@@ -21,10 +21,9 @@ ENV S6_OVERLAY_VERSION=$S6_OVERLAY_VERSION
 ENV S6_READ_ONLY_ROOT=1
 ENV S6_USER=haproxy
 ENV S6_GROUP=haproxy
-RUN mkdir -p /usr/local/etc/unified-controller/aux && \
-    chgrp -R haproxy /usr/local/etc/unified-controller/aux && \
-    chmod -R ug+rwx /usr/local/etc/unified-controller/aux && \
-    ln -s /usr/local/etc/unified-controller /etc/unified-controller
+RUN mkdir -p /usr/local/unified-controller/aux && \
+    chgrp -R haproxy /usr/local/unified-controller && \
+    chmod -R ug+rwx /usr/local/unified-controller
 
 COPY /fs /
 

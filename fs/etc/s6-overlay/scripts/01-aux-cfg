@@ -1,7 +1,7 @@
 #!/command/with-contenv sh
 
-if [ ! -e /etc/unified-controller/aux/haproxy-aux.cfg ]; then
-	touch /etc/unified-controller/aux/haproxy-aux.cfg
-	chgrp haproxy /etc/unified-controller/aux/haproxy-aux.cfg
-	chmod g+w /etc/unified-controller/aux/haproxy-aux.cfg
+if [ ! -e /usr/local/unified-controller/aux/haproxy-aux.cfg ]; then
+	touch /usr/local/unified-controller/aux/haproxy-aux.cfg
+	chgrp haproxy /usr/local/unified-controller/aux/haproxy-aux.cfg
+	chmod g+w /usr/local/unified-controller/aux/haproxy-aux.cfg
 fi
