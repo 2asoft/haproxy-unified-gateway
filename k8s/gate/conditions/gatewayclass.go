@@ -21,6 +21,17 @@ import (
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+const (
+	// This reason is used with GatewayClassConditionAccepted (false).
+	GatewayClassReasonGatewayClassConflict v1.GatewayClassConditionReason = "GatewayClassConflict"
+
+	// GatewayClassMessageGatewayClassConflict is a message that describes GatewayClassReasonGatewayClassConflict.
+	GatewayClassMessageGatewayClassConflict = "Resource ignored due to a conflicting GatewayClass resource"
+
+	// GatewayClassReasonUnsupported is a message that describes GatewayClassReasonUnsupported
+	GatewayClassReasonUnsupported = "Resource ignored due to an unsupported GatewayClass"
+)
+
 var _ ConditionAccessor[*v1.GatewayClass] = &GatewayClassConditionImpl{}
 
 type GatewayClassConditionImpl struct{}
@@ -75,6 +86,17 @@ func NewGatewayClassConflict() Conditions {
 			Status:  metav1.ConditionFalse,
 			Reason:  string(GatewayClassReasonGatewayClassConflict),
 			Message: GatewayClassMessageGatewayClassConflict,
+		},
+	}
+}
+
+func NewGatewayClassUnsupported() Conditions {
+	return Conditions{
+		ConditionType(v1.GatewayClassConditionStatusAccepted): {
+			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(v1.GatewayClassReasonUnsupported),
+			Message: GatewayClassReasonUnsupported,
 		},
 	}
 }

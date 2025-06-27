@@ -16,6 +16,7 @@ package tree
 import (
 	"log/slog"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	v1 "k8s.io/api/core/v1"
@@ -54,6 +55,11 @@ type GateTree struct {
 	// A Map of installed GwApi CRDs versions
 	InstalledGwAPIVersions InstalledVersions
 	IsGwAPIVersionValid    bool
+}
+
+type CheckResult struct {
+	Conditions conditions.Conditions
+	Valid      bool
 }
 
 func NewGateTree(extractGVK utils.ExtractGVK) *GateTree {

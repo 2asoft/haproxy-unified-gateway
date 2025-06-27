@@ -15,24 +15,16 @@ package conditions
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
-)
-
-const (
-	// This reason is used with GatewayClassConditionAccepted (false).
-	GatewayClassReasonGatewayClassConflict v1.GatewayClassConditionReason = "GatewayClassConflict"
-
-	// GatewayClassMessageGatewayClassConflict is a message that describes GatewayClassReasonGatewayClassConflict.
-	GatewayClassMessageGatewayClassConflict = "Resource ignored due to a conflicting GatewayClass resource"
 )
 
 type ConditionType string
 
 type Condition struct {
-	Type    ConditionType
-	Status  metav1.ConditionStatus
-	Reason  string
-	Message string
+	Type               ConditionType
+	Status             metav1.ConditionStatus
+	Reason             string
+	Message            string
+	ObservedGeneration int64
 }
 
 type Conditions map[ConditionType]Condition
@@ -55,14 +47,22 @@ func (c Conditions) Equal(b Conditions) bool {
 	return true
 }
 
+func (c Conditions) SetGeneration(generation int64) {
+	for _, condition := range c {
+		condition.ObservedGeneration = generation
+		c[condition.Type] = condition
+	}
+}
+
 func NewConditionsFromMetav1Conditions(conditions []metav1.Condition) Conditions {
 	conditionsMap := make(Conditions)
 	for _, condition := range conditions {
 		conditionsMap[ConditionType(condition.Type)] = Condition{
-			Type:    ConditionType(condition.Type),
-			Status:  condition.Status,
-			Reason:  condition.Reason,
-			Message: condition.Message,
+			Type:               ConditionType(condition.Type),
+			Status:             condition.Status,
+			Reason:             condition.Reason,
+			Message:            condition.Message,
+			ObservedGeneration: condition.ObservedGeneration,
 		}
 	}
 	return conditionsMap
@@ -77,6 +77,7 @@ func (c Conditions) ToMetav1Conditions() []metav1.Condition {
 			Status:             condition.Status,
 			Reason:             condition.Reason,
 			Message:            condition.Message,
+			ObservedGeneration: condition.ObservedGeneration,
 			LastTransitionTime: now,
 		})
 	}

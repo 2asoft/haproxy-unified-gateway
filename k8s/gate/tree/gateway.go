@@ -14,12 +14,8 @@
 package tree
 
 import (
-	"log/slog"
-
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"k8s.io/apimachinery/pkg/types"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -37,50 +33,9 @@ type Gateway struct {
 	Valid bool
 }
 
-var _ Builder = &GatewayBuilderImpl{}
-
-type GatewayBuilderImpl struct {
-	clusterStore   *store.ClusterStore
-	gatewayclasses map[types.NamespacedName]*GatewayClass
-	logger         *slog.Logger
-}
-
-type GatewayBuilderParams struct {
-	// ClusterStore is the store of k8s resources.
-	ClusterStore *store.ClusterStore
-	// GatewayClasses is a map of GatewayClass resources (only accepted by the controller).
-	GatewayClasses map[types.NamespacedName]*GatewayClass
-	// Logger is the logger for the GatewayBuilder.
-	Logger *slog.Logger
-}
-
-func NewGatewayBuilder(params GatewayBuilderParams) *GatewayBuilderImpl {
-	return &GatewayBuilderImpl{
-		clusterStore:   params.ClusterStore,
-		gatewayclasses: params.GatewayClasses,
-		logger:         params.Logger,
+func NewGateway(k8sObject *v1.Gateway) *Gateway {
+	return &Gateway{
+		K8sResource: k8sObject,
+		Conditions:  conditions.Conditions{},
 	}
-}
-
-func (*GatewayBuilderImpl) Build() {
-	// _ := b.FilterGatewaysByGatewayClass()
-	// do all checks...
-	// merge HaproxyGate from GatewayClass and Gateway
-	// compute Conditions, Status, Valid
-}
-
-func (b *GatewayBuilderImpl) FilterGatewaysByGatewayClass() map[types.NamespacedName]*Gateway {
-	gateways := make(map[types.NamespacedName]*Gateway)
-	for _, gateway := range b.clusterStore.Gateways {
-		gatewayClassNsName := types.NamespacedName{Name: string(gateway.Spec.GatewayClassName)}
-		if _, ok := b.gatewayclasses[gatewayClassNsName]; !ok {
-			continue
-		}
-		gatewayNsName := types.NamespacedName{Namespace: gateway.Namespace, Name: gateway.Name}
-		gateways[gatewayNsName] = &Gateway{K8sResource: gateway}
-	}
-	return gateways
-}
-
-func (*GatewayBuilderImpl) BuildStatus() {
 }

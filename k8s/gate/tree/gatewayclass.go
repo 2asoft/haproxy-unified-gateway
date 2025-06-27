@@ -34,11 +34,14 @@ type GatewayClass struct {
 	K8sResource *v1.GatewayClass
 	// Conditions include Conditions for the GatewayClass.
 	Conditions conditions.Conditions
-	// HaproxyGate contains the HaproxyGate (confguration CRD)
-	// HaproxyGate *v3.HaproxyGate
-	// ParamsRefCheckResult shows whether the GatewayClass is valid as for ParamsRef
-	ParamsRefCheckResult HaproxyGateParamsRefCheckResult
-	Valid                bool
+	// CheckParamsRef shows whether the GatewayClass is valid as for ParamsRef
+	CheckParamsRef CheckResult
+	// CheckAccepted shows where the GatewayClass is accepted
+	// If can be rejected because of:
+	// - Conflict (only 1 GatewayClass accepted)
+	// - GatewayClass name not supported (controller limited to a list of GatewayClass names)
+	CheckAccepted CheckResult
+	Valid         bool
 }
 
 var _ utils.ObjectWithTimestamp = &GatewayClass{}
@@ -131,7 +134,7 @@ func (g *GatewayClass) BuildConditions(logger *slog.Logger, clusterStore *store.
 		ParamRef:          paramRef,
 		StoreHaproxyGates: clusterStore.HaproxyGates,
 	}
-	g.ParamsRefCheckResult = checker.Check()
+	g.CheckParamsRef = checker.Check()
 	gwcNsName := client.ObjectKeyFromObject(g.K8sResource)
 	isSupported := gateTree.IsSupportedGatewayClass(gwcNsName)
 	isIgnored := gateTree.IsIgnoredGatewayClass(gwcNsName)
@@ -157,10 +160,12 @@ func (g *GatewayClass) buildConditionsSupported(_ *slog.Logger, gateTree *GateTr
 	}
 
 	// Checks on parametersRef
-	g.Conditions.MergeOverrideConditions(g.ParamsRefCheckResult.Conditions)
-	g.Valid = gateTree.IsGwAPIVersionValid && g.ParamsRefCheckResult.Valid
+	g.Conditions.MergeOverrideConditions(g.CheckParamsRef.Conditions)
+	g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
+
+	g.Valid = gateTree.IsGwAPIVersionValid && g.CheckParamsRef.Valid
 }
 
 func (g *GatewayClass) buildConditionsIgnored(_ *slog.Logger, _ *GateTree) {
-	g.Conditions.MergeOverrideConditions(conditions.NewGatewayClassConflict())
+	g.Conditions.MergeOverrideConditions(conditions.NewGatewayClassUnsupported())
 }

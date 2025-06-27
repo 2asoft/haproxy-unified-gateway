@@ -13,15 +13,8 @@
 // limitations under the License.
 package config
 
-import "errors"
-
 // Checker is a function to check the configuration.
 // This can be a different for EE or CE
-func (c *Configuration) Check() error {
-	if len(c.GatewayClasses) == 0 {
-		err := errors.New("there should be at least 1 GatewayClass in the configuration")
-		return err
-	}
-
+func (*Configuration) Check() error {
 	return nil
 }

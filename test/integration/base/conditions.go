@@ -20,8 +20,8 @@ import (
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 func (b *BaseSuite) YamlToConditions(yamlPath string) conditions.Conditions {

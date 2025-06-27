@@ -114,7 +114,6 @@ func Add(
 	treeBuilderConfig := handler.NewGateTreeBuilderConfig(
 		mgr.GetClient(),
 		mgr.GetAPIReader(),
-		cfg.GatewayClasses,
 		cfg.ControllerConfNsName,
 		extractGVK,
 		cfg.Logger,
@@ -196,7 +195,6 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
-						predicate.GatewayPredicate{GatewayClassNames: cfg.GatewayClasses},
 						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 					),
 				),

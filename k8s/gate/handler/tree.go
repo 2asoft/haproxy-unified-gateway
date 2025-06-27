@@ -96,9 +96,7 @@ func NewGateTreeBuilder(
 	// --------------
 	// Gateway
 	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
-		ClusterStore:   clusterStore,
-		GatewayClasses: gateTree.GatewayClasses.Supported,
-		Logger:         cfg.logger,
+		BuilderParams: builderParams,
 	})
 
 	treeBuilder := GateTreeBuilder{
@@ -121,7 +119,6 @@ func NewGateTreeBuilder(
 func NewGateTreeBuilderConfig(
 	k8sClient client.Client,
 	k8sReader client.Reader,
-	gatewayClassNames map[string]struct{},
 	controllerConfNsName types.NamespacedName,
 	extractGVK utils.ExtractGVK,
 	logger *slog.Logger,
@@ -129,7 +126,6 @@ func NewGateTreeBuilderConfig(
 	eventHandlerConfig := GateTreeBuilderConfig{
 		k8sClient:            k8sClient,
 		k8sReader:            k8sReader,
-		gatewayClassNames:    gatewayClassNames,
 		ControllerConfNsName: controllerConfNsName,
 		extractGVK:           extractGVK,
 		logger:               logger,

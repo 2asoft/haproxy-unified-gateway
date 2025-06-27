@@ -64,9 +64,7 @@ func main() {
 		Enabled: false,
 		Secure:  false,
 	}
-	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
 	// (through the spec.controllerName)
-	gatewayClasses := []string{"haproxy"}
 	controllerName := "gate.haproxy.org/gateway-controller"
 	controllerConfName := types.NamespacedName{
 		Namespace: "test",
@@ -95,7 +93,6 @@ func main() {
 	cntlr, err := controller.New(
 		opt.ControllerPodConfig(controllerConfig),
 		opt.KubeConfig(kubeconfig),
-		opt.GatewayClass(gatewayClasses),
 		opt.ControllerConf(controllerConfName),
 		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),

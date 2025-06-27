@@ -1,5 +1,5 @@
-- message: Resource ignored due to a conflicting GatewayClass resource
-  reason: GatewayClassConflict
+- message: Resource ignored due to an unsupported GatewayClass
+  reason: Unsupported
   status: "False"
   type: Accepted
 - message: Gateway API CRD versions are supported

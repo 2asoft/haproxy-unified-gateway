@@ -84,12 +84,7 @@ type HaproxyGateParamsRefChecker struct {
 	StoreHaproxyGates map[types.NamespacedName]*v3.HaproxyGate
 }
 
-type HaproxyGateParamsRefCheckResult struct {
-	Conditions conditions.Conditions
-	Valid      bool
-}
-
-func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
+func (c *HaproxyGateParamsRefChecker) Check() CheckResult {
 	conds := conditions.Conditions{}
 	valid := true
 	var gateFound bool
@@ -105,7 +100,7 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 			conds.MergeOverrideConditions(
 				conditions.NewGatewayClassInvalidParameters(unsupportedKind),
 			)
-			return HaproxyGateParamsRefCheckResult{
+			return CheckResult{
 				Conditions: conds,
 				Valid:      false,
 			}
@@ -118,7 +113,7 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 			conds.MergeOverrideConditions(
 				conditions.NewGatewayClassInvalidParameters(unsupportedGroup),
 			)
-			return HaproxyGateParamsRefCheckResult{
+			return CheckResult{
 				Conditions: conds,
 				Valid:      false,
 			}
@@ -130,7 +125,7 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 			conds.MergeOverrideConditions(
 				conditions.NewGatewayClassInvalidParameters(nsrequired),
 			)
-			return HaproxyGateParamsRefCheckResult{
+			return CheckResult{
 				Conditions: conds,
 				Valid:      valid,
 			}
@@ -144,13 +139,13 @@ func (c *HaproxyGateParamsRefChecker) Check() HaproxyGateParamsRefCheckResult {
 			conds.MergeOverrideConditions(
 				conditions.NewGatewayClassInvalidParameters(notFound),
 			)
-			return HaproxyGateParamsRefCheckResult{
+			return CheckResult{
 				Conditions: conds,
 				Valid:      false,
 			}
 		}
 	}
-	return HaproxyGateParamsRefCheckResult{
+	return CheckResult{
 		Conditions: conditions.NewGatewayClassAcceptedConditions(),
 		Valid:      valid,
 	}

@@ -58,13 +58,10 @@ const (
 	controllerNs = "haproxy-controller"
 )
 
-var (
-	controllerCfgNsName = types.NamespacedName{
-		Namespace: "test",
-		Name:      "haproxyctrlconf",
-	}
-	gatewayClassNames = []string{"haproxy"}
-)
+var controllerCfgNsName = types.NamespacedName{
+	Namespace: "test",
+	Name:      "haproxyctrlconf",
+}
 
 type IntTest struct {
 	Ctx       context.Context
@@ -162,7 +159,6 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	opts := []func(c *config.Configuration) error{
 		opt.ControllerPodConfig(controllerConfig),
 		opt.KubeConfig(kubeconfig),
-		opt.GatewayClass(gatewayClassNames),
 		opt.ControllerConf(controllerCfgNsName),
 		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),

@@ -2,7 +2,9 @@
   reason: InvalidParameters
   status: "False"
   type: Accepted
+  observedGeneration: 1
 - message: Gateway API CRD versions are supported
   reason: SupportedVersion
   status: "True"
   type: SupportedVersion
+  observedGeneration: 1

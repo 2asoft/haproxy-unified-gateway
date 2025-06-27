@@ -2,7 +2,9 @@
   reason: Accepted
   status: "True"
   type: Accepted
+  observedGeneration: 1
 - message: Gateway API CRD versions are not supported. Please install version v1.2, v1.3
   reason: UnsupportedVersion
   status: "False"
   type: SupportedVersion
+  observedGeneration: 1

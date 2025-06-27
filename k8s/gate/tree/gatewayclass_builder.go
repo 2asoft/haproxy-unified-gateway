@@ -52,7 +52,7 @@ func (b *GatewayClassBuilderImpl) Build() {
 	// First categorize:
 	// - accepted
 	// - ignored
-	categorizer := &GatewayClassCategorizerImpl{gcNames: b.gcNames, gateTree: b.GateTree}
+	categorizer := &GatewayClassCategorizerImpl{gateTree: b.GateTree}
 	categorizer.Categorize(b.ClusterStore.Updates.GatewayClasses)
 
 	// Update the references: Gate
@@ -113,7 +113,7 @@ func (b *GatewayClassBuilderImpl) checkParametersRef() {
 				ParamRef:          paramRef,
 				StoreHaproxyGates: b.ClusterStore.HaproxyGates,
 			}
-			gwcTree.ParamsRefCheckResult = checker.Check()
+			gwcTree.CheckParamsRef = checker.Check()
 		case store.StatusDeleted:
 			// nothing to do
 		}
