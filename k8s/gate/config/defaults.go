@@ -11,13 +11,25 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package opt
+package config
 
-import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+import (
+	"time"
 
-func ControllerName(controllerName string) func(o *config.Configuration) error {
-	return func(o *config.Configuration) error {
-		o.ControllerName = controllerName
-		return nil
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+)
+
+func (cfg *Configuration) ApplyDefaults() {
+	// Logging Defaults
+	slogger, logHandler := NewGateLogger(logging.DefaultLevel, logging.DefaultLogLevelPerCategory)
+	cfg.Logger = slogger
+	cfg.LogHandler = logHandler
+
+	cfg.LeaderElectionConfig.LockName = "unified-controller-leader-election-lock"
+	if cfg.ControllerName == "" {
+		cfg.ControllerName = "gate.haproxy.org/unified-controller"
+	}
+	if cfg.SyncPeriod == 0 {
+		cfg.SyncPeriod = 5 * time.Second
 	}
 }

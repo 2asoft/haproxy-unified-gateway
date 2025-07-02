@@ -16,8 +16,6 @@ package tree
 import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -25,56 +23,12 @@ import (
 )
 
 type GateBuilderImpl struct {
-	BuilderParams
+	ControllerStore
 }
 
-var _ Builder = &GateBuilderImpl{}
-
-func (b *GateBuilderImpl) Build() {
-	for _, gateUpdate := range b.ClusterStore.Updates.HaproxyGates {
-		gate, ok := gateUpdate.GetObject().(*v3.HaproxyGate)
-		if !ok {
-			continue
-		}
-		impactedGwcs := FindImpactedGatewayClasses(b.ExtractGVK, gate, *b.ClusterStore, b.GateTree)
-		for _, gwc := range impactedGwcs {
-			gwc.OnGateUpdated(b.Logger, b.ExtractGVK, gateUpdate, b.ClusterStore, b.GateTree)
-		}
-	}
-
-	// Find the owner: Gateways
-}
-
-func FindImpactedGatewayClasses(extractGVK utils.ExtractGVK, gate *v3.HaproxyGate, clusterStore store.ClusterStore, gateTree *GateTree) []*GatewayClass {
-	impactedGateways := make([]*GatewayClass, 0)
-	for range clusterStore.Updates.HaproxyGates {
-		// Find the owner: GatewayClasses
-		gvkGwc := extractGVK(&gatewayv1.GatewayClass{})
-
-		gwcParentKeys := gateTree.ReferencedHaproxyGates.ReferencedBy(gate, gvkGwc)
-		for gwcParentKey := range gwcParentKeys {
-			// Supported GatewayClasses
-			supportedGwcParent, ok := gateTree.GatewayClasses.Supported[gwcParentKey]
-			if !ok {
-				continue
-			}
-			impactedGateways = append(impactedGateways, supportedGwcParent)
-
-			// Ignored GatewayClasses
-			// Supported GatewayClasses
-			ignoredGwcParent, ok := gateTree.GatewayClasses.Ignored[gwcParentKey]
-			if !ok {
-				continue
-			}
-			impactedGateways = append(impactedGateways, ignoredGwcParent)
-		}
-	}
-	return impactedGateways
-}
-
-func NewGateBuilder(params BuilderParams) *GateBuilderImpl {
+func NewGateBuilder(params ControllerStore) *GateBuilderImpl {
 	builder := &GateBuilderImpl{
-		BuilderParams: params,
+		ControllerStore: params,
 	}
 	return builder
 }
@@ -84,71 +38,138 @@ type HaproxyGateParamsRefChecker struct {
 	StoreHaproxyGates map[types.NamespacedName]*v3.HaproxyGate
 }
 
-func (c *HaproxyGateParamsRefChecker) Check() CheckResult {
+func (c *HaproxyGateParamsRefChecker) CheckGatewayClass() (CheckResult, *v3.HaproxyGate) {
 	conds := conditions.Conditions{}
-	valid := true
 	var gateFound bool
+	var haproxygate *v3.HaproxyGate
 
 	if c.ParamRef != nil {
 		// Checks that Kind and Group are as expected
 		paramPath := field.NewPath("spec").Child("parametersRef")
-		if c.ParamRef.Kind != SupportedGatewayClassParametersRefKind {
+		if c.ParamRef.Kind != SupportedParametersRefKind {
 			kindPath := paramPath.Child("kind")
 			unsupportedKind := field.NotSupported(
 				kindPath,
-				c.ParamRef.Kind, []string{string(SupportedGatewayClassParametersRefKind)})
+				c.ParamRef.Kind, []string{string(SupportedParametersRefKind)})
 			conds.MergeOverrideConditions(
-				conditions.NewGatewayClassInvalidParameters(unsupportedKind),
+				conditions.NewGatewayClassAcceptedInvalidParameters(unsupportedKind),
 			)
 			return CheckResult{
 				Conditions: conds,
 				Valid:      false,
-			}
+			}, nil
 		}
-		if c.ParamRef.Group != SupportGatewayClassPamatersRefGroup {
+		if c.ParamRef.Group != SupportedParametersRefGroup {
 			groupPath := paramPath.Child("group")
 			unsupportedGroup := field.NotSupported(
 				groupPath,
-				c.ParamRef.Group, []string{string(SupportGatewayClassPamatersRefGroup)})
+				c.ParamRef.Group, []string{string(SupportedParametersRefGroup)})
 			conds.MergeOverrideConditions(
-				conditions.NewGatewayClassInvalidParameters(unsupportedGroup),
+				conditions.NewGatewayClassAcceptedInvalidParameters(unsupportedGroup),
 			)
 			return CheckResult{
 				Conditions: conds,
 				Valid:      false,
-			}
+			}, nil
 		}
 		// Checks that the CR does exist
 		if c.ParamRef.Namespace == nil {
 			nsPath := paramPath.Child("namespace")
 			nsrequired := field.Required(nsPath, "namespace is required")
 			conds.MergeOverrideConditions(
-				conditions.NewGatewayClassInvalidParameters(nsrequired),
+				conditions.NewGatewayClassAcceptedInvalidParameters(nsrequired),
 			)
 			return CheckResult{
 				Conditions: conds,
-				Valid:      valid,
-			}
+				Valid:      false,
+			}, nil
 		}
-		_, gateFound = c.StoreHaproxyGates[types.NamespacedName{
+		haproxygate, gateFound = c.StoreHaproxyGates[types.NamespacedName{
 			Name:      c.ParamRef.Name,
 			Namespace: string(*c.ParamRef.Namespace),
 		}]
 		if !gateFound {
 			notFound := field.NotFound(paramPath, c.ParamRef.Name)
 			conds.MergeOverrideConditions(
-				conditions.NewGatewayClassInvalidParameters(notFound),
+				conditions.NewGatewayClassAcceptedInvalidParameters(notFound),
 			)
 			return CheckResult{
 				Conditions: conds,
 				Valid:      false,
-			}
+			}, nil
 		}
 	}
 	return CheckResult{
-		Conditions: conditions.NewGatewayClassAcceptedConditions(),
-		Valid:      valid,
+		Conditions: conditions.NewGatewayClassAcceptedOK(),
+		Valid:      true,
+	}, haproxygate
+}
+
+func (c *HaproxyGateParamsRefChecker) CheckGateway() (CheckResult, *v3.HaproxyGate) {
+	conds := conditions.Conditions{}
+	var gateFound bool
+	var haproxygate *v3.HaproxyGate
+
+	if c.ParamRef != nil {
+		// Checks that Kind and Group are as expected
+		paramPath := field.NewPath("spec").Child("parametersRef")
+		if c.ParamRef.Kind != SupportedParametersRefKind {
+			kindPath := paramPath.Child("kind")
+			unsupportedKind := field.NotSupported(
+				kindPath,
+				c.ParamRef.Kind, []string{string(SupportedParametersRefKind)})
+			conds.MergeOverrideConditions(
+				conditions.NewGatewayAcceptedInvalidParameters(unsupportedKind),
+			)
+			return CheckResult{
+				Conditions: conds,
+				Valid:      false,
+			}, nil
+		}
+		if c.ParamRef.Group != SupportedParametersRefGroup {
+			groupPath := paramPath.Child("group")
+			unsupportedGroup := field.NotSupported(
+				groupPath,
+				c.ParamRef.Group, []string{string(SupportedParametersRefGroup)})
+			conds.MergeOverrideConditions(
+				conditions.NewGatewayAcceptedInvalidParameters(unsupportedGroup),
+			)
+			return CheckResult{
+				Conditions: conds,
+				Valid:      false,
+			}, nil
+		}
+		// Checks that the CR does exist
+		if c.ParamRef.Namespace == nil {
+			nsPath := paramPath.Child("namespace")
+			nsrequired := field.Required(nsPath, "namespace is required")
+			conds.MergeOverrideConditions(
+				conditions.NewGatewayAcceptedInvalidParameters(nsrequired),
+			)
+			return CheckResult{
+				Conditions: conds,
+				Valid:      false,
+			}, nil
+		}
+		haproxygate, gateFound = c.StoreHaproxyGates[types.NamespacedName{
+			Name:      c.ParamRef.Name,
+			Namespace: string(*c.ParamRef.Namespace),
+		}]
+		if !gateFound {
+			notFound := field.NotFound(paramPath, c.ParamRef.Name)
+			conds.MergeOverrideConditions(
+				conditions.NewGatewayAcceptedInvalidParameters(notFound),
+			)
+			return CheckResult{
+				Conditions: conds,
+				Valid:      false,
+			}, nil
+		}
 	}
+	return CheckResult{
+		Conditions: conditions.NewGatewayAcceptedOK(),
+		Valid:      true,
+	}, haproxygate
 }
 
 func (*GateBuilderImpl) BuildStatus() {

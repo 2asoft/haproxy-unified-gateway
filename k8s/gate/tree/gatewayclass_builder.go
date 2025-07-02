@@ -14,209 +14,156 @@
 package tree
 
 import (
-	"context"
-	"log/slog"
-
-	"github.com/Masterminds/semver/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object_types.go"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type GatewayClassBuilderImpl struct {
-	BuilderParams
-	gcNames map[string]struct{}
+	ControllerStore
 }
 
 var _ Builder = &GatewayClassBuilderImpl{}
 
 type GatewayClassBuilderParams struct {
-	BuilderParams
-	GcNames map[string]struct{}
+	ControllerStore
 }
 
 func NewGatewayClassBuilder(params GatewayClassBuilderParams) *GatewayClassBuilderImpl {
 	builder := &GatewayClassBuilderImpl{
-		BuilderParams: params.BuilderParams,
-		gcNames:       params.GcNames,
+		ControllerStore: params.ControllerStore,
 	}
-	// Register observers
-	builder.GateTree.InstalledGwAPIVersions.RegisterObserver(builder.OnUpdateInstalledVersion)
 
 	return builder
 }
 
-func (b *GatewayClassBuilderImpl) Build() {
-	// First categorize:
-	// - accepted
-	// - ignored
-	categorizer := &GatewayClassCategorizerImpl{gateTree: b.GateTree}
-	categorizer.Categorize(b.ClusterStore.Updates.GatewayClasses)
+// --------------------
+// GateTree Updates
+// --------------------
 
-	// Update the references: Gate
-	b.updateReferencedGates()
-
-	// Check installed versions
-	b.checkSupportedVersion(validateVersionsParams{
-		supportedVersions:      SupportedGatewayAPIBundleVersion,
-		installedGwAPIVersions: b.GateTree.InstalledGwAPIVersions.Versions,
-	})
-	// Check Gate reference
-	b.checkParametersRef()
-
-	// --------------
-	// installed Versions
-	installedVersionBuilder := NewInstalledVersionsBuilder(b.BuilderParams)
-	installedVersionBuilder.Build()
-
-	// Gate
-	gateBuilder := NewGateBuilder(b.BuilderParams)
-	gateBuilder.Build()
+func (b *GatewayClassBuilderImpl) ComputeTreeUpdates() {
+	b.addIndirectClusterStoreUpdates()
+	// After this step, the clusterStore.Updates contains all impacted GatewayClass
+	// Including the one impacted by:
+	// - HaproxyGate updates
+	// - installedVersions updates
+	b.prepareGateTreeUpdates()
 }
 
-// OnUpdateInstalledVersion callback function to be called when the installed versions are updated.
-func (b *GatewayClassBuilderImpl) OnUpdateInstalledVersion(iv InstalledVersions) {
-	b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
-		"OnUpdateInstalledVersion",
-		logging.LogAttrCategory(logging.LogCategoryGate),
-		logging.LogAttrInstalledVersions(iv.Versions),
+func (b *GatewayClassBuilderImpl) addIndirectClusterStoreUpdates() {
+	// Indirect from HaproxyGate
+	b.addIndirectGatewayClassesFromHaproxyGates()
+	// Indirect from InstalledVersions
+	b.addIndirectGatewayClassesFromInstalledVersions()
+}
+
+func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHaproxyGates() {
+	for _, haproxyGateUpdate := range b.ClusterStore.Updates.HaproxyGates {
+		b.addIndirectGatewayClassesFromHaproxyGate(haproxyGateUpdate)
+	}
+}
+
+func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHaproxyGate(haproxyGateUpdate store.Update[*v3.HaproxyGate]) {
+	addIndirectFromReferenced(
+		haproxyGateUpdate,
+		b.ReferencedObjects.ReferencedHaproxyGates,
+		b.ClusterStore.GatewayClasses,
+		b.ClusterStore.Updates.GatewayClasses,
+		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGatewayClass),
 	)
-	// Retrieve Gateway API bundle version
-	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
-	validateVersionsParams := validateVersionsParams{
-		supportedVersions:      SupportedGatewayAPIBundleVersion,
-		installedGwAPIVersions: b.GateTree.InstalledGwAPIVersions.Versions,
-	}
-	b.checkSupportedVersion(validateVersionsParams)
-	// Update status of all GewayClasses
-	for _, gwc := range b.GateTree.GatewayClasses.Supported {
-		gwc.buildConditionsSupported(b.Logger, b.GateTree)
-	}
-	for _, gwc := range b.GateTree.GatewayClasses.Ignored {
-		gwc.buildConditionsIgnored(b.Logger, b.GateTree)
-	}
 }
 
-func (b *GatewayClassBuilderImpl) checkParametersRef() {
-	for gwcNsName, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
-		switch gwcUpdate.Status {
-		case store.StatusUpserted:
-			gwc := gwcUpdate.NewObject
-			gwcTree, ok := b.GateTree.GatewayClasses.Supported[gwcNsName]
-			if !ok {
+func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromInstalledVersions() {
+	// If installedVersions has changed all GatewayClasses are impacted
+	if b.InstalledGwAPIVersions.Updated != nil && *b.InstalledGwAPIVersions.Updated {
+		for gwcKey := range b.ControllerStore.ClusterStore.GatewayClasses {
+			gwc := b.ClusterStore.GatewayClasses[gwcKey]
+			_, alreadyPresent := b.ClusterStore.Updates.GatewayClasses[gwcKey]
+			if alreadyPresent {
 				continue
 			}
-			paramRef := gwc.Spec.ParametersRef
-			checker := HaproxyGateParamsRefChecker{
-				ParamRef:          paramRef,
-				StoreHaproxyGates: b.ClusterStore.HaproxyGates,
+			b.ClusterStore.Updates.GatewayClasses[gwcKey] = store.Update[*gatewayv1.GatewayClass]{
+				NewObject: gwc,
+				OldObject: gwc, // old = new when indirect update
+				Status:    store.StatusUpserted,
+				Indirect:  true,
 			}
-			gwcTree.CheckParamsRef = checker.Check()
-		case store.StatusDeleted:
-			// nothing to do
 		}
 	}
 }
 
-func (b *GatewayClassBuilderImpl) updateReferencedGates() {
-	for _, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
-		gwc, ok := gwcUpdate.GetObject().(*v1.GatewayClass)
-		if !ok {
+func (b *GatewayClassBuilderImpl) prepareGateTreeUpdates() {
+	for gwcKey, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
+		b.prepareTreeGatewayClassUpdate(gwcKey, gwcUpdate)
+	}
+}
+
+func (b *GatewayClassBuilderImpl) prepareTreeGatewayClassUpdate(gwcKey client.ObjectKey, gwcUpdate store.Update[*gatewayv1.GatewayClass]) {
+	// Is the GatewayClass already in Managed or Unmanaged tree ?
+	// If not, add a new one
+	var treeGwc *GatewayClass
+	alreadyManagedTreeGwc, alreadyManagedTreeGwcOK := b.GateTree.GatewayClasses[gwcKey]
+	alreadyUnmanagedTreeGwc, alreadyUnmanagedTreeGwcOK := b.UnmanagedGateTree.GatewayClasses[gwcKey]
+
+	if alreadyManagedTreeGwcOK {
+		treeGwc = alreadyManagedTreeGwc
+	} else if alreadyUnmanagedTreeGwcOK {
+		treeGwc = alreadyUnmanagedTreeGwc
+	}
+
+	switch gwcUpdate.Status {
+	case store.StatusUpserted:
+		if treeGwc != nil {
+			treeGwc.SetAsUpserted(b.Logger, gwcUpdate.NewObject)
+			treeGwc.ResetChecks()
+		} else {
+			treeGwc = NewGatewayClass(gwcUpdate.NewObject)
+		}
+		// Perform Validity Check on all updated GatewayClasses
+		// Do we keep it in Managed or Unmanaged???
+		treeGwc.checkParametersRef(b.ControllerStore)
+		// Validity is based only on treeGwc.CheckParamsRef.Valid
+		// We are in best effort mode for Version and accept GatewayClass with invalid version
+		// treeGwc.Valid = b.GateTree.IsGwAPIVersionValid && treeGwc.CheckParamsRef.Valid
+		treeGwc.Valid = treeGwc.CheckParamsRef.Valid
+		treeGwc.BuildConditions(b.ControllerStore)
+		if treeGwc.Managed {
+			treeGwc.SetAsManaged(b.Logger, b.ControllerStore)
+		} else {
+			treeGwc.SetAsUnmanaged(b.Logger, b.ControllerStore)
+		}
+	case store.StatusDeleted:
+		if treeGwc != nil {
+			treeGwc.SetAsDeleted(b.Logger)
+			treeGwc.ResetChecks()
+		}
+		// else nothing to do
+		// It did not exists, it's deleted, noop
+	}
+}
+
+// -----------
+// Cleanup
+// -----------
+
+func (b *GatewayClassBuilderImpl) CleanTreeUpdates() {
+	// if a Tree object is delete remove it from the Tree
+	for gwcKey, treeGwc := range b.GateTree.GatewayClasses {
+		if treeGwc.TreeStatus.Status == store.StatusDeleted {
+			delete(b.GateTree.GatewayClasses, gwcKey)
 			continue
 		}
-		paramsRef := gwc.Spec.ParametersRef
-		if paramsRef == nil {
+		treeGwc.TreeStatus = TreeUpdate[GatewayClass]{}
+	}
+
+	// Remove them from Unmanaged ???
+	for gwcKey, treeGwc := range b.UnmanagedGateTree.GatewayClasses {
+		if treeGwc.TreeStatus.Status == store.StatusDeleted {
+			delete(b.GateTree.GatewayClasses, gwcKey)
 			continue
 		}
-		ownedKey := client.ObjectKey{Namespace: utils.NamespaceAsString(paramsRef.Namespace), Name: paramsRef.Name}
-
-		switch gwcUpdate.Status {
-		case store.StatusUpserted:
-			b.GateTree.ReferencedHaproxyGates.AddReferencedBy(ownedKey, gwc)
-		case store.StatusDeleted:
-			b.GateTree.ReferencedHaproxyGates.RemoveReferencedBy(ownedKey, gwc)
-		}
+		treeGwc.TreeStatus = TreeUpdate[GatewayClass]{}
 	}
-}
-
-// Some params to add (reload status, conflicts....)
-func (b *GatewayClassBuilderImpl) BuildStatus() {
-	for _, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
-		switch gwcUpdate.Status {
-		case store.StatusUpserted:
-			gwc := gwcUpdate.NewObject
-			var gwcTree *GatewayClass
-			var ok bool
-			if gwcTree, ok = b.GateTree.GatewayClasses.Supported[client.ObjectKeyFromObject(gwc)]; ok {
-				gwcTree.buildConditionsSupported(b.Logger, b.GateTree)
-			}
-			if gwcTree, ok = b.GateTree.GatewayClasses.Ignored[client.ObjectKeyFromObject(gwc)]; ok {
-				gwcTree.buildConditionsIgnored(b.Logger, b.GateTree)
-			}
-		case store.StatusDeleted:
-			// nothing to do
-		}
-	}
-}
-
-type validateVersionsParams struct {
-	installedGwAPIVersions map[string]int
-	supportedVersions      []string
-}
-
-func (b *GatewayClassBuilderImpl) checkSupportedVersion(params validateVersionsParams) {
-	for v := range params.installedGwAPIVersions {
-		params := validateOneGwAPIVersionParams{
-			supportedVersions: params.supportedVersions,
-			installedVersion:  v,
-		}
-		valid := b.validateOneInstalledGwAPIVersion(params)
-		if !valid {
-			b.GateTree.IsGwAPIVersionValid = false
-			return
-		}
-	}
-	b.GateTree.IsGwAPIVersionValid = true
-}
-
-type validateOneGwAPIVersionParams struct {
-	installedVersion  string
-	supportedVersions []string
-}
-
-func (b *GatewayClassBuilderImpl) validateOneInstalledGwAPIVersion(params validateOneGwAPIVersionParams) bool {
-	constraints := make([]*semver.Constraints, 0)
-
-	for _, v := range params.supportedVersions {
-		constraint, err := semver.NewConstraint("~" + v)
-		if err != nil {
-			b.Logger.LogAttrs(context.Background(), slog.LevelError,
-				"cannot build semver constraint",
-				logging.LogAttrCategory(logging.LogCategoryGate),
-				logging.LogAttrError(err),
-			)
-			return false
-		}
-		constraints = append(constraints, constraint)
-	}
-
-	sv, err := semver.NewVersion(params.installedVersion)
-	if err != nil {
-		// If a version string is invalid, we should not consider it as a supported version.
-		b.Logger.LogAttrs(context.Background(), slog.LevelError,
-			"cannot parse version string",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrError(err),
-		)
-		return false
-	}
-	for _, constraint := range constraints {
-		if constraint.Check(sv) {
-			return true
-		}
-	}
-
-	return false
 }

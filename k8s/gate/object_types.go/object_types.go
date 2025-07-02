@@ -11,13 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package opt
+package objtypes
 
-import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+import (
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	apiv1 "k8s.io/api/core/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+)
 
-func ControllerName(controllerName string) func(o *config.Configuration) error {
-	return func(o *config.Configuration) error {
-		o.ControllerName = controllerName
-		return nil
-	}
-}
+var (
+	ObjectTypeGatewayClass = &gatewayv1.GatewayClass{}
+	ObjectTypeGateway      = &gatewayv1.Gateway{}
+	ObjectTypeHTTPRoute    = &gatewayv1.HTTPRoute{}
+	ObjectTypeService      = &apiv1.Service{}
+	ObjectTypeSecret       = &apiv1.Secret{}
+	ObjectTypeHaproxyGate  = &v3.HaproxyGate{}
+)

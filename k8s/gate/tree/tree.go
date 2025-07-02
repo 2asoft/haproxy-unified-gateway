@@ -14,47 +14,38 @@
 package tree
 
 import (
-	"log/slog"
-
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/references"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-type Builder interface {
-	Build()
-	BuildStatus()
+type TreeUpdate[T any] struct {
+	OldTreeResource *T
+	Status          store.Status
 }
 
-type BuilderParams struct {
-	ClusterStore *store.ClusterStore
-	GateTree     *GateTree
-	Logger       *slog.Logger
-	ExtractGVK   utils.ExtractGVK
+type Builder interface {
+	ComputeTreeUpdates()
+	CleanTreeUpdates()
 }
 
 // GateTree is a Graph-like representation of Gateway API resources.
 type GateTree struct {
-	// // GatewayClasses holds the GatewayClasses resource that are accepted and ignored
-	GatewayClasses CategorizedGatewayClasses
-	// ReferencedSecrets includes Secrets referenced by Gateway Listeners, including invalid ones.
-	// It is different from the other maps, because it includes entries for Secrets that do not exist
-	// in the cluster. We need such entries so that we can query the Graph to determine if a Secret is referenced
-	// by the Gateway, including the case when the Secret is newly created.
-	Gateways map[types.NamespacedName]*Gateway
+	// GatewayClasses holds the GatewayClasses resource that are accepted and ignored
+	GatewayClasses map[types.NamespacedName]*GatewayClass
+	Gateways       map[types.NamespacedName]*Gateway
+}
+
+type ReferencedObjects struct {
 	// ReferencedHaproxyGates includes the Gates that are references by GatewayClasses and Gateways
-	ReferencedHaproxyGates ReferencedBy
-	ReferencedSecrets      map[types.NamespacedName]*Secret
-	// ReferencedNamespaces includes Namespaces with labels that match the Gateway Listener's label selector.
-	ReferencedNamespaces map[types.NamespacedName]*v1.Namespace
-	// ReferencedServices includes the NamespacedNames of all the Services that are referenced by at least one Route.
-	ReferencedServices map[types.NamespacedName]*Service
-	// A Map of installed GwApi CRDs versions
-	InstalledGwAPIVersions InstalledVersions
-	IsGwAPIVersionValid    bool
+	ReferencedHaproxyGates references.ReferencedBy
+	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
+	ReferencedGatewayClasses references.ReferencedBy
 }
 
 type CheckResult struct {
@@ -62,29 +53,47 @@ type CheckResult struct {
 	Valid      bool
 }
 
-func NewGateTree(extractGVK utils.ExtractGVK) *GateTree {
+func NewGateTree() *GateTree {
 	return &GateTree{
-		InstalledGwAPIVersions: InstalledVersions{
-			Versions: make(map[string]int),
-		},
-		GatewayClasses: CategorizedGatewayClasses{
-			Supported: make(map[types.NamespacedName]*GatewayClass),
-			Ignored:   make(map[types.NamespacedName]*GatewayClass),
-		},
-		Gateways:               make(map[types.NamespacedName]*Gateway),
-		ReferencedHaproxyGates: NewReferencedBy(extractGVK),
-		ReferencedSecrets:      make(map[types.NamespacedName]*Secret),
-		ReferencedNamespaces:   make(map[types.NamespacedName]*v1.Namespace),
-		ReferencedServices:     make(map[types.NamespacedName]*Service),
+		GatewayClasses: make(map[types.NamespacedName]*GatewayClass),
+		Gateways:       make(map[types.NamespacedName]*Gateway),
 	}
 }
 
-func (t *GateTree) IsSupportedGatewayClass(gwcNsName client.ObjectKey) bool {
-	_, ok := t.GatewayClasses.Supported[gwcNsName]
-	return ok
+func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
+	return &ReferencedObjects{
+		ReferencedHaproxyGates:   references.NewReferencedBy("haproxygate", extractGVK),
+		ReferencedGatewayClasses: references.NewReferencedBy("gatewayclass", extractGVK),
+	}
 }
 
-func (t *GateTree) IsIgnoredGatewayClass(gwcNsName client.ObjectKey) bool {
-	_, ok := t.GatewayClasses.Ignored[gwcNsName]
-	return ok
+func addIndirectFromReferenced[OWNED client.Object, OWNER client.Object](
+	ownedUpdate store.Update[OWNED],
+	referencedBy references.ReferencedBy,
+	ownerMap map[client.ObjectKey]OWNER,
+	updateMap map[client.ObjectKey]store.Update[OWNER],
+	ownergvk schema.GroupVersionKind,
+) {
+	var owned OWNED
+	switch ownedUpdate.Status {
+	case store.StatusUpserted:
+		owned = ownedUpdate.NewObject
+	case store.StatusDeleted:
+		owned = ownedUpdate.OldObject
+	}
+
+	ownerKeys := referencedBy.ReferencedBy(owned, ownergvk)
+
+	for ownerKey := range ownerKeys {
+		owner := ownerMap[ownerKey]
+		if _, alreadyPresent := updateMap[ownerKey]; alreadyPresent {
+			continue
+		}
+		updateMap[ownerKey] = store.Update[OWNER]{
+			NewObject: owner,
+			OldObject: owner, // indirect update
+			Status:    store.StatusUpserted,
+			Indirect:  true,
+		}
+	}
 }

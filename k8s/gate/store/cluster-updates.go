@@ -37,6 +37,10 @@ type Update[T client.Object] struct {
 	// NewObject is the new version of the object after all updated, the latest value
 	NewObject T
 	Status    Status
+	// Indirect is set to true when the update is not direct from a K8s object but
+	// from a linked K8s object udpate
+	// For example a GatewayClass referencing a HaproxyGate and the HaproxyGate is updated
+	Indirect bool
 }
 
 // ClusterUpdated contains the udpates that happened to cluster objects during a sync cycle
@@ -66,14 +70,4 @@ func NewClusterUpdates() ClusterUpdates {
 		HaproxyGates:    make(map[types.NamespacedName]Update[*v3.HaproxyGate]),
 		ControllerConfs: make(map[types.NamespacedName]Update[*v3.HaproxyGateCtrlCfg]),
 	}
-}
-
-func (u *Update[T]) GetObject() client.Object {
-	switch u.Status {
-	case StatusUpserted:
-		return u.NewObject
-	case StatusDeleted:
-		return u.OldObject
-	}
-	return nil
 }

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package utils // revive:disable:var-naming
 
 import (
 	"context"
@@ -98,9 +98,21 @@ func ClearMap[K comparable, V any](m map[K]V) {
 	}
 }
 
+func DeepCopyMap[K comparable, V any](src map[K]V) map[K]V {
+	dst := make(map[K]V, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
 func NamespaceAsString(ns *gatewayv1.Namespace) string {
 	if ns == nil {
 		return ""
 	}
 	return string(*ns)
+}
+
+func PtrInt64(value int64) *int64 {
+	return &value
 }

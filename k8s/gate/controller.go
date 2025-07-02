@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -29,22 +30,62 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object_types.go"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/predicate"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
 	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	k8spredicate "sigs.k8s.io/controller-runtime/pkg/predicate"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type Controller struct {
 	Configuration config.Configuration
+}
+
+func getControllerPodConfig() (config.ControllerPodConfig, error) {
+	podIP, err := getValueFromEnv("POD_IP")
+	if err != nil {
+		return config.ControllerPodConfig{}, err
+	}
+
+	ns, err := getValueFromEnv("POD_NAMESPACE")
+	if err != nil {
+		return config.ControllerPodConfig{}, err
+	}
+
+	name, err := getValueFromEnv("POD_NAME")
+	if err != nil {
+		return config.ControllerPodConfig{}, err
+	}
+
+	c := config.ControllerPodConfig{
+		PodIP:     podIP,
+		Namespace: ns,
+		Name:      name,
+	}
+
+	return c, nil
+}
+
+func getValueFromEnv(key string) (string, error) {
+	val := os.Getenv(key)
+	if val == "" {
+		return "", fmt.Errorf("environment variable %s not set", key)
+	}
+
+	return val, nil
 }
 
 func New(options ...func(c *config.Configuration) error) (Controller, error) {
@@ -61,10 +102,20 @@ func New(options ...func(c *config.Configuration) error) (Controller, error) {
 			return Controller{}, err
 		}
 	}
+	// --------------
+	// Apply Defaults
+	ctrl.Configuration.ApplyDefaults()
 
+	// Logs inits
 	logrLoggerFromSlog := logr.FromSlogHandler(ctrl.Configuration.LogHandler)
-	// logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
 	runtimelog.SetLogger(logrLoggerFromSlog)
+
+	// Other
+	ctrlPodConfig, err := getControllerPodConfig()
+	if err != nil {
+		return Controller{}, err
+	}
+	ctrl.Configuration.ControllerPodConfig = ctrlPodConfig
 
 	return ctrl, nil
 }
@@ -111,24 +162,32 @@ func Add(
 
 	extractGVK := utils.NewExtractGKV(scheme, cfg.Logger)
 
-	treeBuilderConfig := handler.NewGateTreeBuilderConfig(
-		mgr.GetClient(),
-		mgr.GetAPIReader(),
-		cfg.ControllerConfNsName,
-		extractGVK,
-		cfg.Logger,
-	)
+	clusterStore := &store.ClusterStore{
+		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
+		Gateways:        make(map[types.NamespacedName]*gatewayv1.Gateway),
+		HTTPRoutes:      make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
+		Services:        make(map[types.NamespacedName]*v1.Service),
+		Namespaces:      make(map[types.NamespacedName]*v1.Namespace),
+		Secrets:         make(map[types.NamespacedName]*v1.Secret),
+		ConfigMaps:      make(map[types.NamespacedName]*v1.ConfigMap),
+		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
+		HaproxyGates:    make(map[types.NamespacedName]*v3.HaproxyGate),
+		ControllerConfs: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
+		Updates:         store.NewClusterUpdates(),
+	}
 
-	eventHandlerConfig := handler.EventHandlerImplConfig{
+	gateTreeConfig := handler.GateTreeConfig{
 		Logger:                   cfg.Logger,
 		LogCategoryFilterHandler: cfg.LogHandler,
 		ExtractGVK:               extractGVK,
-		ControllerConfNsName:     cfg.ControllerConfNsName,
+		ControllerConfNsName:     cfg.ControllerConfCRD,
 		TreeChannel:              cfg.TreeCh,
+		K8sClient:                mgr.GetClient(),
+		K8sReader:                mgr.GetAPIReader(),
 	}
 	eventHandler := handler.NewEventHandlerImpl(
-		treeBuilderConfig,
-		eventHandlerConfig)
+		clusterStore,
+		gateTreeConfig)
 
 	loopCfg := handler.EventLoopConfig{
 		SyncPeriod: cfg.SyncPeriod,
@@ -178,19 +237,19 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "GatewayClass",
-			objectType: &gatewayv1.GatewayClass{},
+			objectType: objtypes.ObjectTypeGatewayClass,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
-						predicate.GatewayClassPredicate{ControllerName: cfg.GatewayCtlrName},
+						predicate.GatewayClassPredicate{ControllerName: cfg.ControllerName},
 					),
 				),
 			},
 		},
 		{
 			name:       "Gateway",
-			objectType: &gatewayv1.Gateway{},
+			objectType: objtypes.ObjectTypeGateway,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
@@ -202,7 +261,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "HTTPRoute",
-			objectType: &gatewayv1.HTTPRoute{},
+			objectType: objtypes.ObjectTypeHTTPRoute,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
@@ -215,7 +274,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "Service",
-			objectType: &apiv1.Service{},
+			objectType: objtypes.ObjectTypeService,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
@@ -226,7 +285,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "Secret",
-			objectType: &apiv1.Secret{},
+			objectType: objtypes.ObjectTypeSecret,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
@@ -275,7 +334,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "HaproxyGate",
-			objectType: &v3.HaproxyGate{},
+			objectType: objtypes.ObjectTypeHaproxyGate,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
@@ -294,7 +353,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 						k8spredicate.ResourceVersionChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
 						predicate.ControllerConfPredicate{
-							ControllerConfName: cfg.ControllerConfNsName,
+							ControllerConfName: cfg.ControllerConfCRD,
 						},
 					),
 				),

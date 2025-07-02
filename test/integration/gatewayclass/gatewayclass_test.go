@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	timeout  = time.Second * 30
+	timeout  = time.Second * 15
 	interval = time.Second * 1
 )
 
@@ -92,31 +92,6 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_ValidRef() {
 	gwcName := "haproxy"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
 }
-
-// func (s *GatewayClassTestSuite) Test_GatewayClass_Ignored() {
-// 	fixtureDirPath := utils.GetCRDFixturePath()
-// 	fixtureDir := "ignored"
-
-// 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-// 	s.CreateFixtures(fixturePath)
-// 	defer s.CleanupFixtures(fixturePath)
-
-// 	// Expected Conditions
-// 	// For "haproxy" GatewayClass, we expect it to be accepted by the controller
-// 	// and have the "Accepted" condition set to "True".
-// 	expectationsPath := path.Join(fixturePath, "expectations")
-// 	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
-// 	expectedConditions := s.YamlToConditions(expectedCondPath)
-// 	gwcName := "haproxy"
-// 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
-
-// 	// For "haproxy2" GatewayClass, we expect it to be ignored by the controller
-// 	// and have the "Accepted" condition set to "True".
-// 	expectedCondPath2 := path.Join(expectationsPath, "conditions2.yaml")
-// 	expectedConditions2 := s.YamlToConditions(expectedCondPath2)
-// 	gwcName = "haproxy2"
-// 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions2)
-// }
 
 func (s *GatewayClassTestSuite) Test_GatewayClass_Dynamic_InstalledVersions() {
 	fixtureDirPath := utils.GetCRDFixturePath()

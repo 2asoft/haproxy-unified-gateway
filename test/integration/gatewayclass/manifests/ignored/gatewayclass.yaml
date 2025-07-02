@@ -3,7 +3,7 @@ kind: GatewayClass
 metadata:
   name: haproxy
 spec:
-  controllerName: gate.haproxy.org/gateway-controller
+  controllerName: gate.haproxy.org/unified-controller
   parametersRef:
     group: gate.v3.haproxy.org
     kind: HaproxyGate
@@ -15,7 +15,7 @@ kind: GatewayClass
 metadata:
   name: haproxy2
 spec:
-  controllerName: gate.haproxy.org/gateway-controller
+  controllerName: gate.haproxy.org/unified-controller
   parametersRef:
     group: gate.v3.haproxy.org
     kind: HaproxyGate

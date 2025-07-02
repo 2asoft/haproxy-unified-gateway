@@ -1,0 +1,15 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: HaproxyGateCtrlCfg
+metadata:
+  name: haproxyctrlconf
+  namespace: haproxy-controller
+spec:
+  logging:
+    defaultLevel: "Debug"
+    categoryLevelList:
+      # - category: "gate"
+      #   level: "Debug"
+      # - category: "status"
+      #   level: "Debug"
+      - category: "k8s"
+        level: "Info"

@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
@@ -30,27 +31,16 @@ import (
 type SupportedVersions []string
 
 var (
-	SupportedGatewayAPIBundleVersion       = SupportedVersions{"v1.2", "v1.3"}
-	SupportedGatewayClassParametersRefKind = v1.Kind("HaproxyGate")
-	SupportGatewayClassPamatersRefGroup    = v1.Group("gate.v3.haproxy.org")
+	SupportedGatewayAPIBundleVersion = SupportedVersions{"v1.2", "v1.3"}
+	SupportedParametersRefKind       = v1.Kind("HaproxyGate")
+	SupportedParametersRefGroup      = v1.Group("gate.v3.haproxy.org")
 )
-
-var _ Builder = &InstalledVersionsBuilderImpl{}
 
 type InstalledVersions struct {
 	// Versions contains the count of installed Gateway API versions.
-	Versions  map[string]int // map GwApi CRD version -> counter
-	observers []func(InstalledVersions)
-}
-
-func (iv *InstalledVersions) RegisterObserver(callback func(InstalledVersions)) {
-	iv.observers = append(iv.observers, callback)
-}
-
-func (iv *InstalledVersions) NotifyObervers() {
-	for _, observer := range iv.observers {
-		observer(*iv)
-	}
+	Versions map[string]int // map GwApi CRD version -> counter
+	Updated  *bool
+	Valid    bool
 }
 
 func (s SupportedVersions) String() string {
@@ -58,12 +48,12 @@ func (s SupportedVersions) String() string {
 }
 
 type InstalledVersionsBuilderImpl struct {
-	BuilderParams
+	ControllerStore
 }
 
-func NewInstalledVersionsBuilder(params BuilderParams) *InstalledVersionsBuilderImpl {
+func NewInstalledVersionsBuilder(params ControllerStore) *InstalledVersionsBuilderImpl {
 	return &InstalledVersionsBuilderImpl{
-		BuilderParams: params,
+		ControllerStore: params,
 	}
 }
 
@@ -78,9 +68,11 @@ func (b *InstalledVersionsBuilderImpl) Build() {
 		b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Installed versions",
 			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrInstalledVersions(b.GateTree.InstalledGwAPIVersions.Versions),
+			logging.LogAttrInstalledVersions(b.InstalledGwAPIVersions.Versions),
 		)
-		b.GateTree.InstalledGwAPIVersions.NotifyObervers()
+	}
+	if len(b.ClusterStore.Updates.GatewayAPICRDs) != 0 {
+		b.onUpdateInstalledVersion()
 	}
 }
 
@@ -103,21 +95,99 @@ func (b *InstalledVersionsBuilderImpl) buildUpserted(nsname types.NamespacedName
 		if previousBundleVersion == bundleVersion {
 			return
 		}
-		b.GateTree.InstalledGwAPIVersions.Versions[previousBundleVersion]--
-		if b.GateTree.InstalledGwAPIVersions.Versions[previousBundleVersion] == 0 {
-			delete(b.GateTree.InstalledGwAPIVersions.Versions, previousBundleVersion)
+		b.InstalledGwAPIVersions.Versions[previousBundleVersion]--
+		if b.InstalledGwAPIVersions.Versions[previousBundleVersion] == 0 {
+			delete(b.InstalledGwAPIVersions.Versions, previousBundleVersion)
 		}
 	}
-	b.GateTree.InstalledGwAPIVersions.Versions[bundleVersion]++
+	b.InstalledGwAPIVersions.Versions[bundleVersion]++
 }
 
 func (b *InstalledVersionsBuilderImpl) buildDeleted(previous *metav1.PartialObjectMetadata) {
 	bundleVersion := previous.Annotations[constants.BundleVersionAnnotation]
-	b.GateTree.InstalledGwAPIVersions.Versions[bundleVersion]--
-	if b.GateTree.InstalledGwAPIVersions.Versions[bundleVersion] == 0 {
-		delete(b.GateTree.InstalledGwAPIVersions.Versions, bundleVersion)
+	b.InstalledGwAPIVersions.Versions[bundleVersion]--
+	if b.InstalledGwAPIVersions.Versions[bundleVersion] == 0 {
+		delete(b.InstalledGwAPIVersions.Versions, bundleVersion)
 	}
 }
 
-func (*InstalledVersionsBuilderImpl) BuildStatus() {
+// onUpdateInstalledVersion callback function to be called when the installed versions are updated.
+func (b *InstalledVersionsBuilderImpl) onUpdateInstalledVersion() {
+	b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
+		"OnUpdateInstalledVersion",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrInstalledVersions(b.InstalledGwAPIVersions.Versions),
+	)
+	// Retrieve Gateway API bundle version
+	// using the BundleVersionAnnotation annotation present in all Gateway API CRDs.
+	validateVersionsParams := validateVersionsParams{
+		supportedVersions:      SupportedGatewayAPIBundleVersion,
+		installedGwAPIVersions: b.InstalledGwAPIVersions.Versions,
+	}
+	versionValidUpdated := b.checkSupportedVersion(validateVersionsParams)
+	if b.InstalledGwAPIVersions.Updated == nil {
+		updated := true
+		b.InstalledGwAPIVersions.Updated = &updated
+		return
+	}
+	b.InstalledGwAPIVersions.Updated = &versionValidUpdated
+}
+
+type validateVersionsParams struct {
+	installedGwAPIVersions map[string]int
+	supportedVersions      []string
+}
+
+func (b *InstalledVersionsBuilderImpl) checkSupportedVersion(params validateVersionsParams) bool {
+	oldValue := b.InstalledGwAPIVersions.Valid
+	newValue := true
+	for v := range params.installedGwAPIVersions {
+		params := validateOneGwAPIVersionParams{
+			supportedVersions: params.supportedVersions,
+			installedVersion:  v,
+		}
+		newValue = newValue && b.validateOneInstalledGwAPIVersion(params)
+	}
+	b.InstalledGwAPIVersions.Valid = newValue
+	return newValue != oldValue
+}
+
+type validateOneGwAPIVersionParams struct {
+	installedVersion  string
+	supportedVersions []string
+}
+
+func (b *InstalledVersionsBuilderImpl) validateOneInstalledGwAPIVersion(params validateOneGwAPIVersionParams) bool {
+	constraints := make([]*semver.Constraints, 0)
+
+	for _, v := range params.supportedVersions {
+		constraint, err := semver.NewConstraint("~" + v)
+		if err != nil {
+			b.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"cannot build semver constraint",
+				logging.LogAttrCategory(logging.LogCategoryGate),
+				logging.LogAttrError(err),
+			)
+			return false
+		}
+		constraints = append(constraints, constraint)
+	}
+
+	sv, err := semver.NewVersion(params.installedVersion)
+	if err != nil {
+		// If a version string is invalid, we should not consider it as a supported version.
+		b.Logger.LogAttrs(context.Background(), slog.LevelError,
+			"cannot parse version string",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrError(err),
+		)
+		return false
+	}
+	for _, constraint := range constraints {
+		if constraint.Check(sv) {
+			return true
+		}
+	}
+
+	return false
 }

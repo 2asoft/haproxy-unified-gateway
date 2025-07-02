@@ -8,14 +8,15 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
 	"github.com/joho/godotenv"
 	"k8s.io/apimachinery/pkg/types"
 
+	ctrlconfig "github.com/haproxytech/kubernetes-controller/controller/configuration"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
@@ -53,52 +54,44 @@ func main() {
 	fmt.Println(string(version.Info))
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	controllerConfig, err := createControllerPodConfig()
+	// Controller config from Flags
+	config, err := ctrlconfig.Get()
 	if err != nil {
-		panic(fmt.Errorf("error creating controller pod config: %w", err))
+		panic(err)
 	}
-	// Values to get from flags
-	// to implement:  flags
-	metricsConfig := config.MetricsConfig{
+
+	metricsConfig := gateconfig.MetricsConfig{
 		Port:    6062,
 		Enabled: false,
 		Secure:  false,
 	}
-	// (through the spec.controllerName)
-	controllerName := "gate.haproxy.org/gateway-controller"
-	controllerConfName := types.NamespacedName{
-		Namespace: "test",
-		Name:      "haproxyctrlconf",
-	}
-
-	whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test", "test2"}
-	// whiteListNs := []string{}
 
 	// kubeconfig := testKubeConfig
 	kubeconfig := ""
 
-	syncPeriod := 1 * time.Second
-	logLevelIfCategoryEmpty := logging.DefaultLevel
-	logCategoryLevels := logging.DefaultLogLevelPerCategory
-
-	leaderElectionLockName := "kubernetes-controller-leader-election-lock"
-	leaderElectionConfig := config.LeaderElectionConfig{
-		Enabled:  false,
-		LockName: leaderElectionLockName,
-		Identity: controllerConfig.Name,
+	// Optional : default values provided in controller.New()
+	// To adjust more precisely the log levels, use the CRD: HaproxyGateCtrlCfg
+	// along with opt.ControllerConfCRD to specify which CRD to watcg
+	logLevelIfCategoryEmpty := slog.LevelInfo
+	logCategoryLevels := map[v3.Category]slog.Level{
+		logging.LogCategoryK8s:    slog.LevelInfo,
+		logging.LogCategoryGate:   slog.LevelInfo,
+		logging.LogCategoryStatus: slog.LevelInfo,
 	}
 
 	treeCh := make(chan *tree.GateTree, 100)
 
 	cntlr, err := controller.New(
-		opt.ControllerPodConfig(controllerConfig),
 		opt.KubeConfig(kubeconfig),
-		opt.ControllerConf(controllerConfName),
-		opt.SyncPeriod(syncPeriod),
+		opt.ControllerConfCRD(types.NamespacedName{
+			Namespace: config.ControllerConfCRD.Namespace,
+			Name:      config.ControllerConfCRD.Name,
+		}),
+		opt.SyncPeriod(config.SyncPeriod),
 		opt.MetricsConfig(metricsConfig),
-		opt.LeaderElectionConfig(leaderElectionConfig),
-		opt.ControllerName(controllerName),
-		opt.WhiteListNamespaces(whiteListNs),
+		opt.LeaderElectionConfig(config.LeaderElectionEnabled),
+		opt.ControllerName(config.ControllerName),
+		opt.WhiteListNamespaces(config.WhiteListNamespaces),
 		opt.Logging(logLevelIfCategoryEmpty, logCategoryLevels),
 		opt.TreeChannel(treeCh),
 	)
@@ -138,38 +131,4 @@ func main() {
 	<-ctx.Done()
 	cntlr.Configuration.Logger.Info("shutting down controller")
 	wg.Wait()
-}
-
-func createControllerPodConfig() (config.ControllerPodConfig, error) {
-	podIP, err := getValueFromEnv("POD_IP")
-	if err != nil {
-		return config.ControllerPodConfig{}, err
-	}
-
-	ns, err := getValueFromEnv("POD_NAMESPACE")
-	if err != nil {
-		return config.ControllerPodConfig{}, err
-	}
-
-	name, err := getValueFromEnv("POD_NAME")
-	if err != nil {
-		return config.ControllerPodConfig{}, err
-	}
-
-	c := config.ControllerPodConfig{
-		PodIP:     podIP,
-		Namespace: ns,
-		Name:      name,
-	}
-
-	return c, nil
-}
-
-func getValueFromEnv(key string) (string, error) {
-	val := os.Getenv(key)
-	if val == "" {
-		return "", fmt.Errorf("environment variable %s not set", key)
-	}
-
-	return val, nil
 }

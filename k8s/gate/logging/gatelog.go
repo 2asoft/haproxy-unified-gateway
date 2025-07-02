@@ -34,22 +34,30 @@ func LogAttrCategory(category v3.Category) slog.Attr {
 
 func LogAttrResource(obj client.Object, gvk schema.GroupVersionKind) slog.Attr {
 	return slog.Group("resource",
-		slog.String("GVK", gvk.String()),
+		LogAttrGVK(gvk),
 		LogAttrObjectKey(obj),
 	)
 }
 
+func LogAttrGVK(gvk schema.GroupVersionKind) slog.Attr {
+	return slog.String("GVK", gvk.String())
+}
+
 func LogAttrObjectKey(obj client.Object) slog.Attr {
 	if obj != nil {
-		return slog.String("objectKey", client.ObjectKeyFromObject(obj).String())
+		return LogAttrKey(client.ObjectKeyFromObject(obj))
 	}
 	return slog.String("objectKey", "")
 }
 
-func LogAttrReconcileRequest(namespacedName types.NamespacedName, gvk schema.GroupVersionKind) slog.Attr {
+func LogAttrKey(key client.ObjectKey) slog.Attr {
+	return slog.String("objectKey", key.String())
+}
+
+func LogAttrKeyGVK(key client.ObjectKey, gvk schema.GroupVersionKind) slog.Attr {
 	return slog.Group("resource",
-		slog.String("GVK", gvk.String()),
-		slog.String("objectKey", namespacedName.String()),
+		LogAttrGVK(gvk),
+		slog.String("objectKey", key.String()),
 	)
 }
 

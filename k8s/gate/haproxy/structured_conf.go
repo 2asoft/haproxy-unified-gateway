@@ -11,16 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package opt
+package haproxy
 
-import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"k8s.io/apimachinery/pkg/types"
-)
+import "github.com/haproxytech/client-native/v6/models"
 
-func ControllerConf(controllerConf types.NamespacedName) func(o *config.Configuration) error {
-	return func(o *config.Configuration) error {
-		o.ControllerConfNsName = controllerConf
-		return nil
-	}
+type HaproxyConf struct {
+	models.Frontends
 }

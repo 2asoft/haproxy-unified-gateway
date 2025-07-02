@@ -14,65 +14,141 @@
 package tree
 
 import (
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object_types.go"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 var _ Builder = &GatewayBuilderImpl{}
 
 type GatewayBuilderImpl struct {
-	BuilderParams
+	ControllerStore
 }
 
 type GatewayBuilderParams struct {
-	BuilderParams
+	ControllerStore
 }
 
 func NewGatewayBuilder(params GatewayBuilderParams) *GatewayBuilderImpl {
 	return &GatewayBuilderImpl{
-		BuilderParams: params.BuilderParams,
+		ControllerStore: params.ControllerStore,
 	}
 }
 
-func (b *GatewayBuilderImpl) Build() {
-	// Gateway updates
-	b.OnGatewaysUpdated()
+// --------------------
+// GateTree Updates
+// --------------------
+
+func (b *GatewayBuilderImpl) ComputeTreeUpdates() {
+	b.addIndirectClusterStoreUpdates()
+	// After this step, the clusterStore.Updates contains all impacted Gateways
+	// Including the one impacted by:
+	// - HaproxyGate updates
+	// - GatewayClass updates
+	b.prepareGateTreeUpdates()
 }
 
-func (b *GatewayBuilderImpl) OnGatewaysUpdated() {
-	for _, gwUpdate := range b.ClusterStore.Updates.Gateways {
-		gw, ok := gwUpdate.GetObject().(*v1.Gateway)
-		if !ok {
+func (b *GatewayBuilderImpl) addIndirectClusterStoreUpdates() {
+	// Indirect from HaproxyGate
+	b.addIndirectGatewaysFromHaproxyGates()
+	// Indirect from Gateway updated
+	b.addIndirectGatewaysFromGatewayClasses()
+}
+
+func (b *GatewayBuilderImpl) addIndirectGatewaysFromHaproxyGates() {
+	for _, haproxyGateUpdate := range b.ClusterStore.Updates.HaproxyGates {
+		b.addIndirectGatewaysFromHaproxyGate(haproxyGateUpdate)
+	}
+}
+
+func (b *GatewayBuilderImpl) addIndirectGatewaysFromHaproxyGate(haproxyGateUpdate store.Update[*v3.HaproxyGate]) {
+	addIndirectFromReferenced(
+		haproxyGateUpdate,
+		b.ControllerStore.ReferencedObjects.ReferencedHaproxyGates,
+		b.ControllerStore.ClusterStore.Gateways,
+		b.ClusterStore.Updates.Gateways,
+		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
+	)
+}
+
+func (b *GatewayBuilderImpl) addIndirectGatewaysFromGatewayClasses() {
+	for _, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
+		b.addIndirectGatewaysFromGatewayClass(gwcUpdate)
+	}
+}
+
+func (b *GatewayBuilderImpl) addIndirectGatewaysFromGatewayClass(gwcUpdate store.Update[*gatewayv1.GatewayClass]) {
+	addIndirectFromReferenced(
+		gwcUpdate,
+		b.ReferencedObjects.ReferencedGatewayClasses,
+		b.ClusterStore.Gateways,
+		b.ClusterStore.Updates.Gateways,
+		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
+	)
+}
+
+func (b *GatewayBuilderImpl) prepareGateTreeUpdates() {
+	for gwKey, gwUpdate := range b.ClusterStore.Updates.Gateways {
+		b.prepareTreeGatewayUpdate(gwKey, gwUpdate)
+	}
+}
+
+func (b *GatewayBuilderImpl) prepareTreeGatewayUpdate(gwKey client.ObjectKey, gwUpdate store.Update[*gatewayv1.Gateway]) {
+	var treeGw *Gateway
+	alreadyManagedTreeGw, alreadyManagedTreeGwOK := b.GateTree.Gateways[gwKey]
+	alreadyUnmanagedTreeGw, alreadyUnmanagedTreeGwOK := b.UnmanagedGateTree.Gateways[gwKey]
+
+	if alreadyManagedTreeGwOK {
+		treeGw = alreadyManagedTreeGw
+	} else if alreadyUnmanagedTreeGwOK {
+		treeGw = alreadyUnmanagedTreeGw
+	}
+
+	switch gwUpdate.Status {
+	case store.StatusUpserted:
+		if treeGw != nil {
+			treeGw.SetAsUpserted(b.Logger, gwUpdate.NewObject)
+		} else {
+			treeGw = NewGateway(gwUpdate.NewObject)
+		}
+		// Do we keep it in Managed or Unmanaged???
+		treeGw.checkParametersRef(b.ControllerStore)
+		treeGw.checkGatewayClassIsValid(b.ControllerStore)
+		treeGw.Valid = treeGw.CheckParamsRef.Valid && treeGw.CheckValidGatewayClass.Valid
+		// Compute status only if managed Gateway
+		// If not managed, then we should not update the status
+		treeGw.BuildConditions()
+		if treeGw.isManaged() {
+			treeGw.SetAsManaged(b.Logger, b.ControllerStore)
+		} else {
+			treeGw.SetAsUnmanaged(b.Logger, b.ControllerStore)
+		}
+	case store.StatusDeleted:
+		if treeGw != nil {
+			treeGw.SetAsDeleted(b.Logger)
+		}
+		// else nothing to do
+		// It did not exists, it's deleted, noop
+	}
+}
+
+// -----------------------------------------------
+
+func (b *GatewayBuilderImpl) CleanTreeUpdates() {
+	for gwKey, treeGw := range b.GateTree.Gateways {
+		if treeGw.TreeStatus.Status == store.StatusDeleted {
+			delete(b.GateTree.Gateways, gwKey)
 			continue
 		}
-		switch gwUpdate.Status {
-		case store.StatusUpserted:
-			b.OnGatewayUpserted(gw)
-		case store.StatusDeleted:
+		treeGw.TreeStatus = TreeUpdate[Gateway]{}
+	}
+	for gwKey, treeGw := range b.UnmanagedGateTree.Gateways {
+		if treeGw.TreeStatus.Status == store.StatusDeleted {
+			delete(b.GateTree.Gateways, gwKey)
+			continue
 		}
+		treeGw.TreeStatus = TreeUpdate[Gateway]{}
 	}
-}
-
-func (b *GatewayBuilderImpl) OnGatewayUpserted(gw *v1.Gateway) {
-	if b.isGatewayClassAccepted(gw) {
-		treeGw := NewGateway(gw)
-		b.GateTree.Gateways[client.ObjectKeyFromObject(gw)] = treeGw
-	}
-}
-
-func (b *GatewayBuilderImpl) OnGatewayDeleted(gw *v1.Gateway) {
-	delete(b.GateTree.Gateways, client.ObjectKeyFromObject(gw))
-}
-
-func (b *GatewayBuilderImpl) isGatewayClassAccepted(gateway *v1.Gateway) bool {
-	// Is GatewayClass part of the accepted GatewayClasses
-	gwKey := client.ObjectKeyFromObject(gateway)
-	if _, ok := b.GateTree.GatewayClasses.Supported[gwKey]; !ok {
-		return false
-	}
-	return true
-}
-
-func (*GatewayBuilderImpl) BuildStatus() {
 }

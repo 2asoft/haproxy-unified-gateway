@@ -49,12 +49,15 @@ tasks:
     desc: 'run Go tests'
     vars:
       TOOL: envtest
+      POD_IP: "1.2.3.4"
+      POD_NAME: "unified-controller-7469984948-qgnfw"
+      POD_NAMESPACE: "unified-controller"
     cmds:
       #- task: download-gateway-crds
       - |
         KUBEBUILDER_ASSETS=/{{.TMP}}/{{.TOOL}}
         ENVTEST_VERSION={{.ENVTEST_VERSION}}
-        ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS go test -v -count=1 ./...
+        POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS go test -v -count=1 ./...
 
   tidy:
     internal: true

@@ -19,6 +19,7 @@ import (
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -37,20 +38,20 @@ type StatusUpdaterConf struct {
 }
 
 type StatusUpdaterImpl struct {
-	cfg              StatusUpdaterConf
-	GatewayClasses   map[types.NamespacedName]*tree.GatewayClass
-	ignoredGwClasses map[types.NamespacedName]*tree.GatewayClass
+	cfg            StatusUpdaterConf
+	GatewayClasses map[types.NamespacedName]*tree.GatewayClass
+	Gateways       map[types.NamespacedName]*tree.Gateway
 }
 
 func NewStatusUpdaterImpl(
 	cfg StatusUpdaterConf,
 	gatewayClasses map[types.NamespacedName]*tree.GatewayClass,
-	ignoredGwClasses map[types.NamespacedName]*tree.GatewayClass,
+	gateways map[types.NamespacedName]*tree.Gateway,
 ) *StatusUpdaterImpl {
 	return &StatusUpdaterImpl{
-		cfg:              cfg,
-		GatewayClasses:   gatewayClasses,
-		ignoredGwClasses: ignoredGwClasses,
+		cfg:            cfg,
+		GatewayClasses: gatewayClasses,
+		Gateways:       gateways,
 	}
 }
 
@@ -73,19 +74,20 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 	// let's start with something very basic that updates only GatewayClass status for now
 
 	// GatewayClasses
-	gwcToUpdate := make(map[types.NamespacedName]*tree.GatewayClass)
-	for k, gwc := range s.ignoredGwClasses {
-		gwcToUpdate[k] = gwc
-	}
-	for k, gwc := range s.GatewayClasses {
-		gwcToUpdate[k] = gwc
-	}
-
-	for _, gwc := range gwcToUpdate {
+	for _, gwc := range s.GatewayClasses {
 		select {
 		case <-ctx.Done():
 			return
 		default:
+		}
+
+		// Do not set Status for Deleted or unchanged GatewayClasses
+		if gwc.TreeStatus.Status == store.StatusDeleted || gwc.TreeStatus.Status == "" {
+			continue
+		}
+		// Do not set Status for Not managed GatewayClasses
+		if !gwc.Managed {
+			continue
 		}
 
 		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
@@ -95,6 +97,28 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 		)
 
 		s.writeGatewayClassStatus(ctx, gwc)
+	}
+
+	// Gateways
+	for _, gw := range s.Gateways {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// Do not set Status for Deleted or unchanged Gateways
+		if gw.TreeStatus.Status == store.StatusDeleted || gw.TreeStatus.Status == "" {
+			continue
+		}
+
+		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Updating status for resource",
+			logging.LogAttrCategory(logging.LogCategoryStatus),
+			logging.LogAttrResource(gw.K8sResource, s.cfg.extractGVK(gw.K8sResource)),
+		)
+
+		s.writeGatewayStatus(ctx, gw)
 	}
 }
 

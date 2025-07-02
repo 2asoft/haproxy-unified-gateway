@@ -20,7 +20,7 @@ import (
 )
 
 func TestValidateOneInstalledGwApiVersion(t *testing.T) {
-	builder := &GatewayClassBuilderImpl{}
+	builder := &InstalledVersionsBuilderImpl{}
 
 	tests := []struct {
 		name              string
@@ -61,9 +61,12 @@ func TestValidateOneInstalledGwApiVersion(t *testing.T) {
 }
 
 func TestValidateVersion(t *testing.T) {
-	builder := &GatewayClassBuilderImpl{
-		BuilderParams: BuilderParams{
+	builder := &InstalledVersionsBuilderImpl{
+		ControllerStore: ControllerStore{
 			GateTree: &GateTree{},
+			InstalledGwAPIVersions: &InstalledVersions{
+				Versions: make(map[string]int),
+			},
 		},
 	}
 
@@ -119,7 +122,7 @@ func TestValidateVersion(t *testing.T) {
 					installedGwAPIVersions: tt.installedVersion,
 				},
 			)
-			assert.Equal(t, tt.expectedResult, builder.GateTree.IsGwAPIVersionValid)
+			assert.Equal(t, tt.expectedResult, builder.InstalledGwAPIVersions.Valid)
 		})
 	}
 }

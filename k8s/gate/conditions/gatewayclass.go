@@ -66,9 +66,7 @@ func NewDefaultGatewayClassConditions() Conditions {
 // ---------------------------------------------------------
 // GatewayClassConditionStatusAccepted
 
-// NewGatewayClassConflict returns a Condition that indicates that the GatewayClass is not accepted
-// due to a conflict with another GatewayClass.
-func NewGatewayClassAcceptedConditions() Conditions {
+func NewGatewayClassAcceptedOK() Conditions {
 	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
@@ -79,7 +77,7 @@ func NewGatewayClassAcceptedConditions() Conditions {
 	}
 }
 
-func NewGatewayClassConflict() Conditions {
+func NewGatewayClassAcceptedConflict() Conditions {
 	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
@@ -90,7 +88,7 @@ func NewGatewayClassConflict() Conditions {
 	}
 }
 
-func NewGatewayClassUnsupported() Conditions {
+func NewGatewayClassAcceptedUnsupported() Conditions {
 	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
@@ -101,8 +99,8 @@ func NewGatewayClassUnsupported() Conditions {
 	}
 }
 
-// NewGatewayClassInvalidParameters returns a Condition that indicates that the GatewayClass has invalid parameters.
-func NewGatewayClassInvalidParameters(err *field.Error) Conditions {
+// NewGatewayClassAcceptedInvalidParameters returns a Condition that indicates that the GatewayClass has invalid parameters.
+func NewGatewayClassAcceptedInvalidParameters(err *field.Error) Conditions {
 	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusAccepted): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
@@ -116,9 +114,9 @@ func NewGatewayClassInvalidParameters(err *field.Error) Conditions {
 // ---------------------------------------------------------
 // GatewayClassConditionStatusSupportedVersion
 
-// NewGatewayClassUnsupportedVersion returns Conditions to indicate:
+// NewGatewayClassSupportedVersionUnsupportedVersion returns Conditions to indicate:
 // - the Gateway API CRD versions are not supported.
-func NewGatewayClassUnsupportedVersion(recommendedVersion string) Conditions {
+func NewGatewayClassSupportedVersionUnsupportedVersion(recommendedVersion string) Conditions {
 	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
 			Type:   ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
@@ -132,7 +130,7 @@ func NewGatewayClassUnsupportedVersion(recommendedVersion string) Conditions {
 	}
 }
 
-func NewGatewayClassSupportedVersionConditions() Conditions {
+func NewGatewayClassSupportedVersionOK() Conditions {
 	return Conditions{
 		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): {
 			Type:    ConditionType(v1.GatewayClassConditionStatusSupportedVersion),

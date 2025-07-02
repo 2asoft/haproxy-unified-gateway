@@ -23,23 +23,21 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var _ Builder = &ControllerConfBuilderImpl{}
-
 type ControllerConfBuilderImpl struct {
-	BuilderParams
+	ControllerStore
 	logCategoryFilterHandler *logging.CategoryFilterHandler
 	controllerConfNsName     types.NamespacedName
 }
 
 type ControllerConfBuilderParams struct {
-	BuilderParams
+	ControllerStore
 	LogCategoryFilterHandler *logging.CategoryFilterHandler
 	ControllerConfNsName     types.NamespacedName
 }
 
 func NewControllerConfBuilder(params ControllerConfBuilderParams) *ControllerConfBuilderImpl {
 	return &ControllerConfBuilderImpl{
-		BuilderParams:            params.BuilderParams,
+		ControllerStore:          params.ControllerStore,
 		logCategoryFilterHandler: params.LogCategoryFilterHandler,
 		controllerConfNsName:     params.ControllerConfNsName,
 	}

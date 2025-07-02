@@ -18,8 +18,8 @@ import (
 	"log/slog"
 	"time"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
@@ -27,12 +27,9 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
-	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // EventHandler handles a batch of events.
@@ -43,13 +40,17 @@ type EventHandler interface {
 	HandleEventBatch(ctx context.Context, batch events.EventBatch)
 }
 
-type EventHandlerImplConfig struct {
+type GateTreeConfig struct {
 	Logger                   *slog.Logger
 	LogCategoryFilterHandler *logging.CategoryFilterHandler
 	ExtractGVK               utils.ExtractGVK
 	TreeChannel              chan *tree.GateTree
 	//  Namespace and name of the controller conf CRD
 	ControllerConfNsName types.NamespacedName
+	// k8sClient is a Kubernetes API client.
+	K8sClient client.Client
+	// k8sReader is a Kubernets API reader.
+	K8sReader client.Reader
 }
 
 // eventHandlerImpl implements EventHandler.
@@ -57,41 +58,52 @@ type EventHandlerImplConfig struct {
 // - Reconciling the Gateway API and Kubernetes built-in resources with the HAProxy configuration.
 // - building the GateTree
 type eventHandlerImpl struct {
-	treeBuilder *GateTreeBuilder
-	config      EventHandlerImplConfig
+	treeBuilder         GateTreeBuilder
+	haproxyConfBuilder  haproxy.HaproxyConfBuilder
+	config              GateTreeConfig
+	clusterStoreUpdater store.ClusterStoreUpdater
 }
 
 // NewEventHandlerImpl creates a new eventHandlerImpl.
 func NewEventHandlerImpl(
-	treeBuilderConfig GateTreeBuilderConfig,
-	config EventHandlerImplConfig,
+	clusterStore *store.ClusterStore,
+	// treeBuilderConfig GateTreeBuilderConfig,
+	config GateTreeConfig,
 ) *eventHandlerImpl {
-	clusterStore := &store.ClusterStore{
-		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
-		Gateways:        make(map[types.NamespacedName]*gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
-		Services:        make(map[types.NamespacedName]*v1.Service),
-		Namespaces:      make(map[types.NamespacedName]*v1.Namespace),
-		Secrets:         make(map[types.NamespacedName]*v1.Secret),
-		ConfigMaps:      make(map[types.NamespacedName]*v1.ConfigMap),
-		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
-		HaproxyGates:    make(map[types.NamespacedName]*v3.HaproxyGate),
-		ControllerConfs: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
-		Updates:         store.NewClusterUpdates(),
-	}
-	gateTree := tree.NewGateTree(config.ExtractGVK)
-
-	treeBuilder := NewGateTreeBuilder(
+	clusterStoreUpdater := store.NewClusterStoreUpdaterImpl(
 		clusterStore,
-		gateTree,
-		config.LogCategoryFilterHandler,
-		treeBuilderConfig,
+		config.ExtractGVK,
 		config.Logger,
 	)
 
+	gateTree := tree.NewGateTree()
+	unmanagedGateTree := tree.NewGateTree()
+	referencedObjects := tree.NewReferencedObjects(config.ExtractGVK)
+
+	controllerStore := tree.ControllerStore{
+		ClusterStore:      clusterStore,
+		GateTree:          gateTree,
+		ReferencedObjects: referencedObjects,
+		UnmanagedGateTree: unmanagedGateTree,
+		ExtractGVK:        config.ExtractGVK,
+		Logger:            config.Logger,
+		InstalledGwAPIVersions: &tree.InstalledVersions{
+			Versions: make(map[string]int),
+		},
+	}
+
+	treeBuilder := NewGateTreeBuilder(
+		controllerStore,
+		config,
+	)
+
+	haproxyConfBuilder := haproxy.NewHaproxyConfBuilder(controllerStore)
+
 	handler := &eventHandlerImpl{
-		treeBuilder: treeBuilder,
-		config:      config,
+		treeBuilder:         treeBuilder,
+		config:              config,
+		clusterStoreUpdater: clusterStoreUpdater,
+		haproxyConfBuilder:  haproxyConfBuilder,
 	}
 
 	return handler
@@ -117,7 +129,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	}()
 
 	// Process each event in the batch
-	_ = h.treeBuilder.ProcessBatch(batch)
+	_ = h.processBatch(batch)
 
 	// Build the GateTree
 	h.treeBuilder.buildGateTree()
@@ -127,6 +139,9 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		h.config.TreeChannel <- gatetree
 	}
 
+	// HAProxy Configuration building
+	// h.haproxyConfBuilder.BuildHaproxyConf()
+
 	// START EXAMPLE
 	// Below is just an example
 	// We list EndpointSlices using the Service Name Index Field we added as an index to the EndpointSlice cache.
@@ -134,7 +149,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	var endpointSliceList discoveryV1.EndpointSliceList
 	svcName := "http-echo"
 	svcNs := "default"
-	err := h.treeBuilder.cfg.k8sClient.List(
+	err := h.treeBuilder.cfg.K8sClient.List(
 		ctx,
 		&endpointSliceList,
 		client.MatchingFields{index.EndpointSliceServiceNameIndexField: svcName},
@@ -153,16 +168,53 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 
 	statusUpdater := status.NewStatusUpdaterImpl(
 		status.NewStatusUpdaterConf(
-			h.treeBuilder.cfg.k8sClient,
+			h.treeBuilder.cfg.K8sClient,
 			h.config.ExtractGVK,
 			h.config.Logger,
 		),
-		gatetree.GatewayClasses.Supported,
-		gatetree.GatewayClasses.Ignored,
+		gatetree.GatewayClasses,
+		gatetree.Gateways,
 	)
 
 	statusUpdater.UpdateStatus(ctx)
 
+	// h.treeBuilder.cleanGateTreeUpdates()
 	// h.updateHAProxy(ctx, logger)  //revive:disable:unused-parameters
 	// h.updateStatuses(ctx, logger) //revive:disable:unused-parameter
+}
+
+func (h *eventHandlerImpl) processBatch(batch events.EventBatch) bool {
+	h.clusterStoreUpdater.ResetUpdates()
+
+	for _, e := range batch.Events {
+		h.updateClusterStore(e, h.config.Logger)
+	}
+	return true
+}
+
+func (h *eventHandlerImpl) updateClusterStore(event any, logger *slog.Logger) {
+	switch obj := event.(type) {
+	case *events.UpsertEvent:
+		gvk := h.config.ExtractGVK(obj.Resource)
+		logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Processing event in batch",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrEventType("upsert"),
+			logging.LogAttrResource(obj.Resource, gvk),
+		)
+
+		h.clusterStoreUpdater.Upsert(obj.Resource)
+
+	case *events.DeleteEvent:
+		gvk := h.config.ExtractGVK(obj.Type)
+
+		logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Processing event in batch",
+			logging.LogAttrCategory(logging.LogCategoryGate),
+			logging.LogAttrEventType("delete"),
+			logging.LogAttrResource(obj.Type, gvk),
+		)
+
+		h.clusterStoreUpdater.Delete(obj.Type, obj.NamespacedName)
+	}
 }

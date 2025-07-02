@@ -17,9 +17,11 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 )
 
-func LeaderElectionConfig(leaderElection config.LeaderElectionConfig) func(o *config.Configuration) error {
+func LeaderElectionConfig(leaderElectionEnabled bool) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.LeaderElectionConfig = leaderElection
+		o.LeaderElectionConfig = config.LeaderElectionConfig{
+			Enabled: leaderElectionEnabled,
+		}
 		return nil
 	}
 }

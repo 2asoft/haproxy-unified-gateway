@@ -15,7 +15,6 @@ package tree
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
@@ -24,24 +23,27 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // GatewayClass represents the GatewayClass resource.
 type GatewayClass struct {
+	// TreeStatus
+	TreeStatus TreeUpdate[GatewayClass]
 	// K8sResource is the source resource.
 	K8sResource *v1.GatewayClass
+	// HaproxyGate is the linked HaproxyGate from ParamsRef
+	HaproxyGate *v3.HaproxyGate
 	// Conditions include Conditions for the GatewayClass.
 	Conditions conditions.Conditions
 	// CheckParamsRef shows whether the GatewayClass is valid as for ParamsRef
 	CheckParamsRef CheckResult
-	// CheckAccepted shows where the GatewayClass is accepted
-	// If can be rejected because of:
-	// - Conflict (only 1 GatewayClass accepted)
-	// - GatewayClass name not supported (controller limited to a list of GatewayClass names)
-	CheckAccepted CheckResult
-	Valid         bool
+	// Valid is true if the GatewayClass is Valid (versions + haproxy gate paramsRef)
+	Valid bool
+	// Managed is true if the GatewayClass is Managed (should be always true)
+	Managed bool
 }
 
 var _ utils.ObjectWithTimestamp = &GatewayClass{}
@@ -49,8 +51,59 @@ var _ utils.ObjectWithTimestamp = &GatewayClass{}
 func NewGatewayClass(k8sObject *v1.GatewayClass) *GatewayClass {
 	return &GatewayClass{
 		K8sResource: k8sObject,
-		Conditions:  conditions.NewDefaultGatewayClassConditions(),
+		Valid:       false,
+		Managed:     true,
+		Conditions:  conditions.NewGatewayClassAcceptedOK(),
+		TreeStatus: TreeUpdate[GatewayClass]{
+			Status:          store.StatusUpserted,
+			OldTreeResource: nil,
+		},
 	}
+}
+
+func (g *GatewayClass) SetAsUpserted(logger *slog.Logger, newK8sResource *v1.GatewayClass) {
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass upserted",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrObjectKey(newK8sResource))
+	g.TreeStatus.Status = store.StatusUpserted
+	g.TreeStatus.OldTreeResource = g.DeepCopy()
+	g.K8sResource = newK8sResource
+}
+
+func (g *GatewayClass) SetAsDeleted(logger *slog.Logger) {
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass deleted",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrObjectKey(g.K8sResource))
+	g.TreeStatus.Status = store.StatusDeleted
+	g.TreeStatus.OldTreeResource = g.DeepCopy()
+	g.K8sResource = nil
+}
+
+func (g *GatewayClass) ResetChecks() {
+	g.Conditions = conditions.NewGatewayClassAcceptedOK()
+	g.HaproxyGate = nil
+	g.CheckParamsRef = CheckResult{}
+	g.Valid = false
+}
+
+func (g *GatewayClass) SetAsManaged(logger *slog.Logger, controllerStore ControllerStore) {
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass managed",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrObjectKey(g.K8sResource))
+	// Is it already in Managed
+	key := client.ObjectKeyFromObject(g.K8sResource)
+	controllerStore.GateTree.GatewayClasses[key] = g
+	delete(controllerStore.UnmanagedGateTree.GatewayClasses, key)
+}
+
+func (g *GatewayClass) SetAsUnmanaged(logger *slog.Logger, controllerStore ControllerStore) {
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass unmanaged",
+		logging.LogAttrCategory(logging.LogCategoryGate),
+		logging.LogAttrObjectKey(g.K8sResource))
+	// Is it already in Managed
+	key := client.ObjectKeyFromObject(g.K8sResource)
+	controllerStore.UnmanagedGateTree.GatewayClasses[key] = g
+	delete(controllerStore.GateTree.GatewayClasses, key)
 }
 
 func (g *GatewayClass) GetCreationTimestamp() metav1.Time {
@@ -61,111 +114,74 @@ func (g *GatewayClass) GetName() string {
 	return g.K8sResource.GetName()
 }
 
-func (g *GatewayClass) OnGateUpdated(logger *slog.Logger, extractGVK utils.ExtractGVK, updatedGate store.Update[*v3.HaproxyGate],
-	clusterStore *store.ClusterStore,
-	gateTree *GateTree,
-) {
-	switch updatedGate.Status {
+func (g *GatewayClass) checkParametersRef(controllerStore ControllerStore) {
+	switch g.TreeStatus.Status {
 	case store.StatusUpserted:
-		err := checkGateRefConsistency(extractGVK, g, updatedGate.NewObject)
-		if err != nil {
-			logger.LogAttrs(context.Background(), slog.LevelError,
-				"checkGateRefConsistency failed",
-				logging.LogAttrCategory(logging.LogCategoryGate),
-				logging.LogAttrError(err),
-			)
-			return
+		paramRef := g.K8sResource.Spec.ParametersRef
+		checker := HaproxyGateParamsRefChecker{
+			ParamRef:          paramRef,
+			StoreHaproxyGates: controllerStore.ClusterStore.HaproxyGates,
 		}
-		g.OnGateUpserted(logger, extractGVK, updatedGate.NewObject, clusterStore, gateTree)
+		var haproxyGate *v3.HaproxyGate
+		g.CheckParamsRef, haproxyGate = checker.CheckGatewayClass()
+		if g.CheckParamsRef.Valid {
+			g.HaproxyGate = haproxyGate
+		}
 	case store.StatusDeleted:
-		g.OnGateDeleted(logger, extractGVK, updatedGate.OldObject, clusterStore, gateTree)
+		// nothing to do
 	}
 }
 
-func (g *GatewayClass) OnGateUpserted(logger *slog.Logger, extractGVK utils.ExtractGVK, gate *v3.HaproxyGate,
-	clusterStore *store.ClusterStore,
-	gateTree *GateTree,
-) {
-	gateKey := client.ObjectKeyFromObject(gate)
-	logger.LogAttrs(context.Background(), slog.LevelDebug,
-		fmt.Sprintf("OnGateUpserted %s", gateKey),
-		logging.LogAttrCategory(logging.LogCategoryGate),
-		logging.LogAttrResource(g.K8sResource, extractGVK(g.K8sResource)))
-	g.BuildConditions(logger, clusterStore, gateTree)
-}
-
-func (g *GatewayClass) OnGateDeleted(logger *slog.Logger, extractGVK utils.ExtractGVK, gate *v3.HaproxyGate,
-	clusterStore *store.ClusterStore,
-	gateTree *GateTree,
-) {
-	gateKey := client.ObjectKeyFromObject(gate)
-	logger.LogAttrs(context.Background(), slog.LevelInfo,
-		fmt.Sprintf("OnGateDeleted %s", gateKey),
-		logging.LogAttrCategory(logging.LogCategoryGate),
-		logging.LogAttrResource(g.K8sResource, extractGVK(g.K8sResource)))
-	g.BuildConditions(logger, clusterStore, gateTree)
-}
-
-func checkGateRefConsistency(extractGVK utils.ExtractGVK, gwc *GatewayClass, gate *v3.HaproxyGate) error {
-	paramRef := gwc.K8sResource.Spec.ParametersRef
-	gateGVK := extractGVK(gate)
-
-	if string(paramRef.Group) != gateGVK.Group {
-		return fmt.Errorf("group mismatch paramRef %s != gate %s", paramRef.Group, gateGVK.Group)
-	}
-	if string(paramRef.Kind) != gateGVK.Kind {
-		return fmt.Errorf("kind mismatch paramRef %s != gate %s", paramRef.Kind, gateGVK.Kind)
-	}
-	if paramRef.Namespace != nil {
-		if string(*paramRef.Namespace) != gate.Namespace {
-			return fmt.Errorf("namespace mismatch paramRef %v != gate %s", paramRef.Namespace, gate.Namespace)
-		}
-	}
-	if paramRef.Name != gate.Name {
-		return fmt.Errorf("name mismatch paramRef %s != gate %s", paramRef.Name, gate.Name)
-	}
-
-	return nil
-}
-
-func (g *GatewayClass) BuildConditions(logger *slog.Logger, clusterStore *store.ClusterStore, gateTree *GateTree) {
-	paramRef := g.K8sResource.Spec.ParametersRef
-	checker := HaproxyGateParamsRefChecker{
-		ParamRef:          paramRef,
-		StoreHaproxyGates: clusterStore.HaproxyGates,
-	}
-	g.CheckParamsRef = checker.Check()
-	gwcNsName := client.ObjectKeyFromObject(g.K8sResource)
-	isSupported := gateTree.IsSupportedGatewayClass(gwcNsName)
-	isIgnored := gateTree.IsIgnoredGatewayClass(gwcNsName)
-
-	if isSupported {
-		g.buildConditionsSupported(logger, gateTree)
-	}
-
-	if isIgnored {
-		g.buildConditionsIgnored(logger, gateTree)
+func (g *GatewayClass) BuildConditions(controllerStore ControllerStore) {
+	switch g.Managed {
+	case true:
+		g.buildConditionsManaged(controllerStore.Logger, controllerStore)
+	case false:
+		g.buildConditionsIgnored(controllerStore.Logger)
 	}
 }
 
-func (g *GatewayClass) buildConditionsSupported(_ *slog.Logger, gateTree *GateTree) {
+func getGatewayClassParamsRefKey(gwc *v1.GatewayClass) (types.NamespacedName, bool) {
+	paramsRef := gwc.Spec.ParametersRef
+	if paramsRef == nil {
+		return types.NamespacedName{}, false
+	}
+	return client.ObjectKey{Namespace: utils.NamespaceAsString(paramsRef.Namespace), Name: paramsRef.Name}, true
+}
+
+func (g *GatewayClass) buildConditionsManaged(_ *slog.Logger, cs ControllerStore) {
 	// Checks on Supported Versions
-	switch gateTree.IsGwAPIVersionValid {
+	switch cs.InstalledGwAPIVersions.Valid {
 	case true:
 		g.Conditions.MergeOverrideConditions(
-			conditions.NewGatewayClassSupportedVersionConditions())
+			conditions.NewGatewayClassSupportedVersionOK())
 	case false:
 		g.Conditions.MergeOverrideConditions(
-			conditions.NewGatewayClassUnsupportedVersion(SupportedGatewayAPIBundleVersion.String()))
+			conditions.NewGatewayClassSupportedVersionUnsupportedVersion(SupportedGatewayAPIBundleVersion.String()))
 	}
 
 	// Checks on parametersRef
 	g.Conditions.MergeOverrideConditions(g.CheckParamsRef.Conditions)
+	// Generation
 	g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
-
-	g.Valid = gateTree.IsGwAPIVersionValid && g.CheckParamsRef.Valid
 }
 
-func (g *GatewayClass) buildConditionsIgnored(_ *slog.Logger, _ *GateTree) {
-	g.Conditions.MergeOverrideConditions(conditions.NewGatewayClassUnsupported())
+func (g *GatewayClass) buildConditionsIgnored(_ *slog.Logger) {
+	g.Conditions.MergeOverrideConditions(conditions.NewGatewayClassAcceptedUnsupported())
+	g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
+}
+
+func (g *GatewayClass) DeepCopy() *GatewayClass {
+	return &GatewayClass{
+		K8sResource: g.K8sResource.DeepCopy(),
+		HaproxyGate: g.HaproxyGate.DeepCopy(),
+		Conditions:  utils.DeepCopyMap(g.Conditions),
+		CheckParamsRef: CheckResult{
+			Valid:      g.CheckParamsRef.Valid,
+			Conditions: utils.DeepCopyMap(g.CheckParamsRef.Conditions),
+		},
+		Valid:   g.Valid,
+		Managed: g.Managed,
+		// Status not copied
+	}
 }

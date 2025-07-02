@@ -128,8 +128,6 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	err = test.createNamespace(controllerNs)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	controllerConfig := config.ControllerPodConfig{}
-
 	// Values to get from flags
 	// to implement:  flags
 	metricsConfig := config.MetricsConfig{
@@ -139,32 +137,16 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	}
 	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
 	// (through the spec.controllerName)
-	controllerName := "gate.haproxy.org/gateway-controller"
-
-	// whiteListNs := []string{"default", "kube-system", "haproxy-controller", "test", "test2"}
-	whiteListNs := []string{}
-
-	// kubeconfig := testKubeConfig
-	kubeconfig := ""
+	controllerName := "gate.haproxy.org/unified-controller"
 
 	syncPeriod := 1 * time.Second
 
-	leaderElectionLockName := "kubernetes-controller-leader-election-lock"
-	leaderElectionConfig := config.LeaderElectionConfig{
-		Enabled:  false,
-		LockName: leaderElectionLockName,
-		Identity: controllerConfig.Name,
-	}
-
 	opts := []func(c *config.Configuration) error{
-		opt.ControllerPodConfig(controllerConfig),
-		opt.KubeConfig(kubeconfig),
-		opt.ControllerConf(controllerCfgNsName),
+		//	opt.KubeConfig(kubeconfig),
+		opt.ControllerConfCRD(controllerCfgNsName),
 		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),
-		opt.LeaderElectionConfig(leaderElectionConfig),
 		opt.ControllerName(controllerName),
-		opt.WhiteListNamespaces(whiteListNs),
 		opt.Logging(logging.DefaultLevel, logging.DefaultLogLevelPerCategory),
 	}
 	gatecontrollercfg := config.Configuration{}

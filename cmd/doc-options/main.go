@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/renameio/v2"
+	"github.com/google/renameio"
 	"github.com/phuslu/log"
 	"gopkg.in/yaml.v3"
 )

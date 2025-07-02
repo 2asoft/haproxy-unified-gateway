@@ -116,6 +116,7 @@ tasks:
       - task: delimiter
       - echo "deploying Controller ..."
       - kubectl apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
+      - kubectl apply -f {{.CONFIG_DIR}}/controller/controllerconf.yaml
       - kubectl apply -f {{.CONFIG_DIR}}/controller/controller.yaml
       - task: delimiter
       - echo "deploying echo service ..."
@@ -134,7 +135,7 @@ tasks:
     desc: 'redeploy a KinD cluster with IC'
     silent: true
     cmds:
-      - task: kind-build-controller-image
+      - task: kind-build-controller-image-dev
       - task: delimiter
       - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
       - task: delimiter

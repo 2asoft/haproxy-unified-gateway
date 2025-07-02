@@ -116,14 +116,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	r.cfg.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"Reconciling the resource",
 		logging.LogAttrCategory(logging.LogCategoryK8s),
-		logging.LogAttrReconcileRequest(req.NamespacedName, gvk))
+		logging.LogAttrKeyGVK(req.NamespacedName, gvk))
 
 	if err := r.cfg.Getter.Get(ctx, req.NamespacedName, obj); err != nil {
 		if !apierrors.IsNotFound(err) {
 			r.cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Failed to get the resource",
 				logging.LogAttrCategory(logging.LogCategoryK8s),
-				logging.LogAttrReconcileRequest(req.NamespacedName, gvk))
+				logging.LogAttrKeyGVK(req.NamespacedName, gvk))
 
 			return reconcile.Result{}, err
 		}
@@ -151,7 +151,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	case <-ctx.Done():
 		r.cfg.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Did not process the resource because the context was canceled",
-			logging.LogAttrReconcileRequest(req.NamespacedName, gvk))
+			logging.LogAttrKeyGVK(req.NamespacedName, gvk))
 		return reconcile.Result{}, nil
 	case r.cfg.EventCh <- e:
 	}
@@ -159,7 +159,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	r.cfg.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 		fmt.Sprintf("%s the resource", op),
 		logging.LogAttrCategory(logging.LogCategoryK8s),
-		logging.LogAttrReconcileRequest(req.NamespacedName, gvk),
+		logging.LogAttrKeyGVK(req.NamespacedName, gvk),
 	)
 
 	return reconcile.Result{}, nil

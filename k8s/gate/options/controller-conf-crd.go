@@ -13,11 +13,14 @@
 // limitations under the License.
 package opt
 
-import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+import (
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"k8s.io/apimachinery/pkg/types"
+)
 
-func ControllerName(controllerName string) func(o *config.Configuration) error {
+func ControllerConfCRD(controllerConf types.NamespacedName) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.ControllerName = controllerName
+		o.ControllerConfCRD = controllerConf
 		return nil
 	}
 }

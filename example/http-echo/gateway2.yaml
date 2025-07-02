@@ -3,7 +3,7 @@ kind: Gateway
 metadata:
   name: gateway2
 spec:
-  gatewayClassName: haproxy2
+  gatewayClassName: haproxy
   listeners:
   - name: http
     port: 80

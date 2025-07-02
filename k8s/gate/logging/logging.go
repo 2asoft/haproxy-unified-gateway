@@ -17,7 +17,9 @@ import (
 	"context"
 	"log/slog"
 	"maps"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
@@ -85,8 +87,8 @@ func (*CategoryFilterHandler) Enabled(_ context.Context, _ slog.Level) bool {
 func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error {
 	mu.Lock()
 	defer mu.Unlock()
+	filename := ""
 	_, file, no, _ := runtime.Caller(3)
-	r.AddAttrs(LogAttrFileSource(file, no))
 
 	// Empty Category should happen only for k8s Logs
 	category := LogCategoryK8s
@@ -98,9 +100,13 @@ func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error
 		return true
 	})
 	if category == LogCategoryK8s {
+		filename = file
 		// If no category is set, we use the default level
 		r.AddAttrs(slog.String(h.categoryKey, string(category)))
+	} else {
+		filename = shortFilePath(file)
 	}
+	r.AddAttrs(LogAttrFileSource(filename, no))
 
 	catLevel, ok := logLevelPerCategory[category]
 	if !ok {
@@ -174,4 +180,18 @@ func mapsEqual(a, b map[v3.Category]slog.Level) bool {
 		}
 	}
 	return true
+}
+
+func shortFilePath(fullPath string) string {
+	const markerK8s = "k8s/"
+	const markerController = "controller/"
+	idx := strings.Index(fullPath, markerK8s)
+	if idx >= 0 {
+		return fullPath[idx:] // e.g., "k8s/gate/references/references.go"
+	}
+	idx = strings.Index(fullPath, markerController)
+	if idx >= 0 {
+		return fullPath[idx:] // e.g., "k8s/gate/references/references.go"
+	}
+	return filepath.Base(fullPath) // fallback to just filename
 }

@@ -45,11 +45,11 @@ type Configuration struct {
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	// LeaderElectionConfig contains the configuration for leader election.
-	//  Namespace and name of the controller conf CRD
-	ControllerConfNsName types.NamespacedName
-	Kubeconfig           string
-	// GatewayCtlrName is the name of this controller.
-	GatewayCtlrName      string
+	//  Namespace and name of the controller conf CRD:  HaproxyGateCtrlCfg
+	ControllerConfCRD types.NamespacedName
+	Kubeconfig        string
+	// ControllerName is the name of this controller.
+	ControllerName       string
 	LeaderElectionConfig LeaderElectionConfig
 	// WhiteListNamespaces is a list of namespaces to watch.
 	// If empty, all namespaces are watched.
@@ -84,8 +84,6 @@ type MetricsConfig struct {
 type LeaderElectionConfig struct {
 	// LockName holds the name of the leader election lock.
 	LockName string
-	// Identity is the unique name of the controller used for identifying the leader.
-	Identity string
 	// Enabled indicates whether leader election is enabled.
 	Enabled bool
 }

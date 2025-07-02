@@ -9,3 +9,8 @@ spec:
     port: 80
     protocol: HTTP
     hostname: "*.haproxy.local"
+  infrastructure:
+    parametersRef:
+      group: gate.v3.haproxy.org
+      kind: HaproxyGate
+      name: haproxygate2
