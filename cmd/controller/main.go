@@ -11,15 +11,17 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
-	"github.com/joho/godotenv"
-	"k8s.io/apimachinery/pkg/types"
-
 	ctrlconfig "github.com/haproxytech/kubernetes-controller/controller/configuration"
+	haproxymgr "github.com/haproxytech/kubernetes-controller/controller/haproxy"
+	haproxyparams "github.com/haproxytech/kubernetes-controller/controller/haproxy/params"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+
+	"github.com/joho/godotenv"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 //revive:disable
@@ -28,23 +30,22 @@ import (
 // apiVersion: v1
 // clusters:
 // - cluster:
-//     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJTnZTMUMzMUdKVkV3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRBME1qa3hNREF3TWpSYUZ3MHpOVEEwTWpjeE1EQTFNalJhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUUNjaUp1K1lwK2o5NzQxWHpvczZnelhReEFzUkZEaHVJTjJFZDl6UDQ0SFBIV3RnMFFOYjN5QzRLVkcKVFowb29mTXEzelhiYVZacHJsM3VHQitESWdtTmFmZWk2TENLblN4Mnl4RFYxWkhKd25lUU5oSUVybXVzZHI3UApqK3poZjZTU2drVFhnMnhJUlkyMWYwL2lKMFFqcTJVYmJrZlNDVnlGWDN1ZGVadmtaU3J5L1B2Z2JkdE8xMmZqClFKRE92eG4yRTI4aHNGaVQ2MXl2ZW16RDZnZ0ZLSzEzSEVMejVteWR5THEzNzFlWDZtOWJrajRycUZjdktnSi8KRUNXUEg4TWlzQ1FpMmZGT0R6ME5ETlhYTDFmU2Y3Uzk1UG5IblVGWnA3U3BzN0V1bldZeElQS1Q0V3JqaDhRcQp5VU8rR2JRK1pqVVFqMWZiZmphdFJFbGN3UGZQQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJUanBRMlp3QVY4RC9lWlRJVkR5VnBEeFBJWmhEQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQXBpcVM5MXRDQQpzSFBTUSs2K05qRTBQVVU4RUZqcDdtU3FtRlFwSHdMNm5FUTMxNGtlaWlMWm9ZUEZBNHZvVGJ1aGM0eWZFNzhhCjdDUlNzMGtadkFQcmNneGYyZzhEOWh5aExkN1JLVVNocUlKQmNOUWdUeFgzK1ExenJveCtLQW9sSE5zWjN2RkkKSjZJbHVnaDJ5Sk14SlN5Znl6MHUycVdZUHFVaDNzQ1Y0b1V6QXB4aXlZeWRFUmFTcS9QSFF5WSs4ZithMWdrdwpIQkxTbDFHOWk4YTlHM3ZVRXdIQit5enBQVjZubjE5L1YzdzQ2M2s3U2xYNnR6UDdFQ1F5djBrQmcyaUQ3d3ViCkdabXYzS3h0cTIrYUVpS285cHpYdGFPdk0yUlVpN2NnVUF0aHlSZEV2Y2FRUUUxMkNHRzlkdTNkNzR3TXlFd2gKVGZYVjI0SDF4dTFSCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-//     server: https://127.0.0.1:6443
-//   name: kind-dev
+//     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJY1ZHaHZlOXRsUk13RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRBM01UWXdOekUzTWpKYUZ3MHpOVEEzTVRRd056SXlNakphTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUUROb2hVc09MaHJDV3E0VWtHbVdtelFjeVUvUGtUTmIrRzF3WkRadkZCL3lQZy82RXZXUWF3ZzRDdFYKbTNHS3hSdGE0VmtlYTBPVVRJRzRMYmphbGRKbHFhOERScEcrUG54aVdYTVdMV3d5T2dPMjRmV0ltbUluNXZqZQpvaHd4UTlKYjJnYzM0VmJKTWYrNmxwbEtBUExXS3FlNHlSUmdUL1c0Y3prWVpnM1pKckNad0ZXdkt0MERPeWU2Cis0SGRhN3RoZnhLK0liaXQ5RGx3dWJDU3BkSG0yUnU5Q2Zvcm4zc0p5elp5U29kYVZlSWdyN1Bmc1IvbEF4ZXUKaXl6dER0VjNUaG54dE1CTlBOMWQ3ekg4K1RvK21NQit4WENBSTUrQzJXUWRmaGx6Rko5TEVvOUhYV1FGSU1tKwpLWEdZYzlzZS9kV0Job0hvQ1duQVY3aEQ4cExCQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJUdFRlTDc5VkJIUTBiM3pJK1p4djEvUmM2a1RqQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQmYvc1VOUVllMwpqNE1QRXJ2bFlmczhrbFNNQmpMYVFZeS80Q29TdUsrQ1k2Y2JpOWVEcEJsNEV4eVVFOGhlMzBaNjUzUlJObHVvClNjUGt5M2hLRVNRUVNYZTE2cnpySjdiYmlTVjVIcnFsSm4vUlBBU1FqL2RLVEcxdjVQeGdXSXExbmwyeDJlR2kKbEtWSXR3SXR4U1FTZVB2Q2hQdzUySlJvVVhPUmVtNHJobUh3QVZveTgwZlBZVlBtcXQ4MDB2czNlTWVFNlh3Wgpqd3ppVVNJRElPQkw5cG1UUTVOSWxTRy9aL3pGUlJGaUlrZW5JaEVVSFllS1V6bjVlYmMrb25uWGltWWg2U0VBCmF4SzhBdTI5U0N2SlEwNjVaWGtnblJpWWVWczU3NW00c1g1ZHVLdS8rOUhnUExBbTYzSWx6U0xteGx1Y2J2Q0EKaVFxTERlNjVsY3gvCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+//     server: https://127.0.0.1:7443
+//   name: kind-dev-controller
 // contexts:
 // - context:
-//     cluster: kind-dev
-//     user: kind-dev
-//   name: kind-dev
-// current-context: kind-dev
+//     cluster: kind-dev-controller
+//     user: kind-dev-controller
+//   name: kind-dev-controller
+// current-context: kind-dev-controller
 // kind: Config
 // preferences: {}
 // users:
-// - name: kind-dev
+// - name: kind-dev-controller
 //   user:
-//     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURLVENDQWhHZ0F3SUJBZ0lJRVA5VVJ3YUcyNTh3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRBME1qa3hNREF3TWpSYUZ3MHlOakEwTWpreE1EQTFNalZhTUR3eApIekFkQmdOVkJBb1RGbXQxWW1WaFpHMDZZMngxYzNSbGNpMWhaRzFwYm5NeEdUQVhCZ05WQkFNVEVHdDFZbVZ5CmJtVjBaWE10WVdSdGFXNHdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFEU0ViZGcKa3pHWDRwTmNIQkhhbHU5MXVXK2ZobkNUN08yS2NKVDZoNDRhTDF0UkxpSTZMQ00wcXBNakx3Zkg0UFdDTjY0SwphNkd5QVFXWGEwSjE3TUsrKzJFZTFGVWFMbUhuVDRRVmV6ZzBodmhnNjZ2cW95R1pXdExZSHpuVTRkc1lST3Y4CnE2c01tRTlUYlZNZnFUdERGYmlGcDNWZlN3emJ1b2dET252S2pCYW9wV1BYVHl4UGtVZDljd0tnMDhDSFVPQWcKaW5pUkhjVkNUa1BWZUxxVHlwRXRud1REUWVwQjVNYmJtY3dGUUhjWHh6alo4ekN2NzMwUmpNUWVnVlpVYTQ2NQpkZWt2eUMvQTVWYjV0cm1kNERISXEvY2ZyazNQeWFsdXVTeDZzWDJNR2diT1NMVDBwK0tuOFI4STd0WWE0UW55Cmg4dWp2ZTcvU1ZCcmNWd1JBZ01CQUFHalZqQlVNQTRHQTFVZER3RUIvd1FFQXdJRm9EQVRCZ05WSFNVRUREQUsKQmdnckJnRUZCUWNEQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZEl3UVlNQmFBRk9PbERabkFCWHdQOTVsTQpoVVBKV2tQRThobUVNQTBHQ1NxR1NJYjNEUUVCQ3dVQUE0SUJBUUFSalR3enVpUUQzN3lVRXkyK3gwRDR5aTN3CjBSZnl3YTB0bTlkTUJUVzl5VW1SSWN0dGlwSHhja1FUc05VMWJFYVRxRUp4NkQ5SVhnQVBxRDByK2kzNEtjME0KSmdyNHphRGhZaEtLWWhyWXJGMUJ3QmpiNFpIRnZ1Mm9hRnRlbEFqcWJ0N2M4QTIraGRzUUtFSVZHQnQrM2RYbwphV3h4UlVKVTdGNlhJZXAwK1VaMEVrOGVyeWIreGEzMkIxeVB1Q3NVNVFPdVFmUlY0ZWdpY0NNdVZlSWpJaVM2CnR5TjZPdTltMnJVVm4wckdTVEZObUNDU2JQRXE5OHliRnVWVEliZWQwL2dzUHBnZFF5Z0JmT0t4QWw3TC8xb00KQUwxZkp1M2IrcCtxT1JlQm85NnYvTlQ3bTJhakMrc2Eyb3cvQ01oYWZLekJLdjdYUXc5SWFSRUo4WXlOCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
-//     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb2dJQkFBS0NBUUVBMGhHM1lKTXhsK0tUWEJ3UjJwYnZkYmx2bjRad2srenRpbkNVK29lT0dpOWJVUzRpCk9pd2pOS3FUSXk4SHgrRDFnamV1Q211aHNnRUZsMnRDZGV6Q3Z2dGhIdFJWR2k1aDUwK0VGWHM0TkliNFlPdXIKNnFNaG1WclMyQjg1MU9IYkdFVHIvS3VyREpoUFUyMVRINms3UXhXNGhhZDFYMHNNMjdxSUF6cDd5b3dXcUtWagoxMDhzVDVGSGZYTUNvTlBBaDFEZ0lJcDRrUjNGUWs1RDFYaTZrOHFSTFo4RXcwSHFRZVRHMjVuTUJVQjNGOGM0CjJmTXdyKzk5RVl6RUhvRldWR3VPdVhYcEw4Z3Z3T1ZXK2JhNW5lQXh5S3YzSDY1Tno4bXBicmtzZXJGOWpCb0cKemtpMDlLZmlwL0VmQ083V0d1RUo4b2ZMbzczdS8wbFFhM0ZjRVFJREFRQUJBb0lCQUZMRXhEbjdCUWxSTHJxVwpITHJCeWF2YTJvNUNURTBjaHlPSzVFZ3A3T1dJVHpTWE5za3c1dFl6ZHpIZnIvTWpRZGlDMDhJclVsUnVicU9RCmtXa2hWa0lsamNpMTVLb2lLRlVaVVhPZFR6SHpGQjRyL1ZxLzE5Y3luK3lqc1FlZHpkT3NKRWN6NUh0Yjc3VngKVjlVYnVzdmQzUXhjUkxTOVAxMjhDeWNxZmVmNXZyNE9Oa1V1VG1EZTQ2cnNCR1hoekh2VFRVdGNPejdmb291dwpPM09lTE1yK2V5RVJxeW9TZ2NWWTRGcmNYR3BPbW5neENDbWU4OWJPN0dtY0I1Qk9EVTNqNkNIWVQ1QTZUUGpzCkNzSlNYcVVjbUpHWlFuV1ZVcnF6SmxUQUZoQUZPbzN4Q29TSGI1ZkZGdmRsZ25rT0dxWXlPM3h3NGRONW5KLzMKbUVHMDBSa0NnWUVBMGxCaUJseDl5OHc2UUtuUlRuMm9saXV0SHppdm50TG9YRGg5QXEvdjl1R0h5N0llL2Z1MgpzamJXT0ZleEVjSjlHRVZUKzFSZFJlQTd5aW9nSGU2WUFlVzF0d1hGZXpaWXdtMDVockxFOWFYdDB1aDJyWnlmCjhnTHprYnBWTXNESG9TMDJKaU1ZQlQ1V1BKRUc5ZDdsTDM0Y1E3TWNDY1FXNGVEVXVWMi9BbE1DZ1lFQS83TzQKY2xNM0xiakRsSFhaSENnR1NCcVE3UFVCYmhEU3lwUko3OEVDZkJyLzh4eDU1YlYyd2djdkdQVVVuVDdvQzJyYQpnRlg4dXlXbUpPajNkQ2hjV3pIRVJ2V25HTEJGWmthWUtzbmdyeGhCRWtJZTY2aExtcmJlTmoybjhDRGVLQlVZCkdhT1RvSTAxYUFYYm03bWdjalF2enpRT1NRU2pMd3lIV0YwM1k0c0NnWUE1c0pVQys3SUNDalpjY0hpYW1EdDcKWGVXeUw4RjB4cE80WUVKaVQxSjZuU2k3eGxOY0JnVDZZN0psYUNDSko1bGE1QUdDYW9UZld2L3JsNXlSdVZYMwpCMFRPUElZTUl6ODdyZXhldDREeGhSOTBnQkcxMDhYSUEraytLeWVkc1dYUkgyN0FEVlpVY2VJRDRTQlFwMkNrCm8yb3JZK0VvQ0tMaU9PTUJLZWJ3UXdLQmdFbE4ySDdONUcrekhENmZXbEo4RnZEc3pNZGhwYnRNRDJJTUNQWTIKdXVPaFNlY0VMdDN2bTlBY0J5QjhnaUJpUEZ1cGttSmdSRWZTajBMZGxyTXlMdWZsNklML1Fad09USmI1ZmY0bQpTY2RvaUo4WFhZM3BmV01wTWFNVEllWHhSajd2YlMxTWU3SDNTV3c4NGF4UEZ2UW1pZDQ0Nmk5OHFOdUFGL3o1CkhEdnBBb0dBV2RJR3NnaGVrVlp1Q1pVMW1zUnovYTlGdnRYNWhhOVVMNERFZGNwU3RWbTR2V3pDUkZ0b2gydTEKUndkb21LWWlweG9hY0pNTGh1Z3NiaWZYQmdxMHBqRlNJd0cyL1FnRGIrOUZiRlVHTnJBZ0FFeVY3SWhxbS94ZAptRUx5NE5lTGRjUkZnY1dUTG1CSld5ZllmQjFsWXFVNXBBcGRRdDBVbGNibUZIZWt3RzQ9Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
-
+//     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURLVENDQWhHZ0F3SUJBZ0lJZFgwTmJxWkc0aE13RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRBM01UWXdOekUzTWpKYUZ3MHlOakEzTVRZd056SXlNakphTUR3eApIekFkQmdOVkJBb1RGbXQxWW1WaFpHMDZZMngxYzNSbGNpMWhaRzFwYm5NeEdUQVhCZ05WQkFNVEVHdDFZbVZ5CmJtVjBaWE10WVdSdGFXNHdnZ0VpTUEwR0NTcUdTSWIzRFFFQkFRVUFBNElCRHdBd2dnRUtBb0lCQVFERTVkeVAKZzZUcXRYSkY0T0lvdkVaN2dMZnF6NFdSbEJncm8xQU90cVM2YnNVMG1uWXlhSG5TQU1JYlNaY0ptRGNYWE1LcQpTSzh0SlBVTHVFR0M0WFpRWXRPdUZCajFBVTU0Ykw2alpQdXU3cFZvU1JsbC9VVzJnVTNHNFVKSEVOMkFXWTFBCi9ZUGQwWTgyZklDMlNSUzlxK0dKaFFtUndDTkt0czVIMWFxb3kyUndEdDFhTHdQMFUzWUF6UUVFSDdsTnRndVIKMEh4NzVkVDBHRldxQjBZVk1YWW5wY3BIeElqclhCQzdIRlhJbXNUcGVVWWpxRWRULy9qNGEvYU5OQlUranVWMQpFYzJWaEtPUUpMdnFCMnhIbWw5amtmTEJ2M2grbFVTTWxpSGV2dTRMb0I0MHJhSWMzNVY2b2JEMUlybktzYUx3CmFYb3VldHNwNHVSV0lEdGpBZ01CQUFHalZqQlVNQTRHQTFVZER3RUIvd1FFQXdJRm9EQVRCZ05WSFNVRUREQUsKQmdnckJnRUZCUWNEQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjhHQTFVZEl3UVlNQmFBRk8xTjR2djFVRWREUnZmTQpqNW5HL1g5RnpxUk9NQTBHQ1NxR1NJYjNEUUVCQ3dVQUE0SUJBUURFUzhDbDAyNGZ0SUVCcVpKKzRHYmVuaHU5ClE2cU5lRlBSa3dhN3FSdnhhamxUbUFlVzhDVWQyRnh0cWZSOXY5cGkrOWh4Y3dkZ2p4S3hUVzNuUTRNTU45eWEKV2R5UWNtcGM1Tnd0L2pwaVAwTUdJbW5Za0VPd1lHRmk5NXJPMEM4emRUTGd6SHdka1cvSnAzbDgrbWJsK0NVZgpqUmhQK3hVSUpCR1lYZjlCTXE2ZDNuWHZzS2FBRHhIQzlNSU5qNUN2bkRrQ0VXU0RwNGNqSGZXY3pXajR4WTdsCkRhTnRaRzlocE5wVmJzSjFaYTNKbmlCTGVXaHBrd283MUIrd3FvOXM1QTJEaEZPdkhKalNKMy9FK1plbEdFSWsKdEpKM0hzQndvWjE4MGFpWnVheXBxTmdzaTBNSDZxc2J5SDJwZytlY0NnUlJzVldrbVZJRTA3eCtFOXF2Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+//     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb2dJQkFBS0NBUUVBeE9YY2o0T2s2clZ5UmVEaUtMeEdlNEMzNnMrRmtaUVlLNk5RRHJha3VtN0ZOSnAyCk1taDUwZ0RDRzBtWENaZzNGMXpDcWtpdkxTVDFDN2hCZ3VGMlVHTFRyaFFZOVFGT2VHeStvMlQ3cnU2VmFFa1oKWmYxRnRvRk54dUZDUnhEZGdGbU5RUDJEM2RHUE5ueUF0a2tVdmF2aGlZVUprY0FqU3JiT1I5V3FxTXRrY0E3ZApXaThEOUZOMkFNMEJCQis1VGJZTGtkQjhlK1hVOUJoVnFnZEdGVEYySjZYS1I4U0k2MXdRdXh4VnlKckU2WGxHCkk2aEhVLy80K0d2MmpUUVZQbzdsZFJITmxZU2prQ1M3Nmdkc1I1cGZZNUh5d2I5NGZwVkVqSlloM3I3dUM2QWUKTksyaUhOK1ZlcUd3OVNLNXlyR2k4R2w2TG5yYktlTGtWaUE3WXdJREFRQUJBb0lCQUNnVk9UVFlFbE1ibEFOSQp1QkdkM21WVysxbm9YQ01hT0Y5dDFDYmlwSjgxWEowTVVzS0pSVDlzbXhkT0FGcmFLMkRzcDg1ZGxKZkduY0lBCmhRbWRWMlllOEVQUVlKSkQ3Vk1UcEMyRUtiNWZZSGdGNVk4L0k1bDNNanVwOE1HaDI4MjhyVVpOTmJLSzdqSWoKMzFuOGY2WHJIek5OSzNrSjJjVmtlSkxrR3VWWWd4S05TdG03cVh5NkM0MlRIcmhyRmtyK01MVmNhL3FrcFhGbgpweWtTdFlXeVVJZk9mSjFZa2tka2I0UFlldHdLNnpibEU4dE1pWUdtRm1ReUM4VERqSlgzWlZjZFVnckFkcCtzCmtLOWNXSGZJSFhzUDNiWUtGQW82SXkvMzNZK1hGTThzdUh3c3N6YUsyRGMycERuaXRiZW5Sa0cvbW1zaWRYcDUKelNCQnY2RUNnWUVBM1J3Z2NLaHFENjBjZUlacm53dk9wcy83Q0s3NFREaWRHV0hvZ1JmQ3JpaDU0MEUzUXdVMApIV0dwZ2NsZEFuY2ZGOUxlQTV6emE1bWpDRk9KdlJacm5WRDBLem5TVkE0QllZUzVVNnFFVjV3R3VpTVFDRzF6Ckh4UXdVMWYrR0drMnNQVFJxeEwyS0FBY24xTldZY1FtcnNSQi9adU5SS3lkOHZqQlBXaVJrT0VDZ1lFQTQvZXQKUmRRQVBkNER2aGpTODhmZXZDbGpqcFhOR2MwK3hiaDhGOEV4LzRzRGYxTm14eDhvZzJpa1FWeGdaYk5BWVNlRwpZU0pDWGFOdzNjSGx3L0NMckdOMWZ4THBRa2oxZk81Q1o1Wm55ZXVDcUt4MnAvemNoenMwL2c4K01tKzhEdlNrCkpXdmJSbHRrRWhtZG5sVXZOT0NZMkQ4L1VDZTZmWjhrVTYyNjRNTUNnWUJBM0pSamwvUHMvMUkveE9iak5CcDkKOHJyb1ZET0FZSWN0UC94dGlpUFE1UXpFYm9nZ2YvRkd3VFJ4WHptS2xKa3BhdkUzekIzWUxheVdyN0xUSmpXUgpZNE1NL3h4RkRncTNxYkNYNjRpQkRzTW1iVXl4dkRHdUowVDUzZkVyQmdwR0pMc3czUklhcjlXMW8wUE8wRFNzCnhlTzUycHk1VFkzVURjYmFGY2ZGNFFLQmdCc0hFRm9KQ29aTFBqSlppeGt3Qnk1VDBlUGp5czlXVUN6czlIbDAKaEZNQnprWllRd1Uwb244Qjl3ZHd4bFVJYlllWFFnMWVISFF4bm40TU1RdU1CMk5HMzNWVGJxaFhNaE8vdzh1NApQMUhuUkRSdlRob1lscVRKMWp5UTNoVG92bWtmaEI2VHJRbW9hRExsS3BUTkVLMjZPeVRZU3M5Y0JuWkNXZkk1CjFNQTFBb0dBUy9ka2RiTGFSMGJ0d0l6MDdiUHRjdjNPSW9mTWR3M3FjOFBXeWZ3NWxJK3JJZ1JBb1VsMm5ad1gKWkQ5YXg5dnBWbGJ4N0VIbW5JRCsyVnc4ZTdTZE5PdTBDemhWZE11dkFtMmdDMzcveGN6eWUrSERrWXFHOUR2YQpYVXMxRGxwL1lMemJuZVowNU4vWWtEOUVSUE5qbkV2RTI4NXA0REFOVXYwODVob09CQlk9Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
 // `
 
 //revive:enable
@@ -52,10 +53,10 @@ import (
 func main() {
 	_ = godotenv.Load()
 	fmt.Println(string(version.Info))
-	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
 
-	// Controller config from Flags
-	config, err := ctrlconfig.Get()
+	// Controller ctrlConfig from Flags
+	ctrlConfig, err := ctrlconfig.Get()
 	if err != nil {
 		panic(err)
 	}
@@ -79,22 +80,34 @@ func main() {
 		logging.LogCategoryStatus: slog.LevelInfo,
 	}
 
-	treeCh := make(chan *tree.GateTree, 100)
+	haproxyConfCh := make(chan haproxy.HaproxyCfgDiffs, 100)
 
-	cntlr, err := controller.New(
+	opts := gateconfig.GateConfigOptions{
 		opt.KubeConfig(kubeconfig),
 		opt.ControllerConfCRD(types.NamespacedName{
-			Namespace: config.ControllerConfCRD.Namespace,
-			Name:      config.ControllerConfCRD.Name,
+			Namespace: ctrlConfig.ControllerConfCRD.Namespace,
+			Name:      ctrlConfig.ControllerConfCRD.Name,
 		}),
-		opt.SyncPeriod(config.SyncPeriod),
+		opt.SyncPeriod(ctrlConfig.SyncPeriod),
 		opt.MetricsConfig(metricsConfig),
-		opt.LeaderElectionConfig(config.LeaderElectionEnabled),
-		opt.ControllerName(config.ControllerName),
-		opt.WhiteListNamespaces(config.WhiteListNamespaces),
+		opt.LeaderElectionConfig(ctrlConfig.LeaderElectionEnabled),
+		opt.ControllerName(ctrlConfig.ControllerName),
+		opt.WhiteListNamespaces(ctrlConfig.WhiteListNamespaces),
 		opt.Logging(logLevelIfCategoryEmpty, logCategoryLevels),
-		opt.TreeChannel(treeCh),
-	)
+		opt.HaproxyConfChannel(haproxyConfCh),
+		opt.IPV4BindAddr(ctrlConfig.IPV4BindAddr),
+		opt.IPV6BindAddr(ctrlConfig.IPV6BindAddr),
+		opt.HaproxyDirs(ctrlConfig.HaproxyDirs),
+		opt.LinkID("link1"),
+	}
+	if ctrlConfig.DisableIPv4 {
+		opts = append(opts, opt.DisableIPv4())
+	}
+	if ctrlConfig.DisableIPv6 {
+		opts = append(opts, opt.DisableIPv6())
+	}
+
+	cntlr, err := controller.New(opts)
 	if err != nil {
 		panic(err)
 	}
@@ -107,28 +120,35 @@ func main() {
 		}
 	}()
 
-	// Goroutine to listen on treeCh and print received GateTree objects
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-ctx.Done():
-				cntlr.Configuration.Logger.LogAttrs(context.Background(), slog.LevelInfo,
-					"shutting down tree handler goroutine",
-					logging.LogAttrCategory(logging.LogCategoryGate),
-				)
-				return
-			case gt := <-treeCh:
-				cntlr.Configuration.Logger.LogAttrs(context.Background(), slog.LevelDebug,
-					"received new GateTree",
-					logging.LogAttrCategory(logging.LogCategoryGate),
-					slog.String("tree", fmt.Sprintf("Received new GateTree: %+v", gt.GatewayClasses)))
-			}
-		}
-	}()
+	// Start the HAProxy configuration manager
+	params := haproxyparams.Params{
+		Test:             ctrlConfig.Test,
+		UseWiths6Overlay: ctrlConfig.UseWiths6Overlay,
+		HaproxyDirs:      ctrlConfig.HaproxyDirs,
+	}
+	haproxyCfgManager, err := haproxymgr.NewHaproxyCfgManager(ctx, &wg,
+		haproxyConfCh,
+		params,
+		cntlr.Configuration.Logger)
+	if err != nil {
+		panic(err)
+	}
+	haproxyCfgManager.Run()
 
+	// --------------
+	// Shutdown
+	// --------------
+	// refer to beginning of main
+	// 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
+	// ctx.Done() also called on signal received
 	<-ctx.Done()
-	cntlr.Configuration.Logger.Info("shutting down controller")
+	cntlr.Configuration.Logger.Info("Context cancelled: shutting down controller")
+	cntlr.Configuration.Logger.Info("Graceful shutdown requested...")
+
+	// Stop your controller logic
+	haproxyCfgManager.Stop()
+
+	// Wait for background goroutines to finish
 	wg.Wait()
+	cntlr.Configuration.Logger.Info("Graceful shutdown complete. Exiting.")
 }

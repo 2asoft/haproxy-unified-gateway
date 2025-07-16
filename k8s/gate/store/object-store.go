@@ -19,7 +19,6 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -61,7 +60,6 @@ func (m *objectStoreImpl[T]) upsert(obj client.Object) {
 	if !ok {
 		m.logger.LogAttrs(context.Background(), slog.LevelError,
 			fmt.Sprintf("obj type mismatch. got %T, expected %T", obj, t),
-			logging.LogAttrCategory(logging.LogCategoryGate),
 		)
 		return
 	}

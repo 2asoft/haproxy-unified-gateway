@@ -19,8 +19,8 @@ import (
 	"time"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -38,18 +38,24 @@ import (
 // 	return config.GetConfig()
 // }
 
+type GateConfigOptions []func(c *Configuration) error
+
 type Configuration struct {
-	Logger     *slog.Logger
-	LogHandler *logging.CategoryFilterHandler
-	TreeCh     chan *tree.GateTree
+	Logger                     *slog.Logger
+	LogHandler                 *logging.CategoryFilterHandler
+	TransferHaproxyConfChannel chan haproxy.HaproxyCfgDiffs
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
-	// LeaderElectionConfig contains the configuration for leader election.
 	//  Namespace and name of the controller conf CRD:  HaproxyGateCtrlCfg
 	ControllerConfCRD types.NamespacedName
 	Kubeconfig        string
 	// ControllerName is the name of this controller.
-	ControllerName       string
+	ControllerName string
+	// LindID: an ID for the link to the cluster
+	LinkID string
+	// HaproxyConfiguration contains the needed configuration to compute the FE/BE/...
+	HaproxyConfiguration
+	// LeaderElectionConfig contains the configuration for leader election.
 	LeaderElectionConfig LeaderElectionConfig
 	// WhiteListNamespaces is a list of namespaces to watch.
 	// If empty, all namespaces are watched.
@@ -58,6 +64,41 @@ type Configuration struct {
 	MetricsConfig MetricsConfig
 	// SyncPeriod is the duration we wait after handling one batch before the next one
 	SyncPeriod time.Duration
+}
+
+type HaproxyConfiguration struct {
+	// HaproxyDirs contains all the needed dir
+	// used for example in map files reference
+	HaproxyDirs
+	// FrontendNameTemplate: the template for the frontend name.
+	FrontendNameTemplate string
+	// BackendNameTemplate: the template for the backend name.
+	BackendNameTemplate string
+	// ServerNameTemplate: the template for the server name.
+	ServerNameTemplate string
+	// IPv4BindAddress is the IPv4 address to bind to.
+	IPv4BindAddress string
+	// IPv6BindAddress is the IPv6 address to bind to.
+	IPv6BindAddress string
+	// DisableIPv4 indicates whether IPv4 is disabled.
+	DisableIPv4 bool
+	// DisableIPv6 indicates whether IPv6 is disabled.
+	DisableIPv6 bool
+}
+
+type HaproxyDirs struct {
+	CfgDir        string
+	MainCfgFile   string
+	HaproxyBinary string
+	RuntimeDir    string
+	StateDir      string
+	AuxDir        string
+	PIDFile       string
+	RuntimeSocket string
+	MasterSocket  string
+	MapsDir       string
+	PatternDir    string
+	ErrFileDir    string
 }
 
 // ControllerPodConfig contains information about this Pod.

@@ -25,8 +25,9 @@ import (
 type Status string
 
 const (
-	StatusUpserted Status = "UPSERTED"
-	StatusDeleted  Status = "DELETED"
+	StatusUpserted  Status = "UPSERTED"
+	StatusDeleted   Status = "DELETED"
+	StatueUnchanged Status = ""
 )
 
 type Update[T client.Object] struct {

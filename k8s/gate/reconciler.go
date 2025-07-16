@@ -109,7 +109,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		// this should not happen
 		r.cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
 			fmt.Sprintf("could not extract GVK for object: %T", obj),
-			logging.LogAttrCategory(logging.LogCategoryGate),
 		)
 	}
 

@@ -22,7 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -49,7 +48,6 @@ func NewExtractGKV(scheme *runtime.Scheme, logger *slog.Logger) ExtractGVK {
 			// this should not happen
 			logger.LogAttrs(context.Background(), slog.LevelError,
 				fmt.Sprintf("could not extract GVK for object: %T", obj),
-				logging.LogAttrCategory(logging.LogCategoryGate),
 			)
 		}
 

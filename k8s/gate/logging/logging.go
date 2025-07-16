@@ -45,6 +45,7 @@ var (
 type CategoryFilterHandler struct {
 	base        slog.Handler
 	categoryKey string
+	attrs       []slog.Attr
 }
 
 type CategoryFilterHandlerParams struct {
@@ -92,6 +93,9 @@ func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error
 
 	// Empty Category should happen only for k8s Logs
 	category := LogCategoryK8s
+	if len(h.attrs) > 0 {
+		r.AddAttrs(h.attrs...)
+	}
 	r.Attrs(func(a slog.Attr) bool {
 		if a.Value.Kind() == slog.KindString && (a.Key == h.categoryKey || a.Key == "all") {
 			category = v3.Category(a.Value.String())
@@ -124,6 +128,7 @@ func (h *CategoryFilterHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &CategoryFilterHandler{
 		base:        h.base.WithAttrs(attrs),
 		categoryKey: h.categoryKey,
+		attrs:       append(h.attrs, attrs...),
 	}
 }
 

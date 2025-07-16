@@ -63,14 +63,12 @@ func (b *ControllerConfBuilderImpl) Build() {
 		if confUpdate.Status == store.StatusDeleted {
 			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 				"Resetting controller log configuration to defaults",
-				logging.LogAttrCategory(logging.LogCategoryGate),
 			)
 			// Reset the log category filter handler to defaults
 			b.logCategoryFilterHandler.ResetToDefaults()
 			l, m := logging.GetLogSettings()
 			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 				"Reconciled controller log configuration",
-				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrLogSettings(l, m),
 			)
 			return
@@ -81,7 +79,6 @@ func (b *ControllerConfBuilderImpl) Build() {
 		if newConf == nil {
 			b.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Controller configuration not found",
-				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrNsName(b.controllerConfNsName),
 			)
 			return
@@ -98,7 +95,6 @@ func (b *ControllerConfBuilderImpl) Build() {
 			l, m := logging.GetLogSettings()
 			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 				"Reconciled controller log configuration",
-				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrLogSettings(l, m),
 			)
 		}

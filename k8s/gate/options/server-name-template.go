@@ -1,45 +1,23 @@
-//
 // Copyright 2025 HAProxy Technologies LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//    http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+package opt
 
-package utils // revive:disable:var-naming
+import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
-import "errors"
-
-type Errors []error
-
-func (e *Errors) Add(errs ...error) {
-	for _, err := range errs {
-		if err != nil {
-			*e = append(*e, err)
-		}
-	}
-}
-
-func (e *Errors) Result() error {
-	var result string
-	for _, err := range *e {
-		result += err.Error() + "\n"
-	}
-	if result == "" {
+func ServerNameTemplate(template string) func(o *config.Configuration) error {
+	return func(o *config.Configuration) error {
+		o.ServerNameTemplate = template
 		return nil
-	}
-	return errors.New(result)
-}
-
-func (e *Errors) AddErrors(errs Errors) {
-	for _, err := range errs {
-		e.Add((err))
 	}
 }

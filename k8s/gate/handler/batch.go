@@ -41,16 +41,16 @@ type EventHandler interface {
 }
 
 type GateTreeConfig struct {
-	Logger                   *slog.Logger
-	LogCategoryFilterHandler *logging.CategoryFilterHandler
-	ExtractGVK               utils.ExtractGVK
-	TreeChannel              chan *tree.GateTree
-	//  Namespace and name of the controller conf CRD
-	ControllerConfNsName types.NamespacedName
 	// k8sClient is a Kubernetes API client.
 	K8sClient client.Client
 	// k8sReader is a Kubernets API reader.
-	K8sReader client.Reader
+	K8sReader                  client.Reader
+	Logger                     *slog.Logger
+	LogCategoryFilterHandler   *logging.CategoryFilterHandler
+	ExtractGVK                 utils.ExtractGVK
+	TransferHaproxyConfChannel chan haproxy.HaproxyCfgDiffs
+	//  Namespace and name of the controller conf CRD
+	ControllerConfNsName types.NamespacedName
 }
 
 // eventHandlerImpl implements EventHandler.
@@ -58,17 +58,17 @@ type GateTreeConfig struct {
 // - Reconciling the Gateway API and Kubernetes built-in resources with the HAProxy configuration.
 // - building the GateTree
 type eventHandlerImpl struct {
-	treeBuilder         GateTreeBuilder
-	haproxyConfBuilder  haproxy.HaproxyConfBuilder
+	haproxyConfBuilder  haproxy.HaproxyConfBuilderImpl
 	config              GateTreeConfig
 	clusterStoreUpdater store.ClusterStoreUpdater
+	treeBuilder         GateTreeBuilder
 }
 
 // NewEventHandlerImpl creates a new eventHandlerImpl.
 func NewEventHandlerImpl(
 	clusterStore *store.ClusterStore,
-	// treeBuilderConfig GateTreeBuilderConfig,
 	config GateTreeConfig,
+	haproxyCfgBuilderConfig haproxy.HaproxyConfBuilderParams,
 ) *eventHandlerImpl {
 	clusterStoreUpdater := store.NewClusterStoreUpdaterImpl(
 		clusterStore,
@@ -92,12 +92,14 @@ func NewEventHandlerImpl(
 		},
 	}
 
+	haproxyCfgStore := haproxy.NewHaproxyCfg()
+
 	treeBuilder := NewGateTreeBuilder(
 		controllerStore,
 		config,
 	)
 
-	haproxyConfBuilder := haproxy.NewHaproxyConfBuilder(controllerStore)
+	haproxyConfBuilder := haproxy.NewHaproxyConfBuilder(controllerStore, haproxyCfgStore, haproxyCfgBuilderConfig)
 
 	handler := &eventHandlerImpl{
 		treeBuilder:         treeBuilder,
@@ -114,7 +116,6 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 
 	h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 		"Started processing event batch",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
 	)
 
@@ -122,7 +123,6 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		duration := time.Since(start)
 		h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Finished processing event batch",
-			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
 			logging.LogAttrDuration(duration),
 		)
@@ -134,13 +134,21 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	// Build the GateTree
 	h.treeBuilder.buildGateTree()
 	gatetree := h.treeBuilder.GetTree()
-	// // Send the newTree to the TreeChannel if the channel is configured
-	if h.config.TreeChannel != nil {
-		h.config.TreeChannel <- gatetree
-	}
 
 	// HAProxy Configuration building
-	// h.haproxyConfBuilder.BuildHaproxyConf()
+	err := h.haproxyConfBuilder.BuildHaproxyConf()
+	if err != nil {
+		h.config.Logger.LogAttrs(context.Background(), slog.LevelError,
+			"error building HAProxy configuration",
+			logging.LogAttrError(err),
+		)
+	}
+	haproxyConfDiffs := h.haproxyConfBuilder.GetCfsDiffs()
+	if !haproxyConfDiffs.IsEmpty() {
+		if h.config.TransferHaproxyConfChannel != nil {
+			h.config.TransferHaproxyConfChannel <- haproxyConfDiffs
+		}
+	}
 
 	// START EXAMPLE
 	// Below is just an example
@@ -149,7 +157,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	var endpointSliceList discoveryV1.EndpointSliceList
 	svcName := "http-echo"
 	svcNs := "default"
-	err := h.treeBuilder.cfg.K8sClient.List(
+	err = h.treeBuilder.cfg.K8sClient.List(
 		ctx,
 		&endpointSliceList,
 		client.MatchingFields{index.EndpointSliceServiceNameIndexField: svcName},
@@ -158,7 +166,6 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	if err != nil {
 		h.config.Logger.LogAttrs(context.Background(), slog.LevelError,
 			"could not retrieve http-echo endpoints",
-			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrError(err),
 		)
 	}
@@ -198,7 +205,6 @@ func (h *eventHandlerImpl) updateClusterStore(event any, logger *slog.Logger) {
 		gvk := h.config.ExtractGVK(obj.Resource)
 		logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Processing event in batch",
-			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrEventType("upsert"),
 			logging.LogAttrResource(obj.Resource, gvk),
 		)
@@ -210,7 +216,6 @@ func (h *eventHandlerImpl) updateClusterStore(event any, logger *slog.Logger) {
 
 		logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Processing event in batch",
-			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrEventType("delete"),
 			logging.LogAttrResource(obj.Type, gvk),
 		)

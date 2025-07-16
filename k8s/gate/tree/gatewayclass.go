@@ -63,7 +63,6 @@ func NewGatewayClass(k8sObject *v1.GatewayClass) *GatewayClass {
 
 func (g *GatewayClass) SetAsUpserted(logger *slog.Logger, newK8sResource *v1.GatewayClass) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass upserted",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(newK8sResource))
 	g.TreeStatus.Status = store.StatusUpserted
 	g.TreeStatus.OldTreeResource = g.DeepCopy()
@@ -72,7 +71,6 @@ func (g *GatewayClass) SetAsUpserted(logger *slog.Logger, newK8sResource *v1.Gat
 
 func (g *GatewayClass) SetAsDeleted(logger *slog.Logger) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass deleted",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(g.K8sResource))
 	g.TreeStatus.Status = store.StatusDeleted
 	g.TreeStatus.OldTreeResource = g.DeepCopy()
@@ -88,7 +86,6 @@ func (g *GatewayClass) ResetChecks() {
 
 func (g *GatewayClass) SetAsManaged(logger *slog.Logger, controllerStore ControllerStore) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass managed",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(g.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(g.K8sResource)
@@ -98,7 +95,6 @@ func (g *GatewayClass) SetAsManaged(logger *slog.Logger, controllerStore Control
 
 func (g *GatewayClass) SetAsUnmanaged(logger *slog.Logger, controllerStore ControllerStore) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass unmanaged",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(g.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(g.K8sResource)

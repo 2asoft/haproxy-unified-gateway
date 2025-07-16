@@ -107,3 +107,15 @@ func LogAttrNsName(nsName types.NamespacedName) slog.Attr {
 		slog.String("namespace", nsName.Namespace),
 	)
 }
+
+func LogAttrFrontendName(name string) slog.Attr {
+	return slog.String("frontendName", name)
+}
+
+func LogAttrBackendendName(name string) slog.Attr {
+	return slog.String("backendName", name)
+}
+
+func LogAttrServerName(name string) slog.Attr {
+	return slog.String("serverName", name)
+}

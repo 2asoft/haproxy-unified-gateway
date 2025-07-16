@@ -115,7 +115,6 @@ func TestObjectStoreImpl_Upsert(t *testing.T) {
 		logOutput := logBuf.String()
 		assert.Contains(t, logOutput, "obj type mismatch. got *v1.Service, expected *v1.GatewayClass")
 		assert.Contains(t, logOutput, "level=ERROR")
-		assert.Contains(t, logOutput, "category=gate")
 	})
 }
 

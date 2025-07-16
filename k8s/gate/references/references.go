@@ -47,7 +47,6 @@ func (r *ReferencedBy) AddReferencedBy(logger *slog.Logger, ownedKey client.Obje
 func (r *ReferencedBy) AddReferencedByUsingKeys(logger *slog.Logger, ownedKey, ownerKey client.ObjectKey, ownerGVK schema.GroupVersionKind) {
 	logger.LogAttrs(context.Background(), slog.LevelInfo,
 		"AddReferencedBy",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		slog.String("ReferencedByName", r.Name),
 		slog.String("ownedKey", ownedKey.String()),
 		logging.LogAttrKeyGVK(ownerKey, ownerGVK),
@@ -70,7 +69,6 @@ func (r *ReferencedBy) RemoveReferencedBy(logger *slog.Logger, ownedKey client.O
 func (r *ReferencedBy) RemoveReferencedByUsingKeys(logger *slog.Logger, ownedKey, ownerKey client.ObjectKey, ownerGVK schema.GroupVersionKind) {
 	logger.LogAttrs(context.Background(), slog.LevelInfo,
 		"RemoveReferencedBy",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		slog.String("ReferencedByName", r.Name),
 		slog.String("ownedKey", ownedKey.String()),
 		logging.LogAttrKeyGVK(ownerKey, ownerGVK),

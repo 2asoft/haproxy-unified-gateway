@@ -65,16 +65,39 @@ func NewGateTreeBuilder(
 
 func (b *GateTreeBuilder) buildGateTree() {
 	// --------------
+	// Start the build process: cleanups
+	b.startBuild()
+
+	// --------------
+	// Update the references
+	// --------------
+
+	b.referenceManager.UpdateRefences()
+
+	// ControllerConf CRD
+	b.buildControllerConfCRDUpdates()
+	// installed Versions
+	b.buildInstalledVersionsUpdates()
+
+	// --------------
+	// Build the GateTree
+	// --------------
+	for _, builder := range b.builder {
+		builder.ComputeTreeUpdates()
+	}
+}
+
+func (b *GateTreeBuilder) startBuild() {
+	// --------------
 	// Clean TreeUpdates
 	// --------------
 	for _, builder := range b.builder {
 		builder.CleanTreeUpdates()
 	}
 	b.ControllerStore.CleanInstalledVersionsUpdates()
-	// --------------
-	// Update the references
-	b.referenceManager.UpdateRefences()
+}
 
+func (b *GateTreeBuilder) buildControllerConfCRDUpdates() {
 	// --------------
 	// controllerConf CRD
 	controllerConfBuilderParams := tree.ControllerConfBuilderParams{
@@ -84,14 +107,11 @@ func (b *GateTreeBuilder) buildGateTree() {
 	}
 	controllerConfBuilder := tree.NewControllerConfBuilder(controllerConfBuilderParams)
 	controllerConfBuilder.Build()
+}
+
+func (b *GateTreeBuilder) buildInstalledVersionsUpdates() {
 	// --------------
 	// installed Versions
 	installedVersionBuilder := tree.NewInstalledVersionsBuilder(b.ControllerStore)
 	installedVersionBuilder.Build()
-
-	for _, builder := range b.builder {
-		builder.ComputeTreeUpdates()
-	}
-
-	// compute Config Changes
 }

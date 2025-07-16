@@ -52,7 +52,6 @@ func (s *StatusUpdaterImpl) writeGatewayClassStatus(ctx context.Context, gwc *tr
 	if err != nil && !errors.Is(err, context.Canceled) {
 		s.cfg.logger.LogAttrs(context.Background(), slog.LevelError,
 			"Failed to update status",
-			logging.LogAttrCategory(logging.LogCategoryStatus),
 			logging.LogAttrResource(gwc.K8sResource, s.cfg.extractGVK(gwc.K8sResource)),
 			logging.LogAttrError(err),
 		)

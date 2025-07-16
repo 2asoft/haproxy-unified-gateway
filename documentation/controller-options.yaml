@@ -1,5 +1,11 @@
-ControllerConf:
-    name: ControllerConf
+BackendNameTemplate:
+    name: BackendNameTemplate
+    comment: ""
+    args:
+        - name: template
+          type: string
+ControllerConfCRD:
+    name: ControllerConfCRD
     comment: ""
     args:
         - name: controllerConf
@@ -10,18 +16,44 @@ ControllerName:
     args:
         - name: controllerName
           type: string
-ControllerPodConfig:
-    name: ControllerPodConfig
+DisableIPv4:
+    name: DisableIPv4
+    comment: ""
+    args: []
+DisableIPv6:
+    name: DisableIPv6
+    comment: ""
+    args: []
+FrontendNameTemplate:
+    name: FrontendNameTemplate
     comment: ""
     args:
-        - name: controllerPodConfig
-          type: config.ControllerPodConfig
-GatewayClass:
-    name: GatewayClass
+        - name: template
+          type: string
+HaproxyConfChannel:
+    name: HaproxyConfChannel
     comment: ""
     args:
-        - name: gatewayClass
-          type: '*ast.ArrayType'
+        - name: treeCh
+          type: '*ast.ChanType'
+HaproxyDirs:
+    name: HaproxyDirs
+    comment: ""
+    args:
+        - name: dirs
+          type: config.HaproxyDirs
+IPV4BindAddr:
+    name: IPV4BindAddr
+    comment: ""
+    args:
+        - name: addr
+          type: string
+IPV6BindAddr:
+    name: IPV6BindAddr
+    comment: ""
+    args:
+        - name: addr
+          type: string
 KubeConfig:
     name: KubeConfig
     comment: ""
@@ -32,8 +64,14 @@ LeaderElectionConfig:
     name: LeaderElectionConfig
     comment: ""
     args:
-        - name: leaderElection
-          type: config.LeaderElectionConfig
+        - name: leaderElectionEnabled
+          type: bool
+LinkID:
+    name: LinkID
+    comment: ""
+    args:
+        - name: template
+          type: string
 Logging:
     name: Logging
     comment: ""
@@ -49,18 +87,18 @@ MetricsConfig:
     args:
         - name: metricsConfig
           type: config.MetricsConfig
+ServerNameTemplate:
+    name: ServerNameTemplate
+    comment: ""
+    args:
+        - name: template
+          type: string
 SyncPeriod:
     name: SyncPeriod
     comment: ""
     args:
         - name: syncPeriod
           type: time.Duration
-TreeChannel:
-    name: TreeChannel
-    comment: ""
-    args:
-        - name: treeCh
-          type: '*ast.ChanType'
 WhiteListNamespaces:
     name: WhiteListNamespaces
     comment: ""

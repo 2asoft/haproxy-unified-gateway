@@ -60,8 +60,9 @@ func NewStatusUpdaterConf(
 	extractGVK utils.ExtractGVK,
 	logger *slog.Logger,
 ) StatusUpdaterConf {
+	mylogger := logger.With(logging.LogAttrCategory(logging.LogCategoryStatus))
 	return StatusUpdaterConf{
-		logger:     logger,
+		logger:     mylogger,
 		extractGVK: extractGVK,
 		client:     k8sClient,
 	}
@@ -92,7 +93,6 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 
 		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Updating status for resource",
-			logging.LogAttrCategory(logging.LogCategoryStatus),
 			logging.LogAttrResource(gwc.K8sResource, s.cfg.extractGVK(gwc.K8sResource)),
 		)
 
@@ -114,7 +114,6 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 
 		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Updating status for resource",
-			logging.LogAttrCategory(logging.LogCategoryStatus),
 			logging.LogAttrResource(gw.K8sResource, s.cfg.extractGVK(gw.K8sResource)),
 		)
 
@@ -141,7 +140,6 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 		if !ok {
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when copying object",
-				logging.LogAttrCategory(logging.LogCategoryStatus),
 				objAttr)
 			return false, nil
 		}
@@ -155,7 +153,6 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			}
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when getting resource to update status",
-				logging.LogAttrCategory(logging.LogCategoryStatus),
 				objAttr)
 			return false, nil
 		}
@@ -164,7 +161,6 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 		if currentConditions.Equal(param.DesiredConditions) {
 			param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 				"Status already up to date",
-				logging.LogAttrCategory(logging.LogCategoryStatus),
 				objAttr)
 			return true, nil
 		}
@@ -174,7 +170,7 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 		if err := param.StatusUpdater.Update(ctx, obj); err != nil {
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when updating status",
-				logging.LogAttrCategory(logging.LogCategoryStatus),
+				// logging.LogAttrCategory(logging.LogCategoryStatus),
 				objAttr,
 				logging.LogAttrError(err))
 			return false, nil
@@ -182,7 +178,7 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 
 		param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Successfully updated status",
-			logging.LogAttrCategory(logging.LogCategoryStatus),
+			//	logging.LogAttrCategory(logging.LogCategoryStatus),
 			objAttr,
 		)
 		return true, nil

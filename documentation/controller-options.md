@@ -20,19 +20,26 @@ Available options:
 
 | Function | Arguments |
 | ---:|:--- |
-| ControllerConf | `controllerConf`(types.NamespacedName) |
+| BackendNameTemplate | `template`(string) |
+| ControllerConfCRD | `controllerConf`(types.NamespacedName) |
 | ControllerName | `controllerName`(string) |
-| ControllerPodConfig | `controllerPodConfig`(config.ControllerPodConfig) |
-| GatewayClass | `gatewayClass`(*ast.ArrayType) |
+| DisableIPv4 |  |
+| DisableIPv6 |  |
+| FrontendNameTemplate | `template`(string) |
+| HaproxyConfChannel | `treeCh`(*ast.ChanType) |
+| HaproxyDirs | `dirs`(config.HaproxyDirs) |
+| IPV4BindAddr | `addr`(string) |
+| IPV6BindAddr | `addr`(string) |
 | KubeConfig | `kubeconfig`(string) |
-| LeaderElectionConfig | `leaderElection`(config.LeaderElectionConfig) |
+| LeaderElectionConfig | `leaderElectionEnabled`(bool) |
+| LinkID | `template`(string) |
 | Logging | `defaultLevel`(slog.Level), `logSettings`(*ast.MapType) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
+| ServerNameTemplate | `template`(string) |
 | SyncPeriod | `syncPeriod`(time.Duration) |
-| TreeChannel | `treeCh`(*ast.ChanType) |
 | WhiteListNamespaces | `whitelistNs`(*ast.ArrayType) |
 
-### ControllerConf
+### BackendNameTemplate
 
 
 Example:
@@ -42,7 +49,20 @@ import (
   github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
-controller, err := controller.New(opt.ControllerConf(controllerConf))
+controller, err := controller.New(opt.BackendNameTemplate(template))
+```
+
+### ControllerConfCRD
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.ControllerConfCRD(controllerConf))
 ```
 
 ### ControllerName
@@ -58,7 +78,7 @@ import (
 controller, err := controller.New(opt.ControllerName(controllerName))
 ```
 
-### ControllerPodConfig
+### DisableIPv4
 
 
 Example:
@@ -68,10 +88,10 @@ import (
   github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
-controller, err := controller.New(opt.ControllerPodConfig(controllerPodConfig))
+controller, err := controller.New(opt.DisableIPv4())
 ```
 
-### GatewayClass
+### DisableIPv6
 
 
 Example:
@@ -81,7 +101,72 @@ import (
   github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
-controller, err := controller.New(opt.GatewayClass(gatewayClass))
+controller, err := controller.New(opt.DisableIPv6())
+```
+
+### FrontendNameTemplate
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.FrontendNameTemplate(template))
+```
+
+### HaproxyConfChannel
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.HaproxyConfChannel(treeCh))
+```
+
+### HaproxyDirs
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.HaproxyDirs(dirs))
+```
+
+### IPV4BindAddr
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.IPV4BindAddr(addr))
+```
+
+### IPV6BindAddr
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.IPV6BindAddr(addr))
 ```
 
 ### KubeConfig
@@ -107,7 +192,20 @@ import (
   github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
-controller, err := controller.New(opt.LeaderElectionConfig(leaderElection))
+controller, err := controller.New(opt.LeaderElectionConfig(leaderElectionEnabled))
+```
+
+### LinkID
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.LinkID(template))
 ```
 
 ### Logging
@@ -137,6 +235,19 @@ import (
 controller, err := controller.New(opt.MetricsConfig(metricsConfig))
 ```
 
+### ServerNameTemplate
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.ServerNameTemplate(template))
+```
+
 ### SyncPeriod
 
 
@@ -148,19 +259,6 @@ import (
 )
 
 controller, err := controller.New(opt.SyncPeriod(syncPeriod))
-```
-
-### TreeChannel
-
-
-Example:
-```go
-import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
-)
-
-controller, err := controller.New(opt.TreeChannel(treeCh))
 ```
 
 ### WhiteListNamespaces

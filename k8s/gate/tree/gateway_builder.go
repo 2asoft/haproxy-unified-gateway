@@ -47,7 +47,7 @@ func (b *GatewayBuilderImpl) ComputeTreeUpdates() {
 	// Including the one impacted by:
 	// - HaproxyGate updates
 	// - GatewayClass updates
-	b.prepareGateTreeUpdates()
+	b.computeGateTreeUpdates()
 }
 
 func (b *GatewayBuilderImpl) addIndirectClusterStoreUpdates() {
@@ -89,13 +89,13 @@ func (b *GatewayBuilderImpl) addIndirectGatewaysFromGatewayClass(gwcUpdate store
 	)
 }
 
-func (b *GatewayBuilderImpl) prepareGateTreeUpdates() {
+func (b *GatewayBuilderImpl) computeGateTreeUpdates() {
 	for gwKey, gwUpdate := range b.ClusterStore.Updates.Gateways {
-		b.prepareTreeGatewayUpdate(gwKey, gwUpdate)
+		b.computeTreeGatewayUpdate(gwKey, gwUpdate)
 	}
 }
 
-func (b *GatewayBuilderImpl) prepareTreeGatewayUpdate(gwKey client.ObjectKey, gwUpdate store.Update[*gatewayv1.Gateway]) {
+func (b *GatewayBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, gwUpdate store.Update[*gatewayv1.Gateway]) {
 	var treeGw *Gateway
 	alreadyManagedTreeGw, alreadyManagedTreeGwOK := b.GateTree.Gateways[gwKey]
 	alreadyUnmanagedTreeGw, alreadyUnmanagedTreeGwOK := b.UnmanagedGateTree.Gateways[gwKey]

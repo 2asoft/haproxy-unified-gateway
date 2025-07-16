@@ -16,7 +16,8 @@ package logging
 import v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 
 var (
-	LogCategoryK8s    v3.Category = "k8s"
-	LogCategoryGate   v3.Category = "gate"
-	LogCategoryStatus v3.Category = "status"
+	LogCategoryK8s           v3.Category = "k8s"
+	LogCategoryGate          v3.Category = "gate"
+	LogCategoryStatus        v3.Category = "status"
+	LogCategoryHaproxyCfgMgr v3.Category = "haproxycfgmgr"
 )

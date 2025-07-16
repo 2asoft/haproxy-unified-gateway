@@ -13,14 +13,11 @@
 // limitations under the License.
 package opt
 
-import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
-)
+import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
-func TreeChannel(treeCh chan *tree.GateTree) func(o *config.Configuration) error {
+func FrontendNameTemplate(template string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.TreeCh = treeCh
+		o.FrontendNameTemplate = template
 		return nil
 	}
 }

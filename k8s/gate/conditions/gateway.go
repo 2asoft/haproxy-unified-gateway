@@ -34,7 +34,7 @@ func (*GatewayConditionImpl) SetConditions(obj *v1.Gateway, conds Conditions) {
 }
 
 // ---------------------------------------------------------
-// GatewayConditionStatusAccepted
+// GatewayConditionAccepted
 
 func NewGatewayAcceptedOK() Conditions {
 	return Conditions{
@@ -65,6 +65,31 @@ func NewGatewayAcceptedInvalidParameters(err *field.Error) Conditions {
 			Status:  metav1.ConditionFalse,
 			Reason:  string(v1.GatewayReasonInvalidParameters),
 			Message: fmt.Sprintf("invalid parametersRef: %s", err),
+		},
+	}
+}
+
+// ---------------------------------------------------------
+// GatewayConditionProgrammed
+
+func NewGatewayProgrammedOK() Conditions {
+	return Conditions{
+		ConditionType(v1.GatewayConditionProgrammed): {
+			Type:    ConditionType(v1.GatewayConditionProgrammed),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(v1.GatewayConditionProgrammed),
+			Message: "Gateway is programmed",
+		},
+	}
+}
+
+func NewGatewayProgrammedInvalidParameters(msg string) Conditions {
+	return Conditions{
+		ConditionType(v1.GatewayConditionProgrammed): {
+			Type:    ConditionType(v1.GatewayConditionProgrammed),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(v1.GatewayReasonInvalidParameters),
+			Message: fmt.Sprintf("invalid parametersRef: %s", msg),
 		},
 	}
 }

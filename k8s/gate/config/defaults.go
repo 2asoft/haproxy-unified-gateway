@@ -19,17 +19,40 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
+const (
+	// DefaultControllerName is the default name of the controller.
+	defaultControllerName         = "gate.haproxy.org/unified-controller"
+	defaultLeaderElectionLockName = "unified-controller-leader-election-lock"
+	defaultSyncPeriod             = 5 * time.Second
+	defaultFrontendNameTemplate   = "{{ .LINK_ID }}_{{ .GATEWAY_NAMESPACE}}_{{ .GATEWAY_NAME }}_{{ .LISTENER_NAME }}"
+	defaultBackendNameTemplate    = ""
+	defaultServerNameTemplate     = ""
+)
+
 func (cfg *Configuration) ApplyDefaults() {
 	// Logging Defaults
 	slogger, logHandler := NewGateLogger(logging.DefaultLevel, logging.DefaultLogLevelPerCategory)
 	cfg.Logger = slogger
 	cfg.LogHandler = logHandler
 
-	cfg.LeaderElectionConfig.LockName = "unified-controller-leader-election-lock"
+	cfg.LeaderElectionConfig.LockName = defaultLeaderElectionLockName
 	if cfg.ControllerName == "" {
-		cfg.ControllerName = "gate.haproxy.org/unified-controller"
+		cfg.ControllerName = defaultControllerName
+		if cfg.SyncPeriod == 0 {
+			cfg.SyncPeriod = defaultSyncPeriod
+		}
 	}
-	if cfg.SyncPeriod == 0 {
-		cfg.SyncPeriod = 5 * time.Second
+
+	if cfg.FrontendNameTemplate == "" {
+		cfg.FrontendNameTemplate = defaultFrontendNameTemplate
+	}
+	if cfg.BackendNameTemplate == "" {
+		cfg.BackendNameTemplate = defaultBackendNameTemplate
+	}
+	if cfg.ServerNameTemplate == "" {
+		cfg.ServerNameTemplate = defaultServerNameTemplate
+	}
+	if cfg.LinkID == "" {
+		cfg.LinkID = "linkid"
 	}
 }

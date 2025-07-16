@@ -83,3 +83,16 @@ func (c Conditions) ToMetav1Conditions() []metav1.Condition {
 	}
 	return conditions
 }
+
+func (c Conditions) GetCondition(conditionType ConditionType) (Condition, bool) {
+	condition, exists := c[conditionType]
+	return condition, exists
+}
+
+func (c Conditions) GetMessage(conditionType ConditionType) string {
+	condition, exists := c.GetCondition(conditionType)
+	if !exists {
+		return ""
+	}
+	return condition.Message
+}

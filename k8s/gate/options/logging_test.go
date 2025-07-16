@@ -19,20 +19,25 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
+	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 )
 
 func TestLogging(t *testing.T) {
 	settings := map[v3.Category]slog.Level{
 		v3.Category("k8s"): slog.LevelDebug,
 	}
-	_, err := controller.New(Logging(slog.LevelDebug, settings))
+	opts := gateconfig.GateConfigOptions{
+		Logging(slog.LevelDebug, settings),
+	}
+	_, err := controller.New(opts)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
 
 func TestLoggingEmpty(t *testing.T) {
-	_, err := controller.New()
+	opts := gateconfig.GateConfigOptions{}
+	_, err := controller.New(opts)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

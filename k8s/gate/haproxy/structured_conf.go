@@ -13,8 +13,61 @@
 // limitations under the License.
 package haproxy
 
-import "github.com/haproxytech/client-native/v6/models"
+import (
+	"fmt"
 
-type HaproxyConf struct {
-	models.Frontends
+	"github.com/haproxytech/client-native/v6/models"
+)
+
+type HaproxyCfgDiffs struct {
+	Created HaproxyCfg
+	Updated HaproxyCfg
+	Deleted HaproxyCfg
 }
+
+type HaproxyCfg struct {
+	Frontends map[string]*models.Frontend
+	Backends  map[string]*models.Backend
+}
+
+const (
+	MetatDataKey = "k8s-unified-ctl"
+)
+
+type MetaData map[string]any
+
+func NewHaproxyCfg() HaproxyCfg {
+	return HaproxyCfg{
+		Frontends: make(map[string]*models.Frontend),
+		Backends:  make(map[string]*models.Backend),
+	}
+}
+
+type TemplateData struct {
+	// revive:disable:var-naming
+	GATEWAY_NAMESPACE string
+	GATEWAY_NAME      string
+	LISTENER_NAME     string
+	LINK_ID           string
+	// revive:enable:var-naming
+}
+
+func (c HaproxyCfgDiffs) IsEmpty() bool {
+	return c.Created.IsEmpty() && c.Updated.IsEmpty() && c.Deleted.IsEmpty()
+}
+
+func (c HaproxyCfg) IsEmpty() bool {
+	return len(c.Frontends) == 0 && len(c.Backends) == 0
+}
+
+func (c HaproxyCfgDiffs) Stats() string {
+	return fmt.Sprintf("Created[FE:%d/BE:%d] Modified[FE:%d/BE:%d] Deleted[FE:%d/BE:%d]",
+		len(c.Created.Frontends), len(c.Created.Backends),
+		len(c.Updated.Frontends), len(c.Updated.Backends),
+		len(c.Deleted.Frontends), len(c.Deleted.Backends),
+	)
+}
+
+// Maps
+// Certs
+// Runtime

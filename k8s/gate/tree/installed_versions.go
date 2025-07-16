@@ -67,7 +67,6 @@ func (b *InstalledVersionsBuilderImpl) Build() {
 		}
 		b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Installed versions",
-			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrInstalledVersions(b.InstalledGwAPIVersions.Versions),
 		)
 	}
@@ -83,7 +82,6 @@ func (b *InstalledVersionsBuilderImpl) buildUpserted(nsname types.NamespacedName
 		b.Logger.LogAttrs(
 			context.Background(), slog.LevelDebug,
 			"gwapi CRD not found",
-			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrError(err),
 		)
 		return
@@ -115,7 +113,6 @@ func (b *InstalledVersionsBuilderImpl) buildDeleted(previous *metav1.PartialObje
 func (b *InstalledVersionsBuilderImpl) onUpdateInstalledVersion() {
 	b.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"OnUpdateInstalledVersion",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrInstalledVersions(b.InstalledGwAPIVersions.Versions),
 	)
 	// Retrieve Gateway API bundle version
@@ -165,7 +162,6 @@ func (b *InstalledVersionsBuilderImpl) validateOneInstalledGwAPIVersion(params v
 		if err != nil {
 			b.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"cannot build semver constraint",
-				logging.LogAttrCategory(logging.LogCategoryGate),
 				logging.LogAttrError(err),
 			)
 			return false
@@ -178,7 +174,6 @@ func (b *InstalledVersionsBuilderImpl) validateOneInstalledGwAPIVersion(params v
 		// If a version string is invalid, we should not consider it as a supported version.
 		b.Logger.LogAttrs(context.Background(), slog.LevelError,
 			"cannot parse version string",
-			logging.LogAttrCategory(logging.LogCategoryGate),
 			logging.LogAttrError(err),
 		)
 		return false

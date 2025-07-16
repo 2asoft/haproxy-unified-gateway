@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"sync"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	constant "github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object_types.go"
@@ -36,7 +36,6 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
 	apiv1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -88,7 +87,7 @@ func getValueFromEnv(key string) (string, error) {
 	return val, nil
 }
 
-func New(options ...func(c *config.Configuration) error) (Controller, error) {
+func New(options config.GateConfigOptions) (Controller, error) {
 	slogger, logHandler := config.NewGateLogger(logging.DefaultLevel, logging.DefaultLogLevelPerCategory)
 	ctrl := Controller{
 		Configuration: config.Configuration{
@@ -147,10 +146,6 @@ func Add(
 ) error {
 	// Check if the controller configuration is valid
 	if err := cfg.Check(); err != nil {
-		cfg.Logger.LogAttrs(context.Background(), slog.LevelError,
-			"GatewayClass is not set",
-			logging.LogAttrCategory(logging.LogCategoryGate),
-			logging.LogAttrError(err))
 		return errors.New("invalid controller configuration")
 	}
 
@@ -166,28 +161,38 @@ func Add(
 		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
 		Gateways:        make(map[types.NamespacedName]*gatewayv1.Gateway),
 		HTTPRoutes:      make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
-		Services:        make(map[types.NamespacedName]*v1.Service),
-		Namespaces:      make(map[types.NamespacedName]*v1.Namespace),
-		Secrets:         make(map[types.NamespacedName]*v1.Secret),
-		ConfigMaps:      make(map[types.NamespacedName]*v1.ConfigMap),
+		Services:        make(map[types.NamespacedName]*apiv1.Service),
+		Namespaces:      make(map[types.NamespacedName]*apiv1.Namespace),
+		Secrets:         make(map[types.NamespacedName]*apiv1.Secret),
+		ConfigMaps:      make(map[types.NamespacedName]*apiv1.ConfigMap),
 		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
 		HaproxyGates:    make(map[types.NamespacedName]*v3.HaproxyGate),
 		ControllerConfs: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
 		Updates:         store.NewClusterUpdates(),
 	}
 
+	gateLogger := cfg.Logger.With(logging.LogAttrCategory(logging.LogCategoryGate))
+
 	gateTreeConfig := handler.GateTreeConfig{
-		Logger:                   cfg.Logger,
-		LogCategoryFilterHandler: cfg.LogHandler,
-		ExtractGVK:               extractGVK,
-		ControllerConfNsName:     cfg.ControllerConfCRD,
-		TreeChannel:              cfg.TreeCh,
-		K8sClient:                mgr.GetClient(),
-		K8sReader:                mgr.GetAPIReader(),
+		Logger:                     gateLogger,
+		LogCategoryFilterHandler:   cfg.LogHandler,
+		ExtractGVK:                 extractGVK,
+		ControllerConfNsName:       cfg.ControllerConfCRD,
+		TransferHaproxyConfChannel: cfg.TransferHaproxyConfChannel,
+		K8sClient:                  mgr.GetClient(),
+		K8sReader:                  mgr.GetAPIReader(),
 	}
+	haproxyCfgBuilderParams := haproxy.NewHaproxyCfgBuilderParams(
+		extractGVK,
+		haproxy.NewTemplates(cfg.FrontendNameTemplate, cfg.BackendNameTemplate, cfg.ServerNameTemplate),
+		cfg.DisableIPv4, cfg.DisableIPv6,
+		cfg.IPv4BindAddress, cfg.IPv6BindAddress,
+		cfg.LinkID,
+	)
 	eventHandler := handler.NewEventHandlerImpl(
 		clusterStore,
-		gateTreeConfig)
+		gateTreeConfig,
+		haproxyCfgBuilderParams)
 
 	loopCfg := handler.EventLoopConfig{
 		SyncPeriod: cfg.SyncPeriod,

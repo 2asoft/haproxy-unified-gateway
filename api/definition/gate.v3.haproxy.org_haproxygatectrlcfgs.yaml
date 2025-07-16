@@ -53,6 +53,7 @@ spec:
                           - k8s
                           - gate
                           - status
+                          - haproxycfgmgr
                           type: string
                         level:
                           enum:

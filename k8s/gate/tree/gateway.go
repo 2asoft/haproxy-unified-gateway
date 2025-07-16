@@ -58,9 +58,19 @@ func NewGateway(k8sObject *gatewayv1.Gateway) *Gateway {
 	}
 }
 
+func (g *Gateway) GetK8sResource() *gatewayv1.Gateway {
+	if g.K8sResource != nil {
+		return g.K8sResource
+	}
+
+	if g.TreeStatus.OldTreeResource != nil && g.TreeStatus.OldTreeResource.K8sResource != nil {
+		return g.TreeStatus.OldTreeResource.K8sResource
+	}
+	return nil
+}
+
 func (g *Gateway) SetAsUpserted(logger *slog.Logger, newK8sResource *gatewayv1.Gateway) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGateway Upserted",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(newK8sResource))
 	g.TreeStatus.Status = store.StatusUpserted
 	g.TreeStatus.OldTreeResource = g.DeepCopy()
@@ -70,7 +80,6 @@ func (g *Gateway) SetAsUpserted(logger *slog.Logger, newK8sResource *gatewayv1.G
 
 func (g *Gateway) SetAsDeleted(logger *slog.Logger) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGateway Deleted",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(g.K8sResource))
 	g.TreeStatus.Status = store.StatusDeleted
 	g.TreeStatus.OldTreeResource = g.DeepCopy()
@@ -88,7 +97,6 @@ func (g *Gateway) resetChecks() {
 
 func (g *Gateway) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGateway Managed",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(g.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(g.K8sResource)
@@ -98,7 +106,6 @@ func (g *Gateway) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
 
 func (g *Gateway) SetAsUnmanaged(logger *slog.Logger, cs ControllerStore) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGateway Unmanaged",
-		logging.LogAttrCategory(logging.LogCategoryGate),
 		logging.LogAttrObjectKey(g.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(g.K8sResource)
@@ -216,9 +223,14 @@ func (g *Gateway) BuildConditions() {
 	}
 	if !g.CheckParamsRef.Valid {
 		g.Conditions.MergeOverrideConditions(g.CheckParamsRef.Conditions)
+		// retrieve condition type accepted to get the appropriate message
+		messageInvalidParams := g.Conditions.GetMessage(conditions.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted))
+		g.Conditions.MergeOverrideConditions(conditions.NewGatewayProgrammedInvalidParameters(messageInvalidParams))
 		g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
 		return
 	}
 	g.Conditions.MergeOverrideConditions(conditions.NewGatewayAcceptedOK())
+	g.Conditions.MergeOverrideConditions(conditions.NewGatewayProgrammedOK())
+
 	g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
 }
