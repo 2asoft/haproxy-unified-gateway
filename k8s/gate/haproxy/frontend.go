@@ -181,7 +181,7 @@ func (b *HaproxyConfBuilderImpl) newFrontend(gwKey k8stypes.NamespacedName, tree
 				if b.params.iPV6BindAddr != "" {
 					return b.params.iPV6BindAddr
 				}
-				return ":::"
+				return "::"
 			}(),
 			BindParams: models.BindParams{Name: "v6"},
 		}
@@ -198,6 +198,11 @@ func (b *HaproxyConfBuilderImpl) createOrUpdateFrontend(newFe *models.Frontend, 
 		b.logger.LogAttrs(context.Background(), slog.LevelError, "nil frontend")
 		return
 	}
+	defer func() {
+		if newFe != nil {
+			frontends[newFe.Name] = struct{}{}
+		}
+	}()
 
 	if oldFe, ok := b.structuredCfgStore.Frontends[newFe.Name]; ok {
 		// Check if they are the same
@@ -218,7 +223,6 @@ func (b *HaproxyConfBuilderImpl) createOrUpdateFrontend(newFe *models.Frontend, 
 		if _, ok := frontends[newFe.Name]; !ok {
 			frontends[newFe.Name] = struct{}{}
 		}
-		frontends[newFe.Name] = struct{}{}
 		// We need to deep copy the frontend to avoid modifying the original
 		// as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
 		deepCopied := DeepCopyFrontend(newFe)
@@ -233,7 +237,6 @@ func (b *HaproxyConfBuilderImpl) createOrUpdateFrontend(newFe *models.Frontend, 
 		if _, ok := frontends[newFe.Name]; !ok {
 			frontends[newFe.Name] = struct{}{}
 		}
-		frontends[newFe.Name] = struct{}{}
 		// We need to deep copy the frontend to avoid modifying the original
 		// as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
 		deepCopied := DeepCopyFrontend(newFe)
@@ -259,26 +262,6 @@ func (b *HaproxyConfBuilderImpl) deleteFrontendForAllListeners(gwKey k8stypes.Na
 			continue
 		}
 		b.deleteFrontend(gwKey, feName)
-		// // Retrieve the frontend from the store
-		// fe, ok := b.structuredCfgStore.Frontends[feName]
-		// if !ok {
-		// 	// It could happen that the frontend was already deleted
-		// 	// like gateway is:
-		// 	// - first unmanaged: Frontend is not created, not in store
-		// 	// - then deleted: Frontend is deleted, not in store
-		// 	return nil
-		// }
-		// // delete the frontend from the store
-		// b.logger.LogAttrs(context.Background(), slog.LevelDebug,
-		// 	"Frontend [DELETE]",
-		// 	logging.LogAttrFrontendName(feName),
-		// )
-		// delete(b.structuredCfgStore.Frontends, feName)
-		// delete(b.frontendsByGateway, gwKey)
-		// // We need to deep copy the frontend to avoid modifying the original
-		// // as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
-		// deepCopied := DeepCopyFrontend(fe)
-		// b.cfgDiffs.Deleted.Frontends[fe.Name] = deepCopied
 	}
 
 	return nil
