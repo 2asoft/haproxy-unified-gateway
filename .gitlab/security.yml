@@ -1,0 +1,28 @@
+license:
+  stage: security
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [ "" ]
+  tags:
+    - go
+  before_script:
+    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
+  script:
+    - task licenses
+govulncheck:
+  stage: security
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [ "" ]
+  tags:
+    - go
+  before_script:
+    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
+  script:
+    - task govulncheck

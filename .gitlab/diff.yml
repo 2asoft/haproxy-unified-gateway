@@ -1,0 +1,18 @@
+diff:
+  stage: diff
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [ "" ]
+  tags:
+    - go
+  before_script:
+    - "sed -i 's/internal: true/internal: false/g' taskfile/generate.yml"
+    - task generate-doc-options
+    - task generate
+    - "sed -i 's/internal: false/internal: true/g' taskfile/generate.yml"
+  script:
+    - test -z "$(git diff 2> /dev/null)" || exit "Documentation is not generated, issue \`cd documentation/gen && go run .\` and commit the result"
+    - test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || exit "Documentation created untracked files, cannot proceed"

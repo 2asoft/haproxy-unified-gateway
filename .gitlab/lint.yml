@@ -1,0 +1,55 @@
+tidy:
+  stage: lint
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [""]
+  tags:
+    - go
+  script:
+    - go mod tidy
+    - test -z "$(git diff 2> /dev/null)" || exit 'Go modules not tidied, issue \`go mod tidy\` and commit the result'
+format:
+  stage: lint
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [""]
+  tags:
+    - go
+  script:
+    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
+    - task format
+    - "sed -i 's/internal: false/internal: true/g' taskfile.yml"
+    - test -z "$(git diff 2> /dev/null)" || exit 'Go code not formatted, issue \`task ci\` and commit the result'
+lint:
+  stage: lint
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_PIPELINE_SOURCE == 'push'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [""]
+  tags:
+    - go
+  script:
+    - task lint
+commit-policy:
+  stage: lint
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  image:
+    name: $CI_REGISTRY_GO/commit-check:5.1.1
+    entrypoint: [""]
+  tags:
+    - go
+  script:
+      - /check
