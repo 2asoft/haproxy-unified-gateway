@@ -53,7 +53,7 @@ func (b *HaproxyConfBuilderImpl) getFrontendName(gwKey k8stypes.NamespacedName, 
 	var buf bytes.Buffer
 	err = tmpl.Execute(&buf, data)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	return buf.String(), nil
