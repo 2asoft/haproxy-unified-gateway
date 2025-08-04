@@ -17,9 +17,9 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 )
 
-func WhiteListNamespaces(whitelistNs []string) func(o *config.Configuration) error {
+func Namespaces(namespaces []string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.WhiteListNamespaces = whitelistNs
+		o.Namespaces = namespaces
 		return nil
 	}
 }

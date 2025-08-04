@@ -35,9 +35,9 @@ Available options:
 | LinkID | `template`(string) |
 | Logging | `defaultLevel`(slog.Level), `logSettings`(*ast.MapType) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
+| Namespaces | `namespaces`(*ast.ArrayType) |
 | ServerNameTemplate | `template`(string) |
 | SyncPeriod | `syncPeriod`(time.Duration) |
-| WhiteListNamespaces | `whitelistNs`(*ast.ArrayType) |
 
 ### BackendNameTemplate
 
@@ -235,6 +235,19 @@ import (
 controller, err := controller.New(opt.MetricsConfig(metricsConfig))
 ```
 
+### Namespaces
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.Namespaces(namespaces))
+```
+
 ### ServerNameTemplate
 
 
@@ -259,18 +272,5 @@ import (
 )
 
 controller, err := controller.New(opt.SyncPeriod(syncPeriod))
-```
-
-### WhiteListNamespaces
-
-
-Example:
-```go
-import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
-)
-
-controller, err := controller.New(opt.WhiteListNamespaces(whitelistNs))
 ```
 

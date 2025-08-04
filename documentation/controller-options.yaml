@@ -87,6 +87,12 @@ MetricsConfig:
     args:
         - name: metricsConfig
           type: config.MetricsConfig
+Namespaces:
+    name: Namespaces
+    comment: ""
+    args:
+        - name: namespaces
+          type: '*ast.ArrayType'
 ServerNameTemplate:
     name: ServerNameTemplate
     comment: ""
@@ -99,9 +105,3 @@ SyncPeriod:
     args:
         - name: syncPeriod
           type: time.Duration
-WhiteListNamespaces:
-    name: WhiteListNamespaces
-    comment: ""
-    args:
-        - name: whitelistNs
-          type: '*ast.ArrayType'

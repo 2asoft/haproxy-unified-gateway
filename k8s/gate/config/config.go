@@ -57,9 +57,9 @@ type Configuration struct {
 	HaproxyConfiguration
 	// LeaderElectionConfig contains the configuration for leader election.
 	LeaderElectionConfig LeaderElectionConfig
-	// WhiteListNamespaces is a list of namespaces to watch.
+	// Namespaces is a list of namespaces to watch.
 	// If empty, all namespaces are watched.
-	WhiteListNamespaces []string
+	Namespaces []string
 	// MetricsConfig specifies the metrics config.
 	MetricsConfig MetricsConfig
 	// SyncPeriod is the duration we wait after handling one batch before the next one

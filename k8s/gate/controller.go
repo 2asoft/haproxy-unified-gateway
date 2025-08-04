@@ -259,7 +259,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},
@@ -272,7 +272,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
 						// predicate.GatewayPredicate{GatewayClassNames: cfg.GatewayClasses},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},
@@ -283,7 +283,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},
@@ -295,7 +295,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},
@@ -307,7 +307,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 				WithFieldIndices(index.CreateEndpointSliceFieldIndices(cfg.Logger)),
@@ -320,7 +320,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},
@@ -332,7 +332,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.GenerationChangedPredicate{},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},
@@ -344,7 +344,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},
@@ -356,7 +356,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
-						predicate.NewNamespacePredicate(cfg.WhiteListNamespaces),
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 						predicate.ControllerConfPredicate{
 							ControllerConfName: cfg.ControllerConfCRD,
 						},

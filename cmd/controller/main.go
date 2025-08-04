@@ -92,7 +92,7 @@ func main() {
 		opt.MetricsConfig(metricsConfig),
 		opt.LeaderElectionConfig(ctrlConfig.LeaderElectionEnabled),
 		opt.ControllerName(ctrlConfig.ControllerName),
-		opt.WhiteListNamespaces(ctrlConfig.WhiteListNamespaces),
+		opt.Namespaces(ctrlConfig.Namespaces),
 		opt.Logging(logLevelIfCategoryEmpty, logCategoryLevels),
 		opt.HaproxyConfChannel(haproxyConfCh),
 		opt.IPV4BindAddr(ctrlConfig.IPV4BindAddr),
