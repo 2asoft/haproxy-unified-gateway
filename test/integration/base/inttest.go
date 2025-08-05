@@ -147,7 +147,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),
 		opt.ControllerName(controllerName),
-		opt.Logging(logging.DefaultLevel, logging.DefaultLogLevelPerCategory),
+		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logging.DefaultLogLevelPerCategory),
 	}
 	gatecontrollercfg := config.Configuration{}
 
@@ -155,7 +155,6 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		_ = o(&gatecontrollercfg)
 	}
 	logrLoggerFromSlog := logr.FromSlogHandler(gatecontrollercfg.LogHandler)
-	logrLoggerFromSlog = logrLoggerFromSlog.WithValues(logging.LogCategoryKey, logging.LogCategoryK8s)
 	ctrlruntime.SetLogger(logrLoggerFromSlog)
 
 	err = gate.Add(test.Ctx, gatecontrollercfg, mgr)

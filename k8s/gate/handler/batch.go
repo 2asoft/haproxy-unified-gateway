@@ -45,7 +45,7 @@ type GateTreeConfig struct {
 	K8sClient client.Client
 	// k8sReader is a Kubernets API reader.
 	K8sReader                  client.Reader
-	Logger                     *slog.Logger
+	BaseLogger                 *slog.Logger
 	LogCategoryFilterHandler   *logging.CategoryFilterHandler
 	ExtractGVK                 utils.ExtractGVK
 	TransferHaproxyConfChannel chan haproxy.HaproxyCfgDiffs
@@ -58,7 +58,7 @@ type GateTreeConfig struct {
 // - Reconciling the Gateway API and Kubernetes built-in resources with the HAProxy configuration.
 // - building the GateTree
 type eventHandlerImpl struct {
-	haproxyConfBuilder  haproxy.HaproxyConfBuilderImpl
+	haproxyConfBuilder  haproxy.HaproxyConfMgrImpl
 	config              GateTreeConfig
 	clusterStoreUpdater store.ClusterStoreUpdater
 	treeBuilder         GateTreeBuilder
@@ -67,43 +67,42 @@ type eventHandlerImpl struct {
 // NewEventHandlerImpl creates a new eventHandlerImpl.
 func NewEventHandlerImpl(
 	clusterStore *store.ClusterStore,
-	config GateTreeConfig,
-	haproxyCfgBuilderConfig haproxy.HaproxyConfBuilderParams,
+	gateTreeConfig GateTreeConfig,
+	haproxyCfgBuilderConfig haproxy.HaproxyConfMgrParams,
 ) *eventHandlerImpl {
 	clusterStoreUpdater := store.NewClusterStoreUpdaterImpl(
 		clusterStore,
-		config.ExtractGVK,
-		config.Logger,
+		gateTreeConfig.ExtractGVK,
+		gateTreeConfig.BaseLogger,
 	)
 
 	gateTree := tree.NewGateTree()
 	unmanagedGateTree := tree.NewGateTree()
-	referencedObjects := tree.NewReferencedObjects(config.ExtractGVK)
+	referencedObjects := tree.NewReferencedObjects(gateTreeConfig.ExtractGVK)
 
 	controllerStore := tree.ControllerStore{
 		ClusterStore:      clusterStore,
 		GateTree:          gateTree,
 		ReferencedObjects: referencedObjects,
 		UnmanagedGateTree: unmanagedGateTree,
-		ExtractGVK:        config.ExtractGVK,
-		Logger:            config.Logger,
+		ExtractGVK:        gateTreeConfig.ExtractGVK,
+		Logger:            gateTreeConfig.BaseLogger.With(logging.LogAttrCategory(logging.LogCategoryGate)),
 		InstalledGwAPIVersions: &tree.InstalledVersions{
 			Versions: make(map[string]int),
 		},
 	}
 
-	haproxyCfgStore := haproxy.NewHaproxyCfg()
-
 	treeBuilder := NewGateTreeBuilder(
 		controllerStore,
-		config,
+		gateTreeConfig,
 	)
 
-	haproxyConfBuilder := haproxy.NewHaproxyConfBuilder(controllerStore, haproxyCfgStore, haproxyCfgBuilderConfig)
+	haproxyCfgStore := haproxy.NewHaproxyCfg()
+	haproxyConfBuilder := haproxy.NewHaproxyConfBuilder(gateTreeConfig.BaseLogger, controllerStore, haproxyCfgStore, haproxyCfgBuilderConfig)
 
 	handler := &eventHandlerImpl{
 		treeBuilder:         treeBuilder,
-		config:              config,
+		config:              gateTreeConfig,
 		clusterStoreUpdater: clusterStoreUpdater,
 		haproxyConfBuilder:  haproxyConfBuilder,
 	}
@@ -114,14 +113,14 @@ func NewEventHandlerImpl(
 func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.EventBatch) {
 	start := time.Now()
 
-	h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
+	h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelInfo,
 		"Started processing event batch",
 		logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
 	)
 
 	defer func() {
 		duration := time.Since(start)
-		h.config.Logger.LogAttrs(context.Background(), slog.LevelInfo,
+		h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Finished processing event batch",
 			logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
 			logging.LogAttrDuration(duration),
@@ -136,9 +135,9 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	gatetree := h.treeBuilder.GetTree()
 
 	// HAProxy Configuration building
-	err := h.haproxyConfBuilder.BuildHaproxyConf()
+	err := h.haproxyConfBuilder.UpdateHaproxyConf()
 	if err != nil {
-		h.config.Logger.LogAttrs(context.Background(), slog.LevelError,
+		h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelError,
 			"error building HAProxy configuration",
 			logging.LogAttrError(err),
 		)
@@ -164,7 +163,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		client.InNamespace(svcNs),
 	)
 	if err != nil {
-		h.config.Logger.LogAttrs(context.Background(), slog.LevelError,
+		h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelError,
 			"could not retrieve http-echo endpoints",
 			logging.LogAttrError(err),
 		)
@@ -177,7 +176,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		status.NewStatusUpdaterConf(
 			h.treeBuilder.cfg.K8sClient,
 			h.config.ExtractGVK,
-			h.config.Logger,
+			h.config.BaseLogger,
 		),
 		gatetree.GatewayClasses,
 		gatetree.Gateways,
@@ -194,7 +193,7 @@ func (h *eventHandlerImpl) processBatch(batch events.EventBatch) bool {
 	h.clusterStoreUpdater.ResetUpdates()
 
 	for _, e := range batch.Events {
-		h.updateClusterStore(e, h.config.Logger)
+		h.updateClusterStore(e, h.config.BaseLogger)
 	}
 	return true
 }

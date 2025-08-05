@@ -18,13 +18,15 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
-func Logging(defaultLevel slog.Level, logSettings map[v3.Category]slog.Level) func(o *config.Configuration) error {
+func Logging(handlerType logging.LogHandlerType, defaultLevel slog.Level, logSettings map[v3.Category]slog.Level) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		slogLogger, handler := config.NewGateLogger(defaultLevel, logSettings)
+		slogLogger, handler := config.NewBaseLogger(handlerType, defaultLevel, logSettings)
 		o.Logger = slogLogger
 		o.LogHandler = handler
+		o.LogHandlerType = handlerType
 
 		return nil
 	}

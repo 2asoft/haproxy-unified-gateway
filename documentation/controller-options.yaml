@@ -76,6 +76,8 @@ Logging:
     name: Logging
     comment: ""
     args:
+        - name: handlerType
+          type: logging.LogHandlerType
         - name: defaultLevel
           type: slog.Level
         - name: logSettings

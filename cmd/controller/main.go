@@ -93,7 +93,7 @@ func main() {
 		opt.LeaderElectionConfig(ctrlConfig.LeaderElectionEnabled),
 		opt.ControllerName(ctrlConfig.ControllerName),
 		opt.Namespaces(ctrlConfig.Namespaces),
-		opt.Logging(logLevelIfCategoryEmpty, logCategoryLevels),
+		opt.Logging(logging.LogHandlerType(ctrlConfig.LogType), logLevelIfCategoryEmpty, logCategoryLevels),
 		opt.HaproxyConfChannel(haproxyConfCh),
 		opt.IPV4BindAddr(ctrlConfig.IPV4BindAddr),
 		opt.IPV6BindAddr(ctrlConfig.IPV6BindAddr),
@@ -126,7 +126,7 @@ func main() {
 		UseWiths6Overlay: ctrlConfig.UseWiths6Overlay,
 		HaproxyDirs:      ctrlConfig.HaproxyDirs,
 	}
-	haproxyCfgManager, err := haproxymgr.NewHaproxyCfgManager(ctx, &wg,
+	haproxyCfgManager, err := haproxymgr.NewAppManager(ctx, &wg,
 		haproxyConfCh,
 		params,
 		cntlr.Configuration.Logger)

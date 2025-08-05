@@ -30,8 +30,11 @@ const (
 )
 
 func (cfg *Configuration) ApplyDefaults() {
+	if cfg.LogHandlerType == "" {
+		cfg.LogHandlerType = logging.LogHandlerTypeJSON
+	}
 	// Logging Defaults
-	slogger, logHandler := NewGateLogger(logging.DefaultLevel, logging.DefaultLogLevelPerCategory)
+	slogger, logHandler := NewBaseLogger(cfg.LogHandlerType, logging.DefaultLevel, logging.DefaultLogLevelPerCategory)
 	cfg.Logger = slogger
 	cfg.LogHandler = logHandler
 

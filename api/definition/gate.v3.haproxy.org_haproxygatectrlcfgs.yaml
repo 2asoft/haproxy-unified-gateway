@@ -49,11 +49,11 @@ spec:
                       properties:
                         category:
                           enum:
-                          - all
                           - k8s
                           - gate
                           - status
-                          - haproxycfgmgr
+                          - haproxycfg
+                          - app
                           type: string
                         level:
                           enum:
@@ -61,6 +61,7 @@ spec:
                           - Info
                           - Warn
                           - Error
+                          - None
                           type: string
                       required:
                       - category
@@ -73,6 +74,7 @@ spec:
                     - Info
                     - Warn
                     - Error
+                    - None
                     type: string
                 type: object
             required:

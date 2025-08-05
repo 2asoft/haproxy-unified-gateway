@@ -23,12 +23,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type HaproxyCfgBuilder interface {
-	// BuildHaproxyConf builds the HAProxy configuration.
-	BuildHaproxyConf() error
+type HaproxyCfgMgr interface {
+	// UpddateHaproxyConf computes the HAProxy configuration diffs.
+	UpdateHaproxyConf() error
 }
 
-var _ HaproxyCfgBuilder = &HaproxyConfBuilderImpl{}
+var _ HaproxyCfgMgr = &HaproxyConfMgrImpl{}
 
 type Templates struct {
 	frontendNameTemplate string
@@ -36,7 +36,7 @@ type Templates struct {
 	serverNameTemplate   string
 }
 
-type HaproxyConfBuilderParams struct {
+type HaproxyConfMgrParams struct {
 	exctractGVK utils.ExtractGVK
 	Templates
 	iPV4BindAddr string
@@ -46,13 +46,13 @@ type HaproxyConfBuilderParams struct {
 	disableIPv6  bool
 }
 
-type HaproxyConfBuilderImpl struct {
+type HaproxyConfMgrImpl struct {
 	controllerStore    tree.ControllerStore
 	cfgDiffs           HaproxyCfgDiffs
 	structuredCfgStore HaproxyCfg
 	logger             *slog.Logger
 	frontendsByGateway map[client.ObjectKey]map[string]struct{}
-	params             HaproxyConfBuilderParams
+	params             HaproxyConfMgrParams
 }
 
 func NewTemplates(feTemplate, beTemplate, seTemplate string) Templates {
@@ -63,13 +63,13 @@ func NewTemplates(feTemplate, beTemplate, seTemplate string) Templates {
 	}
 }
 
-func NewHaproxyCfgBuilderParams(extractGVK utils.ExtractGVK,
+func NewHaproxyCfgMgrParams(extractGVK utils.ExtractGVK,
 	templates Templates,
 	disableIPv4, disableIPv6 bool,
 	iPV4BindAddr, iPV6BindAddr string,
 	linkID string,
-) HaproxyConfBuilderParams {
-	return HaproxyConfBuilderParams{
+) HaproxyConfMgrParams {
+	return HaproxyConfMgrParams{
 		exctractGVK:  extractGVK,
 		Templates:    templates,
 		disableIPv4:  disableIPv4,
@@ -80,21 +80,21 @@ func NewHaproxyCfgBuilderParams(extractGVK utils.ExtractGVK,
 	}
 }
 
-func NewHaproxyConfBuilder(controllerStore tree.ControllerStore, haproxyCfgStore HaproxyCfg, builderConfig HaproxyConfBuilderParams) HaproxyConfBuilderImpl {
-	return HaproxyConfBuilderImpl{
+func NewHaproxyConfBuilder(logger *slog.Logger, controllerStore tree.ControllerStore, haproxyCfgStore HaproxyCfg, builderConfig HaproxyConfMgrParams) HaproxyConfMgrImpl {
+	return HaproxyConfMgrImpl{
 		controllerStore:    controllerStore,
 		structuredCfgStore: haproxyCfgStore,
 		params:             builderConfig,
-		logger:             controllerStore.Logger,
+		logger:             logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)),
 		cfgDiffs:           HaproxyCfgDiffs{Created: NewHaproxyCfg(), Updated: NewHaproxyCfg(), Deleted: NewHaproxyCfg()},
 		frontendsByGateway: make(map[client.ObjectKey]map[string]struct{}),
 	}
 }
 
-func (b *HaproxyConfBuilderImpl) BuildHaproxyConf() error {
+func (b *HaproxyConfMgrImpl) UpdateHaproxyConf() error {
 	logger := b.logger
 	logger.LogAttrs(context.Background(), slog.LevelDebug,
-		"Start building HAProxy configuration",
+		"Start computing HAProxy configuration diffs",
 	)
 
 	// Clear the previous configuration diffs
@@ -106,7 +106,7 @@ func (b *HaproxyConfBuilderImpl) BuildHaproxyConf() error {
 	}
 
 	// Build HAProxy configuration for the frontends
-	if err := b.buildFrontends(); err != nil {
+	if err := b.processFrontends(); err != nil {
 		logger.LogAttrs(context.Background(), slog.LevelError,
 			"Failed to build frontends",
 			logging.LogAttrError(err))
@@ -115,6 +115,6 @@ func (b *HaproxyConfBuilderImpl) BuildHaproxyConf() error {
 	return nil
 }
 
-func (b *HaproxyConfBuilderImpl) GetCfsDiffs() HaproxyCfgDiffs {
+func (b *HaproxyConfMgrImpl) GetCfsDiffs() HaproxyCfgDiffs {
 	return b.cfgDiffs
 }

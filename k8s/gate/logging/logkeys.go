@@ -19,5 +19,13 @@ var (
 	LogCategoryK8s           v3.Category = "k8s"
 	LogCategoryGate          v3.Category = "gate"
 	LogCategoryStatus        v3.Category = "status"
-	LogCategoryHaproxyCfgMgr v3.Category = "haproxycfgmgr"
+	LogCategoryHaproxyCfgMgr v3.Category = "haproxycfg"
+	LogCategoryApp           v3.Category = "app"
+)
+
+type LogHandlerType string
+
+const (
+	LogHandlerTypeJSON LogHandlerType = "json"
+	LogHandlerTypeText LogHandlerType = "text"
 )

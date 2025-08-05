@@ -29,7 +29,6 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/predicate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
@@ -88,13 +87,7 @@ func getValueFromEnv(key string) (string, error) {
 }
 
 func New(options config.GateConfigOptions) (Controller, error) {
-	slogger, logHandler := config.NewGateLogger(logging.DefaultLevel, logging.DefaultLogLevelPerCategory)
-	ctrl := Controller{
-		Configuration: config.Configuration{
-			Logger:     slogger,
-			LogHandler: logHandler,
-		},
-	}
+	ctrl := Controller{Configuration: config.Configuration{}}
 	for _, o := range options {
 		err := o(&ctrl.Configuration)
 		if err != nil {
@@ -171,10 +164,8 @@ func Add(
 		Updates:         store.NewClusterUpdates(),
 	}
 
-	gateLogger := cfg.Logger.With(logging.LogAttrCategory(logging.LogCategoryGate))
-
 	gateTreeConfig := handler.GateTreeConfig{
-		Logger:                     gateLogger,
+		BaseLogger:                 cfg.Logger,
 		LogCategoryFilterHandler:   cfg.LogHandler,
 		ExtractGVK:                 extractGVK,
 		ControllerConfNsName:       cfg.ControllerConfCRD,
@@ -182,7 +173,7 @@ func Add(
 		K8sClient:                  mgr.GetClient(),
 		K8sReader:                  mgr.GetAPIReader(),
 	}
-	haproxyCfgBuilderParams := haproxy.NewHaproxyCfgBuilderParams(
+	haproxyCfgBuilderParams := haproxy.NewHaproxyCfgMgrParams(
 		extractGVK,
 		haproxy.NewTemplates(cfg.FrontendNameTemplate, cfg.BackendNameTemplate, cfg.ServerNameTemplate),
 		cfg.DisableIPv4, cfg.DisableIPv6,

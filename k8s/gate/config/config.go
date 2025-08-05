@@ -21,6 +21,7 @@ import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/lmittmann/tint"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -41,8 +42,11 @@ import (
 type GateConfigOptions []func(c *Configuration) error
 
 type Configuration struct {
-	Logger                     *slog.Logger
-	LogHandler                 *logging.CategoryFilterHandler
+	Logger     *slog.Logger
+	LogHandler *logging.CategoryFilterHandler
+	// LogHandlerType defines the type of log Handler we want: json or text
+	// Default will be json
+	LogHandlerType             logging.LogHandlerType
 	TransferHaproxyConfChannel chan haproxy.HaproxyCfgDiffs
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
@@ -129,14 +133,29 @@ type LeaderElectionConfig struct {
 	Enabled bool
 }
 
-func NewGateLogger(defaultLevel slog.Level, categoryLevels map[v3.Category]slog.Level) (*slog.Logger, *logging.CategoryFilterHandler) {
-	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: defaultLevel,
-		// AddSource: true,
-	})
+func NewBaseLogger(handlerType logging.LogHandlerType, defaultLevel slog.Level, categoryLevels map[v3.Category]slog.Level) (*slog.Logger, *logging.CategoryFilterHandler) {
+	var baseHandler slog.Handler
+	switch handlerType {
+	case logging.LogHandlerTypeJSON:
+		baseHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: defaultLevel,
+			// AddSource: true,
+		})
+	case logging.LogHandlerTypeText:
+		baseHandler = tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.Kitchen,
+			ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+				if a.Key == logging.LogCategoryKey || a.Key == "GVK" {
+					return tint.Attr(6, a)
+				}
+				return a
+			},
+		})
+	}
 
 	handlerParams := logging.CategoryFilterHandlerParams{
-		Base:                  base,
+		Base:                  baseHandler,
 		DefaultLevel:          defaultLevel,
 		DefaultCategoryLevels: categoryLevels,
 		CategoryKey:           logging.LogCategoryKey,

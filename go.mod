@@ -9,6 +9,7 @@ require (
 	github.com/haproxytech/client-native/v6 v6.2.2
 	github.com/imdario/mergo v0.3.16
 	github.com/joho/godotenv v1.5.1
+	github.com/lmittmann/tint v1.1.2
 	github.com/onsi/gomega v1.37.0
 	github.com/peterbourgon/ff/v4 v4.0.0-alpha.4
 	github.com/phuslu/log v1.0.113

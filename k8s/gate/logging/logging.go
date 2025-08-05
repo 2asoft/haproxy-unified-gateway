@@ -25,6 +25,13 @@ import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 )
 
+type ContextKey string
+
+const (
+	LevelNone               slog.Level = 100
+	CallerAdditionalSkipKey ContextKey = "callerSkip"
+)
+
 var (
 	DefaultLogLevelPerCategory = map[v3.Category]slog.Level{
 		LogCategoryK8s:    slog.LevelInfo,
@@ -41,11 +48,17 @@ var (
 	mu    sync.RWMutex
 )
 
+// groupOrAttrs holds either a group name or a list of slog.Attrs.
+type groupOrAttrs struct {
+	group string      // group name if non-empty
+	attrs []slog.Attr // attrs if non-empty
+}
+
 // CategoryFilterHandler filters log records by level and key-value category.
 type CategoryFilterHandler struct {
 	base        slog.Handler
 	categoryKey string
-	attrs       []slog.Attr
+	goas        []groupOrAttrs
 }
 
 type CategoryFilterHandlerParams struct {
@@ -69,6 +82,14 @@ func NewCategoryFilterHandler(params CategoryFilterHandlerParams) *CategoryFilte
 	}
 }
 
+func (h *CategoryFilterHandler) withGroupOrAttrs(goa groupOrAttrs) *CategoryFilterHandler {
+	h2 := *h
+	h2.goas = make([]groupOrAttrs, len(h.goas)+1)
+	copy(h2.goas, h.goas)
+	h2.goas[len(h2.goas)-1] = goa
+	return &h2
+}
+
 func copyCategoryLevels(m map[v3.Category]slog.Level) map[v3.Category]slog.Level {
 	cp := make(map[v3.Category]slog.Level, len(m))
 	maps.Copy(cp, m)
@@ -89,20 +110,46 @@ func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error
 	mu.Lock()
 	defer mu.Unlock()
 	filename := ""
-	_, file, no, _ := runtime.Caller(3)
 
-	// Empty Category should happen only for k8s Logs
-	category := LogCategoryK8s
-	if len(h.attrs) > 0 {
-		r.AddAttrs(h.attrs...)
+	skip := 3 // default skip
+	customSkip := 0
+	if v := ctx.Value(CallerAdditionalSkipKey); v != nil {
+		if c, ok := v.(int); ok {
+			customSkip = c
+		}
 	}
+	_, file, no, _ := runtime.Caller(skip + customSkip)
+
+	// Empty Category shoulAd happen only for k8s Logs
+	category := LogCategoryK8s
+
+	goas := h.goas
+	if r.NumAttrs() == 0 {
+		// If the record has no Attrs, remove groups at the end of the list; they are empty.
+		for len(goas) > 0 && goas[len(goas)-1].group != "" {
+			goas = goas[:len(goas)-1]
+		}
+	}
+	for _, goa := range goas {
+		for _, a := range goa.attrs {
+			r.AddAttrs(a)
+			cat := h.getCategory(a)
+			if cat != "" {
+				category = v3.Category(cat)
+				break
+			}
+		}
+	}
+
 	r.Attrs(func(a slog.Attr) bool {
-		if a.Value.Kind() == slog.KindString && (a.Key == h.categoryKey || a.Key == "all") {
-			category = v3.Category(a.Value.String())
+		cat := h.getCategory(a)
+		if cat != "" {
+			category = v3.Category(cat)
 			return false
 		}
 		return true
 	})
+
 	if category == LogCategoryK8s {
 		filename = file
 		// If no category is set, we use the default level
@@ -117,26 +164,32 @@ func (h *CategoryFilterHandler) Handle(ctx context.Context, r slog.Record) error
 		catLevel = level
 	}
 
-	if r.Level < catLevel {
+	if r.Level < catLevel || catLevel == LevelNone {
 		return nil
 	}
 
 	return h.base.Handle(ctx, r)
 }
 
-func (h *CategoryFilterHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &CategoryFilterHandler{
-		base:        h.base.WithAttrs(attrs),
-		categoryKey: h.categoryKey,
-		attrs:       append(h.attrs, attrs...),
+func (h *CategoryFilterHandler) getCategory(a slog.Attr) string {
+	if a.Value.Kind() == slog.KindString && (a.Key == h.categoryKey) {
+		return a.Value.String()
 	}
+	return ""
+}
+
+func (h *CategoryFilterHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	if len(attrs) == 0 {
+		return h
+	}
+	return h.withGroupOrAttrs(groupOrAttrs{attrs: attrs})
 }
 
 func (h *CategoryFilterHandler) WithGroup(name string) slog.Handler {
-	return &CategoryFilterHandler{
-		base:        h.base.WithGroup(name),
-		categoryKey: h.categoryKey,
+	if name == "" {
+		return h
 	}
+	return h.withGroupOrAttrs(groupOrAttrs{group: name})
 }
 
 func (h *CategoryFilterHandler) ResetToDefaults() {
@@ -170,6 +223,8 @@ func LogLevelString2SlogLevel(level string) slog.Level {
 		return slog.LevelError
 	case "Debug":
 		return slog.LevelDebug
+	case "None":
+		return LevelNone
 	default:
 		return slog.LevelInfo // Default to Info if unknown level
 	}

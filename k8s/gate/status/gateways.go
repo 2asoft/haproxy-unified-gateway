@@ -30,11 +30,11 @@ func (s *StatusUpdaterImpl) writeGatewayStatus(ctx context.Context, gw *tree.Gat
 	updateOptions := StatusUpdateParams[*v1.Gateway]{
 		Object:            gw.K8sResource,
 		DesiredConditions: gw.Conditions,
-		Getter:            s.cfg.client,
-		StatusUpdater:     s.cfg.client.Status(),
-		Logger:            s.cfg.logger,
+		Getter:            s.config.client,
+		StatusUpdater:     s.config.client.Status(),
+		Logger:            s.config.logger,
 		ConditionHandler:  &conditions.GatewayConditionImpl{},
-		extractGVK:        s.cfg.extractGVK,
+		extractGVK:        s.config.extractGVK,
 	}
 
 	err := wait.ExponentialBackoffWithContext(
@@ -50,9 +50,9 @@ func (s *StatusUpdaterImpl) writeGatewayStatus(ctx context.Context, gw *tree.Gat
 		TryUpdateStatusFunc(updateOptions),
 	)
 	if err != nil && !errors.Is(err, context.Canceled) {
-		s.cfg.logger.LogAttrs(context.Background(), slog.LevelError,
+		s.config.logger.LogAttrs(context.Background(), slog.LevelError,
 			"Failed to update status",
-			logging.LogAttrResource(gw.K8sResource, s.cfg.extractGVK(gw.K8sResource)),
+			logging.LogAttrResource(gw.K8sResource, s.config.extractGVK(gw.K8sResource)),
 			logging.LogAttrError(err),
 		)
 	}

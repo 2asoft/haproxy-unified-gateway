@@ -20,6 +20,7 @@ import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
 func TestLogging(t *testing.T) {
@@ -27,7 +28,7 @@ func TestLogging(t *testing.T) {
 		v3.Category("k8s"): slog.LevelDebug,
 	}
 	opts := gateconfig.GateConfigOptions{
-		Logging(slog.LevelDebug, settings),
+		Logging(logging.LogHandlerTypeText, slog.LevelDebug, settings),
 	}
 	_, err := controller.New(opts)
 	if err != nil {

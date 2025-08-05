@@ -38,7 +38,7 @@ type StatusUpdaterConf struct {
 }
 
 type StatusUpdaterImpl struct {
-	cfg            StatusUpdaterConf
+	config         StatusUpdaterConf
 	GatewayClasses map[types.NamespacedName]*tree.GatewayClass
 	Gateways       map[types.NamespacedName]*tree.Gateway
 }
@@ -49,7 +49,7 @@ func NewStatusUpdaterImpl(
 	gateways map[types.NamespacedName]*tree.Gateway,
 ) *StatusUpdaterImpl {
 	return &StatusUpdaterImpl{
-		cfg:            cfg,
+		config:         cfg,
 		GatewayClasses: gatewayClasses,
 		Gateways:       gateways,
 	}
@@ -60,9 +60,8 @@ func NewStatusUpdaterConf(
 	extractGVK utils.ExtractGVK,
 	logger *slog.Logger,
 ) StatusUpdaterConf {
-	mylogger := logger.With(logging.LogAttrCategory(logging.LogCategoryStatus))
 	return StatusUpdaterConf{
-		logger:     mylogger,
+		logger:     logger.With(logging.LogAttrCategory(logging.LogCategoryStatus)),
 		extractGVK: extractGVK,
 		client:     k8sClient,
 	}
@@ -91,9 +90,9 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 			continue
 		}
 
-		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
+		s.config.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Updating status for resource",
-			logging.LogAttrResource(gwc.K8sResource, s.cfg.extractGVK(gwc.K8sResource)),
+			logging.LogAttrResource(gwc.K8sResource, s.config.extractGVK(gwc.K8sResource)),
 		)
 
 		s.writeGatewayClassStatus(ctx, gwc)
@@ -112,9 +111,9 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 			continue
 		}
 
-		s.cfg.logger.LogAttrs(context.Background(), slog.LevelDebug,
+		s.config.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Updating status for resource",
-			logging.LogAttrResource(gw.K8sResource, s.cfg.extractGVK(gw.K8sResource)),
+			logging.LogAttrResource(gw.K8sResource, s.config.extractGVK(gw.K8sResource)),
 		)
 
 		s.writeGatewayStatus(ctx, gw)

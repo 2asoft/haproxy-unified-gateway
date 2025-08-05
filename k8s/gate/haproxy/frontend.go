@@ -37,7 +37,7 @@ type K8sObjectInfo struct {
 
 type FrontendMetaData map[string]map[string]K8sObjectInfo
 
-func (b *HaproxyConfBuilderImpl) getFrontendName(gwKey k8stypes.NamespacedName, listener gatewayv1.Listener) (string, error) {
+func (b *HaproxyConfMgrImpl) getFrontendName(gwKey k8stypes.NamespacedName, listener gatewayv1.Listener) (string, error) {
 	tmpl, err := template.New("frontend").Parse(b.params.frontendNameTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse frontend name template: %w", err)
@@ -59,7 +59,7 @@ func (b *HaproxyConfBuilderImpl) getFrontendName(gwKey k8stypes.NamespacedName, 
 	return buf.String(), nil
 }
 
-func (b *HaproxyConfBuilderImpl) buildFrontends() error {
+func (b *HaproxyConfMgrImpl) processFrontends() error {
 	// Managed Gateways => Create / update/ delete frontends
 	for gwKey, gateway := range b.controllerStore.GateTree.Gateways {
 		switch gateway.TreeStatus.Status {
@@ -102,7 +102,7 @@ func (b *HaproxyConfBuilderImpl) buildFrontends() error {
 	return nil
 }
 
-func (b *HaproxyConfBuilderImpl) createOrUpdateFrontends(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
+func (b *HaproxyConfMgrImpl) createOrUpdateFrontends(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
 	frontends := make(map[string]struct{})
 	for _, listener := range gw.K8sResource.Spec.Listeners {
 		newFe, err := b.newFrontend(gwKey, gw, listener)
@@ -121,7 +121,7 @@ func (b *HaproxyConfBuilderImpl) createOrUpdateFrontends(gwKey k8stypes.Namespac
 	return nil
 }
 
-func (b *HaproxyConfBuilderImpl) cleanupFrontends(gwKey client.ObjectKey, oldFrontends, newFrontends map[string]struct{}) {
+func (b *HaproxyConfMgrImpl) cleanupFrontends(gwKey client.ObjectKey, oldFrontends, newFrontends map[string]struct{}) {
 	for frontendName := range oldFrontends {
 		if _, ok := newFrontends[frontendName]; !ok {
 			b.deleteFrontend(gwKey, frontendName)
@@ -129,7 +129,7 @@ func (b *HaproxyConfBuilderImpl) cleanupFrontends(gwKey client.ObjectKey, oldFro
 	}
 }
 
-func (b *HaproxyConfBuilderImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *tree.Gateway, listener gatewayv1.Listener) (*models.Frontend, error) {
+func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *tree.Gateway, listener gatewayv1.Listener) (*models.Frontend, error) {
 	// Create a frontend for each listener
 	feName, err := b.getFrontendName(gwKey, listener)
 	if err != nil {
@@ -193,7 +193,7 @@ func (b *HaproxyConfBuilderImpl) newFrontend(gwKey k8stypes.NamespacedName, tree
 	return fe, nil
 }
 
-func (b *HaproxyConfBuilderImpl) createOrUpdateFrontend(newFe *models.Frontend, frontends map[string]struct{}) {
+func (b *HaproxyConfMgrImpl) createOrUpdateFrontend(newFe *models.Frontend, frontends map[string]struct{}) {
 	if newFe == nil {
 		b.logger.LogAttrs(context.Background(), slog.LevelError, "nil frontend")
 		return
@@ -244,7 +244,7 @@ func (b *HaproxyConfBuilderImpl) createOrUpdateFrontend(newFe *models.Frontend, 
 	}
 }
 
-func (b *HaproxyConfBuilderImpl) deleteFrontendForAllListeners(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
+func (b *HaproxyConfMgrImpl) deleteFrontendForAllListeners(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
 	// K8s resource might be in:
 	k8sGateway := gw.GetK8sResource()
 	if k8sGateway == nil {
@@ -267,7 +267,7 @@ func (b *HaproxyConfBuilderImpl) deleteFrontendForAllListeners(gwKey k8stypes.Na
 	return nil
 }
 
-func (b *HaproxyConfBuilderImpl) deleteFrontend(gwKey client.ObjectKey, feName string) {
+func (b *HaproxyConfMgrImpl) deleteFrontend(gwKey client.ObjectKey, feName string) {
 	// Retrieve the frontend from the store
 	fe, ok := b.structuredCfgStore.Frontends[feName]
 	if !ok {
@@ -290,7 +290,7 @@ func (b *HaproxyConfBuilderImpl) deleteFrontend(gwKey client.ObjectKey, feName s
 	b.cfgDiffs.Deleted.Frontends[fe.Name] = deepCopied
 }
 
-func (b *HaproxyConfBuilderImpl) logGatewayUpdate(action string, gwKey k8stypes.NamespacedName) {
+func (b *HaproxyConfMgrImpl) logGatewayUpdate(action string, gwKey k8stypes.NamespacedName) {
 	b.logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"Haproxy Cfg processing Gateway ["+action+"]",
 		logging.LogAttrKey(gwKey),
@@ -307,7 +307,7 @@ func DeepCopyFrontend(original *models.Frontend) *models.Frontend {
 	return &copied
 }
 
-func (b *HaproxyConfBuilderImpl) frontendMetaData(treeGw *tree.Gateway) MetaData {
+func (b *HaproxyConfMgrImpl) frontendMetaData(treeGw *tree.Gateway) MetaData {
 	fmd := make(FrontendMetaData)
 	md := make(MetaData)
 	md[MetatDataKey] = fmd

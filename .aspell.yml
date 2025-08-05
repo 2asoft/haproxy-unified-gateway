@@ -20,8 +20,10 @@ allowed:
   - gitlab
   - golang
   - golangci
+  - haproxycfg
   - haproxygate
   - init
+  - json
   - kubebuilder
   - kubeconfig
   - leaderelection

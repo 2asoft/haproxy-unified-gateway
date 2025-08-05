@@ -33,7 +33,7 @@ Available options:
 | KubeConfig | `kubeconfig`(string) |
 | LeaderElectionConfig | `leaderElectionEnabled`(bool) |
 | LinkID | `template`(string) |
-| Logging | `defaultLevel`(slog.Level), `logSettings`(*ast.MapType) |
+| Logging | `handlerType`(logging.LogHandlerType), `defaultLevel`(slog.Level), `logSettings`(*ast.MapType) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | Namespaces | `namespaces`(*ast.ArrayType) |
 | ServerNameTemplate | `template`(string) |
@@ -218,7 +218,7 @@ import (
   github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
-controller, err := controller.New(opt.Logging(defaultLevel, logSettings))
+controller, err := controller.New(opt.Logging(handlerType, defaultLevel, logSettings))
 ```
 
 ### MetricsConfig
