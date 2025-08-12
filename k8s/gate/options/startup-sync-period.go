@@ -11,22 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package logging
+package opt
 
-import v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+import (
+	"time"
 
-var (
-	LogCategoryK8s           v3.Category = "k8s"
-	LogCategoryGate          v3.Category = "gate"
-	LogCategoryStatus        v3.Category = "status"
-	LogCategoryHaproxyCfgMgr v3.Category = "haproxycfg"
-	LogCategoryApp           v3.Category = "app"
-	LogCategoryBatch         v3.Category = "batch"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 )
 
-type LogHandlerType string
-
-const (
-	LogHandlerTypeJSON LogHandlerType = "json"
-	LogHandlerTypeText LogHandlerType = "text"
-)
+func StartupSyncPeriod(syncPeriod time.Duration) func(o *config.Configuration) error {
+	return func(o *config.Configuration) error {
+		o.StartupSyncPeriod = syncPeriod
+		return nil
+	}
+}

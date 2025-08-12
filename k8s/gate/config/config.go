@@ -42,21 +42,25 @@ import (
 type GateConfigOptions []func(c *Configuration) error
 
 type Configuration struct {
-	Logger     *slog.Logger
-	LogHandler *logging.CategoryFilterHandler
-	// LogHandlerType defines the type of log Handler we want: json or text
-	// Default will be json
-	LogHandlerType             logging.LogHandlerType
+	Logger                     *slog.Logger
+	LogHandler                 *logging.CategoryFilterHandler
 	TransferHaproxyConfChannel chan haproxy.HaproxyCfgDiffs
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	//  Namespace and name of the controller conf CRD:  HaproxyGateCtrlCfg
 	ControllerConfCRD types.NamespacedName
-	Kubeconfig        string
+	// Initial Structured config used at startup
+	InitialStructuredHaproxyConf haproxy.Structured
+	// LogHandlerType defines the type of log Handler we want: json or text
+	// Default will be json
+	LogHandlerType logging.LogHandlerType
+	Kubeconfig     string
 	// ControllerName is the name of this controller.
 	ControllerName string
 	// LindID: an ID for the link to the cluster
 	LinkID string
+	// DefaultsSectionName is the name of the defaults section to use for create backends and frontends
+	DefaultsSectionName string
 	// HaproxyConfiguration contains the needed configuration to compute the FE/BE/...
 	HaproxyConfiguration
 	// LeaderElectionConfig contains the configuration for leader election.
@@ -68,6 +72,21 @@ type Configuration struct {
 	MetricsConfig MetricsConfig
 	// SyncPeriod is the duration we wait after handling one batch before the next one
 	SyncPeriod time.Duration
+	// StartupSyncPeriod is the first (at startup) duration we wait after handling one batch before the next one
+	// After the first one, SyncPeriod will be used
+	StartupSyncPeriod time.Duration
+	// CacheResyncPeriod is the manager cache SyncPeriod
+	// SyncPeriod determines the minimum frequency at which watched resources are
+	// reconciled. A lower period will correct entropy more quickly, but reduce
+	// responsiveness to change if there are many watched resources. Change this
+	// value only if you know what you are doing. Defaults to 10 hours if unset.
+	// there will a 10 percent jitter between the SyncPeriod of all controllers
+	// so that all controllers will not send list requests simultaneously.
+	//
+	// This applies to all controllers.
+	CacheResyncPeriod time.Duration
+	// InitialStructuredHaproxyConfOK bool
+	InitialStructuredHaproxyConfOK bool
 }
 
 type HaproxyConfiguration struct {
@@ -143,8 +162,8 @@ func NewBaseLogger(handlerType logging.LogHandlerType, defaultLevel slog.Level, 
 		})
 	case logging.LogHandlerTypeText:
 		baseHandler = tint.NewHandler(os.Stdout, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.Kitchen,
+			Level: slog.LevelDebug,
+			// TimeFormat: time.Kitchen,
 			ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
 				if a.Key == logging.LogCategoryKey || a.Key == "GVK" {
 					return tint.Attr(6, a)

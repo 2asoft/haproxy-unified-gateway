@@ -14,6 +14,7 @@ import (
 	ctrlconfig "github.com/haproxytech/kubernetes-controller/controller/configuration"
 	haproxymgr "github.com/haproxytech/kubernetes-controller/controller/haproxy"
 	haproxyparams "github.com/haproxytech/kubernetes-controller/controller/haproxy/params"
+	"github.com/haproxytech/kubernetes-controller/controller/startup"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
@@ -61,52 +62,10 @@ func main() {
 		panic(err)
 	}
 
-	metricsConfig := gateconfig.MetricsConfig{
-		Port:    6062,
-		Enabled: false,
-		Secure:  false,
-	}
+	// GateConfig
+	opts := setupGateConfig(ctrlConfig)
 
-	// kubeconfig := testKubeConfig
-	kubeconfig := ""
-
-	// Optional : default values provided in controller.New()
-	// To adjust more precisely the log levels, use the CRD: HaproxyGateCtrlCfg
-	// along with opt.ControllerConfCRD to specify which CRD to watcg
-	logLevelIfCategoryEmpty := slog.LevelInfo
-	logCategoryLevels := map[v3.Category]slog.Level{
-		logging.LogCategoryK8s:    slog.LevelInfo,
-		logging.LogCategoryGate:   slog.LevelInfo,
-		logging.LogCategoryStatus: slog.LevelInfo,
-	}
-
-	haproxyConfCh := make(chan haproxy.HaproxyCfgDiffs, 100)
-
-	opts := gateconfig.GateConfigOptions{
-		opt.KubeConfig(kubeconfig),
-		opt.ControllerConfCRD(types.NamespacedName{
-			Namespace: ctrlConfig.ControllerConfCRD.Namespace,
-			Name:      ctrlConfig.ControllerConfCRD.Name,
-		}),
-		opt.SyncPeriod(ctrlConfig.SyncPeriod),
-		opt.MetricsConfig(metricsConfig),
-		opt.LeaderElectionConfig(ctrlConfig.LeaderElectionEnabled),
-		opt.ControllerName(ctrlConfig.ControllerName),
-		opt.Namespaces(ctrlConfig.Namespaces),
-		opt.Logging(logging.LogHandlerType(ctrlConfig.LogType), logLevelIfCategoryEmpty, logCategoryLevels),
-		opt.HaproxyConfChannel(haproxyConfCh),
-		opt.IPV4BindAddr(ctrlConfig.IPV4BindAddr),
-		opt.IPV6BindAddr(ctrlConfig.IPV6BindAddr),
-		opt.HaproxyDirs(ctrlConfig.HaproxyDirs),
-		opt.LinkID("link1"),
-	}
-	if ctrlConfig.DisableIPv4 {
-		opts = append(opts, opt.DisableIPv4())
-	}
-	if ctrlConfig.DisableIPv6 {
-		opts = append(opts, opt.DisableIPv6())
-	}
-
+	// Start controller
 	cntlr, err := controller.New(opts)
 	if err != nil {
 		panic(err)
@@ -127,7 +86,7 @@ func main() {
 		HaproxyDirs:      ctrlConfig.HaproxyDirs,
 	}
 	haproxyCfgManager, err := haproxymgr.NewAppManager(ctx, &wg,
-		haproxyConfCh,
+		cntlr.Configuration.TransferHaproxyConfChannel,
 		params,
 		cntlr.Configuration.Logger)
 	if err != nil {
@@ -151,4 +110,65 @@ func main() {
 	// Wait for background goroutines to finish
 	wg.Wait()
 	cntlr.Configuration.Logger.Info("Graceful shutdown complete. Exiting.")
+}
+
+func setupGateConfig(ctrlConfig ctrlconfig.ControllerConfig) gateconfig.GateConfigOptions {
+	metricsConfig := gateconfig.MetricsConfig{
+		Port:    6062,
+		Enabled: false,
+		Secure:  false,
+	}
+
+	// kubeconfig := testKubeConfig
+	kubeconfig := ""
+
+	// Optional : default values provided in controller.New()
+	// To adjust more precisely the log levels, use the CRD: HaproxyGateCtrlCfg
+	// along with opt.ControllerConfCRD to specify which CRD to watcg
+	logLevelIfCategoryEmpty := slog.LevelInfo
+	logCategoryLevels := map[v3.Category]slog.Level{
+		logging.LogCategoryK8s:    slog.LevelInfo,
+		logging.LogCategoryGate:   slog.LevelDebug,
+		logging.LogCategoryStatus: slog.LevelInfo,
+		logging.LogCategoryBatch:  slog.LevelInfo,
+	}
+
+	haproxyConfCh := make(chan haproxy.HaproxyCfgDiffs, 100)
+
+	// Read the haproy.cfg file at startup, and initializes the library with the initial haproxy configuration
+	initialStructured, err := startup.StructuredFromFile(ctrlConfig.HaproxyDirs.MainCfgFile, ctrlConfig.HaproxyDirs.CfgDir)
+	if err != nil {
+		panic(err)
+	}
+	// Defaults section name is mandatory for the initial configuration
+	initialStructured.DefaultsSectionName = gateconfig.DefaultsSectionName
+
+	opts := gateconfig.GateConfigOptions{
+		opt.KubeConfig(kubeconfig),
+		opt.ControllerConfCRD(types.NamespacedName{
+			Namespace: ctrlConfig.ControllerConfCRD.Namespace,
+			Name:      ctrlConfig.ControllerConfCRD.Name,
+		}),
+		opt.SyncPeriod(ctrlConfig.SyncPeriod),
+		opt.StartupSyncPeriod(ctrlConfig.StartupSyncPeriod),
+		opt.MetricsConfig(metricsConfig),
+		opt.LeaderElectionConfig(ctrlConfig.LeaderElectionEnabled),
+		opt.ControllerName(ctrlConfig.ControllerName),
+		opt.Namespaces(ctrlConfig.Namespaces),
+		opt.Logging(logging.LogHandlerType(ctrlConfig.LogType), logLevelIfCategoryEmpty, logCategoryLevels),
+		opt.HaproxyConfChannel(haproxyConfCh),
+		opt.IPV4BindAddr(ctrlConfig.IPV4BindAddr),
+		opt.IPV6BindAddr(ctrlConfig.IPV6BindAddr),
+		opt.HaproxyDirs(ctrlConfig.HaproxyDirs),
+		opt.LinkID("link1"),
+		opt.InitialStructured(initialStructured),
+		opt.CacheReSyncPeriod(ctrlConfig.CacheResyncPeriod),
+	}
+	if ctrlConfig.DisableIPv4 {
+		opts = append(opts, opt.DisableIPv4())
+	}
+	if ctrlConfig.DisableIPv6 {
+		opts = append(opts, opt.DisableIPv6())
+	}
+	return opts
 }

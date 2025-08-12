@@ -41,6 +41,7 @@ allowed:
   - reconciler
   - releaser
   - repo
+  - resync
   - runtime
   - slogger
   - ssl

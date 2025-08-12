@@ -20,12 +20,21 @@ import (
 	"time"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var isStartup = true
+
 type EventLoop struct {
-	handler EventHandler
-	logger  slog.Logger
-	eventCh <-chan any
+	handler    EventHandler
+	logger     *slog.Logger
+	eventCh    <-chan any
+	extractGVK utils.ExtractGVK
+
+	timer  *time.Timer
+	timerC <-chan time.Time
 
 	currentBatch events.EventBatch
 	nextBatch    events.EventBatch
@@ -38,23 +47,26 @@ type EventLoop struct {
 }
 
 type EventLoopConfig struct {
-	SyncPeriod time.Duration
+	SyncPeriod        time.Duration
+	StartupSyncPeriod time.Duration
 }
 
 // NewEventLoop creates a new EventLoop.
 func NewEventLoop(
 	loopCfg EventLoopConfig,
 	eventCh <-chan any,
-	logger slog.Logger,
+	logger *slog.Logger,
 	handler EventHandler,
+	extractGVK utils.ExtractGVK,
 ) *EventLoop {
 	return &EventLoop{
 		loopCfg:      loopCfg,
 		eventCh:      eventCh,
-		logger:       logger,
+		logger:       logger.With(logging.LogAttrCategory(logging.LogCategoryBatch)),
 		handler:      handler,
 		currentBatch: events.EventBatch{Events: make([]any, 0), BatchID: 0},
 		nextBatch:    events.EventBatch{Events: make([]any, 0), BatchID: 1},
+		extractGVK:   extractGVK,
 	}
 }
 
@@ -62,6 +74,23 @@ func (*EventLoop) NeedLeaderElection() bool {
 	// Leader election (= be leader) is not required for this loop to start.
 	// false = always run even if not leader
 	return false
+}
+
+func (el *EventLoop) sleepTime() time.Duration {
+	var sleepTime time.Duration
+	if isStartup {
+		isStartup = false
+		switch el.loopCfg.StartupSyncPeriod {
+		case 0:
+			sleepTime = el.loopCfg.SyncPeriod
+		default:
+			sleepTime = el.loopCfg.StartupSyncPeriod
+		}
+	} else {
+		sleepTime = el.loopCfg.SyncPeriod
+	}
+
+	return sleepTime
 }
 
 // Start starts the EventLoop.
@@ -75,7 +104,6 @@ func (el *EventLoop) Start(ctx context.Context) error {
 		go func(batch events.EventBatch) {
 			el.handler.HandleEventBatch(ctx, batch)
 
-			time.Sleep(el.loopCfg.SyncPeriod)
 			handlingDone <- struct{}{}
 		}(el.currentBatch)
 	}
@@ -90,6 +118,7 @@ func (el *EventLoop) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			// Wait for the completion if a batch is being handled.
+			el.stopTimer()
 			if el.GetHandling() {
 				<-handlingDone
 			}
@@ -98,24 +127,24 @@ func (el *EventLoop) Start(ctx context.Context) error {
 			// Add the event to the current batch.
 			el.nextBatch.Events = append(el.nextBatch.Events, e)
 
-			// el.logger.LogAttrs(context.Background(), slog.LevelDebug,
-			// 	"added an event to the next batch",
-			// 	logging.LogCategoryAttr(logging.LogCategoryK8s),
-			// 	logging.BatchAttr(el.nextBatch.BatchID, len(el.nextBatch.Events)),
-			// 	logging.ObjTypeAttr(e),
-			// )
+			el.logEvent(e)
+			if el.nextBatch.BatchID == 1 {
+				el.startTimer()
+			}
 
-			// If no batch is currently being handled, swap batches and begin handling the batch.
-			if !el.GetHandling() {
+		case <-el.timerC:
+			el.timerC = nil
+			el.timer = nil
+
+			// If no batch is currently handled and events exist, handle batch now
+			if !el.GetHandling() && len(el.nextBatch.Events) > 0 {
 				swapAndHandleBatch()
+			} else {
+				el.startTimer()
 			}
 		case <-handlingDone:
 			el.SetHandling(false)
-
-			// If there's at least one event in the next batch, swap batches and begin handling the batch.
-			if len(el.nextBatch.Events) > 0 {
-				swapAndHandleBatch()
-			}
+			el.startTimer()
 		}
 	}
 }
@@ -137,4 +166,40 @@ func (el *EventLoop) GetHandling() bool {
 	el.mu.Lock()
 	defer el.mu.Unlock()
 	return el.handling
+}
+
+func (el *EventLoop) startTimer() {
+	if el.timer == nil {
+		sleepTime := el.sleepTime()
+		el.timer = time.NewTimer(sleepTime)
+		el.timerC = el.timer.C
+	}
+}
+
+func (el *EventLoop) stopTimer() {
+	if el.timer != nil {
+		if !el.timer.Stop() {
+			select {
+			case <-el.timer.C:
+			default:
+			}
+		}
+		el.timer = nil
+		el.timerC = nil
+	}
+}
+
+func (el *EventLoop) logEvent(e any) {
+	var o client.Object
+	switch obj := e.(type) {
+	case *events.UpsertEvent:
+		o = obj.Resource
+	case *events.DeleteEvent:
+		o = obj.Type
+	}
+	el.logger.LogAttrs(context.Background(), slog.LevelDebug,
+		"added an event to the batch",
+		logging.LogAttrBatch(el.nextBatch.BatchID, len(el.nextBatch.Events)),
+		logging.LogAttrResource(o, el.extractGVK(o)),
+	)
 }

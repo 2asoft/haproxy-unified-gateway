@@ -20,13 +20,14 @@ import (
 )
 
 const (
-	// DefaultControllerName is the default name of the controller.
+	// defaultControllerName is the default name of the controller.
 	defaultControllerName         = "gate.haproxy.org/unified-controller"
 	defaultLeaderElectionLockName = "unified-controller-leader-election-lock"
 	defaultSyncPeriod             = 5 * time.Second
 	defaultFrontendNameTemplate   = "{{ .LINK_ID }}_{{ .GATEWAY_NAMESPACE}}_{{ .GATEWAY_NAME }}_{{ .LISTENER_NAME }}"
 	defaultBackendNameTemplate    = ""
 	defaultServerNameTemplate     = ""
+	DefaultsSectionName           = "haproxytech"
 )
 
 func (cfg *Configuration) ApplyDefaults() {
@@ -41,11 +42,14 @@ func (cfg *Configuration) ApplyDefaults() {
 	cfg.LeaderElectionConfig.LockName = defaultLeaderElectionLockName
 	if cfg.ControllerName == "" {
 		cfg.ControllerName = defaultControllerName
-		if cfg.SyncPeriod == 0 {
-			cfg.SyncPeriod = defaultSyncPeriod
-		}
 	}
-
+	if cfg.SyncPeriod == 0 {
+		cfg.SyncPeriod = defaultSyncPeriod
+	}
+	// StartupSyncPeriod if not defined is equal to SyncPeriod
+	if cfg.StartupSyncPeriod == 0 {
+		cfg.StartupSyncPeriod = cfg.SyncPeriod
+	}
 	if cfg.FrontendNameTemplate == "" {
 		cfg.FrontendNameTemplate = defaultFrontendNameTemplate
 	}

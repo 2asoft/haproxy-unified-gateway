@@ -11,22 +11,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package logging
+package haproxy
 
-import v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+import "fmt"
 
-var (
-	LogCategoryK8s           v3.Category = "k8s"
-	LogCategoryGate          v3.Category = "gate"
-	LogCategoryStatus        v3.Category = "status"
-	LogCategoryHaproxyCfgMgr v3.Category = "haproxycfg"
-	LogCategoryApp           v3.Category = "app"
-	LogCategoryBatch         v3.Category = "batch"
-)
+type HaproxyCfgDiffs struct {
+	Created Structured
+	Updated Structured
+	Deleted Structured
+}
 
-type LogHandlerType string
+func (c HaproxyCfgDiffs) IsEmpty() bool {
+	return c.Created.IsEmpty() && c.Updated.IsEmpty() && c.Deleted.IsEmpty()
+}
 
-const (
-	LogHandlerTypeJSON LogHandlerType = "json"
-	LogHandlerTypeText LogHandlerType = "text"
-)
+func (c HaproxyCfgDiffs) Stats() string {
+	return fmt.Sprintf("Created[FE:%d/BE:%d] Updated[FE:%d/BE:%d] Deleted[FE:%d/BE:%d]",
+		len(c.Created.Frontends), len(c.Created.Backends),
+		len(c.Updated.Frontends), len(c.Updated.Backends),
+		len(c.Deleted.Frontends), len(c.Deleted.Backends),
+	)
+}

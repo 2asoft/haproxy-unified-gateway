@@ -9,6 +9,10 @@ spec:
     port: 80
     protocol: HTTP
     hostname: "*.haproxy.local"
+  # - name: admin
+  #   port: 81
+  #   protocol: HTTP
+  #   hostname: "*.haproxy.local"
   - name: https
     protocol: HTTPS
     port: 443

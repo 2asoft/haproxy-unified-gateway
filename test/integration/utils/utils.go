@@ -42,14 +42,6 @@ func GetIntTestNamespace() (string, error) {
 
 func GetCRDFixturePath() string {
 	path := "manifests/"
-	// switch os.Getenv("CRD_VERSION") {
-	// case "v1":
-	// 	path = "config/crd-v1"
-	// case "ce_v3":
-	// 	path = "config/crd-ce-v3"
-	// case "ce_v1":
-	// 	path = "config/crd-ce-v1"
-	// }
 
 	return path
 }

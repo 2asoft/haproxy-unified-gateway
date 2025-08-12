@@ -21,6 +21,7 @@ Available options:
 | Function | Arguments |
 | ---:|:--- |
 | BackendNameTemplate | `template`(string) |
+| CacheReSyncPeriod | `syncPeriod`(time.Duration) |
 | ControllerConfCRD | `controllerConf`(types.NamespacedName) |
 | ControllerName | `controllerName`(string) |
 | DisableIPv4 |  |
@@ -30,6 +31,7 @@ Available options:
 | HaproxyDirs | `dirs`(config.HaproxyDirs) |
 | IPV4BindAddr | `addr`(string) |
 | IPV6BindAddr | `addr`(string) |
+| InitialStructured | `structured`(haproxy.Structured) |
 | KubeConfig | `kubeconfig`(string) |
 | LeaderElectionConfig | `leaderElectionEnabled`(bool) |
 | LinkID | `template`(string) |
@@ -37,6 +39,7 @@ Available options:
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | Namespaces | `namespaces`(*ast.ArrayType) |
 | ServerNameTemplate | `template`(string) |
+| StartupSyncPeriod | `syncPeriod`(time.Duration) |
 | SyncPeriod | `syncPeriod`(time.Duration) |
 
 ### BackendNameTemplate
@@ -50,6 +53,19 @@ import (
 )
 
 controller, err := controller.New(opt.BackendNameTemplate(template))
+```
+
+### CacheReSyncPeriod
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.CacheReSyncPeriod(syncPeriod))
 ```
 
 ### ControllerConfCRD
@@ -169,6 +185,19 @@ import (
 controller, err := controller.New(opt.IPV6BindAddr(addr))
 ```
 
+### InitialStructured
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.InitialStructured(structured))
+```
+
 ### KubeConfig
 
 
@@ -259,6 +288,19 @@ import (
 )
 
 controller, err := controller.New(opt.ServerNameTemplate(template))
+```
+
+### StartupSyncPeriod
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.StartupSyncPeriod(syncPeriod))
 ```
 
 ### SyncPeriod

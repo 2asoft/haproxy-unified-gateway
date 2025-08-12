@@ -9,3 +9,11 @@ spec:
     port: 80
     protocol: HTTP
     hostname: "*.haproxy.local"
+  - name: https
+    protocol: HTTPS
+    port: 443
+    # tls:
+    #   certificateRefs:
+    #   - kind: Secret
+    #     group: ""
+    #     name: wildcard-haproxy-local-cert

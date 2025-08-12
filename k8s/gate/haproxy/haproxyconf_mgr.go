@@ -20,24 +20,17 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type HaproxyCfgMgr interface {
-	// UpddateHaproxyConf computes the HAProxy configuration diffs.
-	UpdateHaproxyConf() error
+	// ComputeDiffs computes the HAProxy configuration diffs.
+	ComputeDiffs() error
 }
 
 var _ HaproxyCfgMgr = &HaproxyConfMgrImpl{}
 
-type Templates struct {
-	frontendNameTemplate string
-	backendNameTemplate  string
-	serverNameTemplate   string
-}
-
 type HaproxyConfMgrParams struct {
-	exctractGVK utils.ExtractGVK
+	extractGVK utils.ExtractGVK
 	Templates
 	iPV4BindAddr string
 	iPV6BindAddr string
@@ -47,20 +40,18 @@ type HaproxyConfMgrParams struct {
 }
 
 type HaproxyConfMgrImpl struct {
-	controllerStore    tree.ControllerStore
-	cfgDiffs           HaproxyCfgDiffs
-	structuredCfgStore HaproxyCfg
-	logger             *slog.Logger
-	frontendsByGateway map[client.ObjectKey]map[string]struct{}
-	params             HaproxyConfMgrParams
-}
-
-func NewTemplates(feTemplate, beTemplate, seTemplate string) Templates {
-	return Templates{
-		frontendNameTemplate: feTemplate,
-		backendNameTemplate:  beTemplate,
-		serverNameTemplate:   seTemplate,
-	}
+	controllerStore tree.ControllerStore
+	// frontendsOwnedbyGateway keeps track of frontends owned by each Gateway
+	// This is usefull to cleanup the frontends removed from a Gateway (some listeners removed)
+	frontendsOwnedbyGateway FrontendsOwnedbyGateway // map[gwKey] -> map[frontendName]struct{}
+	logger                  *slog.Logger
+	// frontendsContainedInFirstSync that are present at startup, used to cleanup after the first sync
+	// the frontends that are not anymore in the cluster
+	frontendsContainedInFirstSync map[string]struct{}
+	configuration                 Configuration
+	params                        HaproxyConfMgrParams
+	// If this is the initial sync, we will add to the diffs Deleted all items that are not upserted
+	firstSync bool // True if this is the initial sync
 }
 
 func NewHaproxyCfgMgrParams(extractGVK utils.ExtractGVK,
@@ -70,7 +61,7 @@ func NewHaproxyCfgMgrParams(extractGVK utils.ExtractGVK,
 	linkID string,
 ) HaproxyConfMgrParams {
 	return HaproxyConfMgrParams{
-		exctractGVK:  extractGVK,
+		extractGVK:   extractGVK,
 		Templates:    templates,
 		disableIPv4:  disableIPv4,
 		disableIPv6:  disableIPv6,
@@ -80,41 +71,72 @@ func NewHaproxyCfgMgrParams(extractGVK utils.ExtractGVK,
 	}
 }
 
-func NewHaproxyConfBuilder(logger *slog.Logger, controllerStore tree.ControllerStore, haproxyCfgStore HaproxyCfg, builderConfig HaproxyConfMgrParams) HaproxyConfMgrImpl {
-	return HaproxyConfMgrImpl{
-		controllerStore:    controllerStore,
-		structuredCfgStore: haproxyCfgStore,
-		params:             builderConfig,
-		logger:             logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)),
-		cfgDiffs:           HaproxyCfgDiffs{Created: NewHaproxyCfg(), Updated: NewHaproxyCfg(), Deleted: NewHaproxyCfg()},
-		frontendsByGateway: make(map[client.ObjectKey]map[string]struct{}),
+func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured Structured, builderConfig HaproxyConfMgrParams) HaproxyConfMgrImpl {
+	firstSync := true
+	impl := HaproxyConfMgrImpl{
+		controllerStore: controllerStore,
+		configuration: Configuration{
+			structured: startupStructured,
+		},
+		firstSync:                     firstSync,
+		params:                        builderConfig,
+		logger:                        logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)),
+		frontendsContainedInFirstSync: make(map[string]struct{}),
+		frontendsOwnedbyGateway:       NewFrontendsOwnedbyGateway(),
 	}
+
+	return impl
 }
 
-func (b *HaproxyConfMgrImpl) UpdateHaproxyConf() error {
+func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
 	logger := b.logger
-	logger.LogAttrs(context.Background(), slog.LevelDebug,
-		"Start computing HAProxy configuration diffs",
-	)
+	logger.LogAttrs(context.Background(), slog.LevelDebug, "Start computing HAProxy configuration diffs")
+	defer logger.LogAttrs(context.Background(), slog.LevelDebug, "Finished computing HAProxy configuration diffs")
 
 	// Clear the previous configuration diffs
 	// This is important to ensure that we only transfer the current configuration changes.
-	b.cfgDiffs = HaproxyCfgDiffs{
-		Created: NewHaproxyCfg(),
-		Updated: NewHaproxyCfg(),
-		Deleted: NewHaproxyCfg(),
-	}
+	b.configuration.resetDiffs()
 
-	// Build HAProxy configuration for the frontends
-	if err := b.processFrontends(); err != nil {
-		logger.LogAttrs(context.Background(), slog.LevelError,
-			"Failed to build frontends",
+	// Build HAProxy configuration for the Gateways
+	if err := b.processGateways(); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelError, "Failed to build Gateways",
 			logging.LogAttrError(err))
 	}
+	// Perform the needed cleanup after the first sync
+	// Remove frontends that were present at startup but not anymore in the cluster
+	b.cleanupAfterFirstSync()
 
 	return nil
 }
 
-func (b *HaproxyConfMgrImpl) GetCfsDiffs() HaproxyCfgDiffs {
-	return b.cfgDiffs
+func (b *HaproxyConfMgrImpl) GetDiffs() HaproxyCfgDiffs {
+	return b.configuration.diffs
+}
+
+func (b *HaproxyConfMgrImpl) cleanupAfterFirstSync() {
+	if !b.firstSync {
+		return
+	}
+
+	// Check all frontends that are in the configuration but not any more in the cluster
+	// If the initial sync period was too short, the impact is that we would send a Delete on the frontend
+	// to the application.
+	// But we would receive an Upsert on the next sync
+	// The state will be eventually consistent
+	for feName := range b.configuration.structured.Frontends {
+		_, toKeep := b.frontendsContainedInFirstSync[feName]
+		if !toKeep {
+			b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Frontend [DELETE STARTUP]",
+				logging.LogAttrFrontendName(feName),
+			)
+			if err := b.configuration.deleteFrontend(b.logger, feName); err != nil {
+				slog.LogAttrs(context.Background(), slog.LevelError, "Failed to delete frontend [startup]",
+					logging.LogAttrFrontendName(feName))
+				// continue to delete the rest of the frontends
+			}
+		}
+	}
+
+	b.frontendsContainedInFirstSync = make(map[string]struct{})
+	b.firstSync = false
 }

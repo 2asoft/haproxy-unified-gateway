@@ -27,7 +27,7 @@ type Status string
 const (
 	StatusUpserted  Status = "UPSERTED"
 	StatusDeleted   Status = "DELETED"
-	StatueUnchanged Status = ""
+	StatusUnchanged Status = ""
 )
 
 type Update[T client.Object] struct {

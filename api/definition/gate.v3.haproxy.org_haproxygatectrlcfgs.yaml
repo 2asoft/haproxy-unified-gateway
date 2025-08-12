@@ -54,6 +54,7 @@ spec:
                           - status
                           - haproxycfg
                           - app
+                          - batch
                           type: string
                         level:
                           enum:

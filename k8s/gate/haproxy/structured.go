@@ -14,30 +14,25 @@
 package haproxy
 
 import (
-	"fmt"
-
 	"github.com/haproxytech/client-native/v6/models"
 )
 
-type HaproxyCfgDiffs struct {
-	Created HaproxyCfg
-	Updated HaproxyCfg
-	Deleted HaproxyCfg
-}
-
-type HaproxyCfg struct {
-	Frontends map[string]*models.Frontend
-	Backends  map[string]*models.Backend
+type Structured struct {
+	Frontends           map[string]*models.Frontend
+	Backends            map[string]*models.Backend
+	DefaultsSectionName string // Name of the default section to use for create backends and frontends
 }
 
 const (
-	MetatDataKey = "k8s-unified-ctl"
+	UnifiedGatewayMetatDataKey string = "k8s-unified-ctl"
 )
 
-type MetaData map[string]any
+type (
+	MetaData map[string]any
+)
 
-func NewHaproxyCfg() HaproxyCfg {
-	return HaproxyCfg{
+func NewStructuredConf() Structured {
+	return Structured{
 		Frontends: make(map[string]*models.Frontend),
 		Backends:  make(map[string]*models.Backend),
 	}
@@ -52,20 +47,8 @@ type TemplateData struct {
 	// revive:enable:var-naming
 }
 
-func (c HaproxyCfgDiffs) IsEmpty() bool {
-	return c.Created.IsEmpty() && c.Updated.IsEmpty() && c.Deleted.IsEmpty()
-}
-
-func (c HaproxyCfg) IsEmpty() bool {
+func (c Structured) IsEmpty() bool {
 	return len(c.Frontends) == 0 && len(c.Backends) == 0
-}
-
-func (c HaproxyCfgDiffs) Stats() string {
-	return fmt.Sprintf("Created[FE:%d/BE:%d] Modified[FE:%d/BE:%d] Deleted[FE:%d/BE:%d]",
-		len(c.Created.Frontends), len(c.Created.Backends),
-		len(c.Updated.Frontends), len(c.Updated.Backends),
-		len(c.Deleted.Frontends), len(c.Deleted.Backends),
-	)
 }
 
 // Maps

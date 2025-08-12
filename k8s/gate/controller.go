@@ -17,7 +17,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -139,7 +138,7 @@ func Add(
 ) error {
 	// Check if the controller configuration is valid
 	if err := cfg.Check(); err != nil {
-		return errors.New("invalid controller configuration")
+		return fmt.Errorf("invalid controller configuration: %w", err)
 	}
 
 	eventCh := make(chan any)
@@ -183,16 +182,20 @@ func Add(
 	eventHandler := handler.NewEventHandlerImpl(
 		clusterStore,
 		gateTreeConfig,
-		haproxyCfgBuilderParams)
+		haproxyCfgBuilderParams,
+		cfg.InitialStructuredHaproxyConf,
+	)
 
 	loopCfg := handler.EventLoopConfig{
-		SyncPeriod: cfg.SyncPeriod,
+		SyncPeriod:        cfg.SyncPeriod,
+		StartupSyncPeriod: cfg.StartupSyncPeriod,
 	}
 	eventLoop := handler.NewEventLoop(
 		loopCfg,
 		eventCh,
-		*cfg.Logger,
+		cfg.Logger,
 		eventHandler,
+		extractGVK,
 	)
 
 	if err := mgr.Add(eventLoop); err != nil {
@@ -274,6 +277,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
+						k8spredicate.GenerationChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),

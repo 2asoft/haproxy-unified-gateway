@@ -23,9 +23,11 @@ import (
 
 	"github.com/go-logr/logr"
 
+	"github.com/haproxytech/client-native/v6/models"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	gate "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
@@ -148,6 +150,13 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		opt.MetricsConfig(metricsConfig),
 		opt.ControllerName(controllerName),
 		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logging.DefaultLogLevelPerCategory),
+		opt.InitialStructured(haproxy.Structured{
+			DefaultsSectionName: config.DefaultsSectionName,
+			Backends:            make(map[string]*models.Backend),
+			Frontends:           make(map[string]*models.Frontend),
+		}),
+		opt.Namespaces([]string{test.Namespace}),
+		opt.LinkID("linkid"),
 	}
 	gatecontrollercfg := config.Configuration{}
 

@@ -31,7 +31,7 @@ type HaproxyGateCtrlCfg struct {
 }
 
 type (
-	// +kubebuilder:validation:Enum=k8s;gate;status;haproxycfg;app
+	// +kubebuilder:validation:Enum=k8s;gate;status;haproxycfg;app;batch
 	Category string
 	// +kubebuilder:validation:Enum=Debug;Info;Warn;Error;None
 	// +kubebuilder:validation:Required

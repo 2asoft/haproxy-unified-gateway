@@ -11,22 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package logging
+package haproxy
 
-import v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+type Templates struct {
+	frontendNameTemplate string
+	backendNameTemplate  string
+	serverNameTemplate   string
+}
 
-var (
-	LogCategoryK8s           v3.Category = "k8s"
-	LogCategoryGate          v3.Category = "gate"
-	LogCategoryStatus        v3.Category = "status"
-	LogCategoryHaproxyCfgMgr v3.Category = "haproxycfg"
-	LogCategoryApp           v3.Category = "app"
-	LogCategoryBatch         v3.Category = "batch"
-)
-
-type LogHandlerType string
-
-const (
-	LogHandlerTypeJSON LogHandlerType = "json"
-	LogHandlerTypeText LogHandlerType = "text"
-)
+func NewTemplates(feTemplate, beTemplate, seTemplate string) Templates {
+	return Templates{
+		frontendNameTemplate: feTemplate,
+		backendNameTemplate:  beTemplate,
+		serverNameTemplate:   seTemplate,
+	}
+}

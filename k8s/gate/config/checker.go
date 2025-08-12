@@ -13,8 +13,21 @@
 // limitations under the License.
 package config
 
+import (
+	"errors"
+)
+
 // Checker is a function to check the configuration.
 // This can be a different for EE or CE
-func (*Configuration) Check() error {
+func (c *Configuration) Check() error {
+	if !c.InitialStructuredHaproxyConfOK {
+		return errors.New("initial structured configuration is not set")
+	}
+	if c.InitialStructuredHaproxyConf.DefaultsSectionName == "" {
+		return errors.New("defaults section name is not set")
+	}
+	if c.LinkID == "" {
+		return errors.New("link ID is not set")
+	}
 	return nil
 }

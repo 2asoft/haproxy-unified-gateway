@@ -58,10 +58,11 @@ type GateTreeConfig struct {
 // - Reconciling the Gateway API and Kubernetes built-in resources with the HAProxy configuration.
 // - building the GateTree
 type eventHandlerImpl struct {
-	haproxyConfBuilder  haproxy.HaproxyConfMgrImpl
-	config              GateTreeConfig
 	clusterStoreUpdater store.ClusterStoreUpdater
+	logger              *slog.Logger
+	config              GateTreeConfig
 	treeBuilder         GateTreeBuilder
+	haproxyConfBuilder  haproxy.HaproxyConfMgrImpl
 }
 
 // NewEventHandlerImpl creates a new eventHandlerImpl.
@@ -69,6 +70,7 @@ func NewEventHandlerImpl(
 	clusterStore *store.ClusterStore,
 	gateTreeConfig GateTreeConfig,
 	haproxyCfgBuilderConfig haproxy.HaproxyConfMgrParams,
+	initialStructuredConf haproxy.Structured,
 ) *eventHandlerImpl {
 	clusterStoreUpdater := store.NewClusterStoreUpdaterImpl(
 		clusterStore,
@@ -97,14 +99,14 @@ func NewEventHandlerImpl(
 		gateTreeConfig,
 	)
 
-	haproxyCfgStore := haproxy.NewHaproxyCfg()
-	haproxyConfBuilder := haproxy.NewHaproxyConfBuilder(gateTreeConfig.BaseLogger, controllerStore, haproxyCfgStore, haproxyCfgBuilderConfig)
+	haproxyConfBuilder := haproxy.NewHaproxyConfMgr(gateTreeConfig.BaseLogger, controllerStore, initialStructuredConf, haproxyCfgBuilderConfig)
 
 	handler := &eventHandlerImpl{
 		treeBuilder:         treeBuilder,
 		config:              gateTreeConfig,
 		clusterStoreUpdater: clusterStoreUpdater,
 		haproxyConfBuilder:  haproxyConfBuilder,
+		logger:              gateTreeConfig.BaseLogger.With(logging.LogAttrCategory(logging.LogCategoryBatch)),
 	}
 
 	return handler
@@ -113,14 +115,14 @@ func NewEventHandlerImpl(
 func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.EventBatch) {
 	start := time.Now()
 
-	h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelInfo,
+	h.logger.LogAttrs(context.Background(), slog.LevelInfo,
 		"Started processing event batch",
 		logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
 	)
 
 	defer func() {
 		duration := time.Since(start)
-		h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelInfo,
+		h.logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Finished processing event batch",
 			logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
 			logging.LogAttrDuration(duration),
@@ -135,14 +137,14 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	gatetree := h.treeBuilder.GetTree()
 
 	// HAProxy Configuration building
-	err := h.haproxyConfBuilder.UpdateHaproxyConf()
+	err := h.haproxyConfBuilder.ComputeDiffs()
 	if err != nil {
-		h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelError,
+		h.logger.LogAttrs(context.Background(), slog.LevelError,
 			"error building HAProxy configuration",
 			logging.LogAttrError(err),
 		)
 	}
-	haproxyConfDiffs := h.haproxyConfBuilder.GetCfsDiffs()
+	haproxyConfDiffs := h.haproxyConfBuilder.GetDiffs()
 	if !haproxyConfDiffs.IsEmpty() {
 		if h.config.TransferHaproxyConfChannel != nil {
 			h.config.TransferHaproxyConfChannel <- haproxyConfDiffs
@@ -193,16 +195,16 @@ func (h *eventHandlerImpl) processBatch(batch events.EventBatch) bool {
 	h.clusterStoreUpdater.ResetUpdates()
 
 	for _, e := range batch.Events {
-		h.updateClusterStore(e, h.config.BaseLogger)
+		h.updateClusterStore(e)
 	}
 	return true
 }
 
-func (h *eventHandlerImpl) updateClusterStore(event any, logger *slog.Logger) {
+func (h *eventHandlerImpl) updateClusterStore(event any) {
 	switch obj := event.(type) {
 	case *events.UpsertEvent:
 		gvk := h.config.ExtractGVK(obj.Resource)
-		logger.LogAttrs(context.Background(), slog.LevelDebug,
+		h.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Processing event in batch",
 			logging.LogAttrEventType("upsert"),
 			logging.LogAttrResource(obj.Resource, gvk),
@@ -213,7 +215,7 @@ func (h *eventHandlerImpl) updateClusterStore(event any, logger *slog.Logger) {
 	case *events.DeleteEvent:
 		gvk := h.config.ExtractGVK(obj.Type)
 
-		logger.LogAttrs(context.Background(), slog.LevelDebug,
+		h.logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Processing event in batch",
 			logging.LogAttrEventType("delete"),
 			logging.LogAttrResource(obj.Type, gvk),

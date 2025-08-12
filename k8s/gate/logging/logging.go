@@ -34,9 +34,12 @@ const (
 
 var (
 	DefaultLogLevelPerCategory = map[v3.Category]slog.Level{
-		LogCategoryK8s:    slog.LevelInfo,
-		LogCategoryGate:   slog.LevelInfo,
-		LogCategoryStatus: slog.LevelInfo,
+		LogCategoryK8s:           slog.LevelWarn,
+		LogCategoryGate:          slog.LevelInfo,
+		LogCategoryApp:           slog.LevelInfo,
+		LogCategoryHaproxyCfgMgr: slog.LevelInfo,
+		LogCategoryBatch:         slog.LevelInfo,
+		LogCategoryStatus:        slog.LevelInfo,
 	}
 	DefaultLevel = slog.LevelInfo
 

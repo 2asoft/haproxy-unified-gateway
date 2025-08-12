@@ -4,6 +4,12 @@ BackendNameTemplate:
     args:
         - name: template
           type: string
+CacheReSyncPeriod:
+    name: CacheReSyncPeriod
+    comment: ""
+    args:
+        - name: syncPeriod
+          type: time.Duration
 ControllerConfCRD:
     name: ControllerConfCRD
     comment: ""
@@ -54,6 +60,12 @@ IPV6BindAddr:
     args:
         - name: addr
           type: string
+InitialStructured:
+    name: InitialStructured
+    comment: ""
+    args:
+        - name: structured
+          type: haproxy.Structured
 KubeConfig:
     name: KubeConfig
     comment: ""
@@ -101,6 +113,12 @@ ServerNameTemplate:
     args:
         - name: template
           type: string
+StartupSyncPeriod:
+    name: StartupSyncPeriod
+    comment: ""
+    args:
+        - name: syncPeriod
+          type: time.Duration
 SyncPeriod:
     name: SyncPeriod
     comment: ""

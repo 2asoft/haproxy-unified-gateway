@@ -114,3 +114,15 @@ func NamespaceAsString(ns *gatewayv1.Namespace) string {
 func PtrInt64(value int64) *int64 {
 	return &value
 }
+
+func ObjectKeyFromNamespacedName(s string) (client.ObjectKey, error) {
+	parts := strings.Split(s, "/")
+	if len(parts) != 2 {
+		// Handle error: string is not in the correct format
+		return client.ObjectKey{}, fmt.Errorf("invalid format: expected namespace/name, got %q", s)
+	}
+	return client.ObjectKey{
+		Namespace: parts[0],
+		Name:      parts[1],
+	}, nil
+}

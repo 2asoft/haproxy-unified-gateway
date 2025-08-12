@@ -61,6 +61,9 @@ func createManager(cfg config.Configuration) (manager.Manager, error) {
 			NeedLeaderElection: utils.Ptr(false),
 		},
 	}
+	if cfg.CacheResyncPeriod != 0 {
+		options.Cache.SyncPeriod = &cfg.CacheResyncPeriod
+	}
 
 	var clusterCfg *rest.Config
 	var err error
