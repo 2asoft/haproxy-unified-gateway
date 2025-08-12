@@ -17,6 +17,7 @@ package base
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"testing"
 	"time"
@@ -141,6 +142,15 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	// (through the spec.controllerName)
 	controllerName := "gate.haproxy.org/unified-controller"
 
+	logLevels := map[v3.Category]slog.Level{
+		logging.LogCategoryK8s:           slog.LevelWarn,
+		logging.LogCategoryGate:          slog.LevelDebug,
+		logging.LogCategoryApp:           slog.LevelInfo,
+		logging.LogCategoryHaproxyCfgMgr: slog.LevelDebug,
+		logging.LogCategoryBatch:         slog.LevelInfo,
+		logging.LogCategoryStatus:        slog.LevelDebug,
+	}
+
 	syncPeriod := 1 * time.Second
 
 	opts := []func(c *config.Configuration) error{
@@ -149,7 +159,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		opt.SyncPeriod(syncPeriod),
 		opt.MetricsConfig(metricsConfig),
 		opt.ControllerName(controllerName),
-		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logging.DefaultLogLevelPerCategory),
+		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logLevels),
 		opt.InitialStructured(haproxy.Structured{
 			DefaultsSectionName: config.DefaultsSectionName,
 			Backends:            make(map[string]*models.Backend),

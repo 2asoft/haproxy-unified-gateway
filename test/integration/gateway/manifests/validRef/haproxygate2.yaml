@@ -1,0 +1,6 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: HaproxyGate
+metadata:
+  name: haproxygate2
+spec:
+  mworkerMaxReload: 8
