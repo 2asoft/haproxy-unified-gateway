@@ -89,7 +89,7 @@ func NewGatewayProgrammedInvalidParameters(msg string) Conditions {
 			Type:    ConditionType(v1.GatewayConditionProgrammed),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(v1.GatewayReasonInvalidParameters),
-			Message: fmt.Sprintf("invalid parametersRef: %s", msg),
+			Message: msg,
 		},
 	}
 }
