@@ -8,7 +8,11 @@ spec:
   - name: http
     port: 80
     protocol: HTTP
-    hostname: "*.haproxy.local"
+    allowedRoutes:
+      kinds:
+      - #group: gateway.networking.k8s.io
+        kind: TLSRoute
+    # hostname: "*.haproxy.local"hostname: "*.haproxy.local"
   # - name: admin
   #   port: 81
   #   protocol: HTTP

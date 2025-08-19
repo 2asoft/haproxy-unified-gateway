@@ -18,9 +18,8 @@ import (
 )
 
 type Structured struct {
-	Frontends           map[string]*models.Frontend
-	Backends            map[string]*models.Backend
-	DefaultsSectionName string // Name of the default section to use for create backends and frontends
+	Frontends map[string]*models.Frontend
+	Backends  map[string]*models.Backend
 }
 
 const (

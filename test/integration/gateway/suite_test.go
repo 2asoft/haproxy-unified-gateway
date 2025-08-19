@@ -18,6 +18,7 @@ import (
 	"context"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
 	"github.com/haproxytech/kubernetes-controller/test/integration/base"
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 
@@ -37,7 +38,10 @@ func (s *GatewaySuite) TearDownSuite() {
 	s.BaseSuite.TearDownSuite()
 }
 
-func (s *GatewaySuite) expectConditionsUpdated(ctx context.Context, namespace, name string, expectedConditions conditions.Conditions) {
+func (s *GatewaySuite) expectConditionsUpdated(ctx context.Context, namespace, name string,
+	expectedConditions conditions.Conditions,
+	expectedListenerStatuses []gatewayv1.ListenerStatus,
+) {
 	gw := &gatewayv1.Gateway{}
 	if !utils.WaitFor(ctx, interval, timeout, func() bool {
 		if err := s.Test().Client.Get(
@@ -48,9 +52,11 @@ func (s *GatewaySuite) expectConditionsUpdated(ctx context.Context, namespace, n
 
 		gotConditions := conditions.NewConditionsFromMetav1Conditions(gw.Status.Conditions)
 
-		res := gotConditions.Equal(expectedConditions)
+		if resGwConds := gotConditions.Equal(expectedConditions); !resGwConds {
+			return false
+		}
 
-		return res
+		return status.ListenerStatusesEqual(gw.Status.Listeners, expectedListenerStatuses)
 	}) {
 		s.T().Fatal("conditions not correct")
 	}

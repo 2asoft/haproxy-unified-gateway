@@ -42,9 +42,11 @@ import (
 type GateConfigOptions []func(c *Configuration) error
 
 type Configuration struct {
-	Logger                     *slog.Logger
-	LogHandler                 *logging.CategoryFilterHandler
-	TransferHaproxyConfChannel chan haproxy.HaproxyCfgDiffs
+	Logger     *slog.Logger
+	LogHandler *logging.CategoryFilterHandler
+	// TransferHaproxyConfChannel is used to send the HaproxyConfDiffs to the application
+	TransferHaproxyConfChannel chan haproxy.HaproxyConfDiffs
+
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	//  Namespace and name of the controller conf CRD:  HaproxyGateCtrlCfg
@@ -59,8 +61,6 @@ type Configuration struct {
 	ControllerName string
 	// LindID: an ID for the link to the cluster
 	LinkID string
-	// DefaultsSectionName is the name of the defaults section to use for create backends and frontends
-	DefaultsSectionName string
 	// HaproxyConfiguration contains the needed configuration to compute the FE/BE/...
 	HaproxyConfiguration
 	// LeaderElectionConfig contains the configuration for leader election.
@@ -103,6 +103,8 @@ type HaproxyConfiguration struct {
 	IPv4BindAddress string
 	// IPv6BindAddress is the IPv6 address to bind to.
 	IPv6BindAddress string
+	// DefaultsSectionName is the defaults name to use to create FE/BE/...
+	DefaultsSectionName string
 	// DisableIPv4 indicates whether IPv4 is disabled.
 	DisableIPv4 bool
 	// DisableIPv6 indicates whether IPv6 is disabled.

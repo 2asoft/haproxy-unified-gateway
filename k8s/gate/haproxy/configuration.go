@@ -25,11 +25,11 @@ import (
 type Configuration struct {
 	// structured contains the complete Structured configuration
 	structured Structured
-	diffs      HaproxyCfgDiffs
+	diffs      HaproxyConfDiffs
 }
 
 func (c *Configuration) resetDiffs() {
-	c.diffs = HaproxyCfgDiffs{
+	c.diffs = HaproxyConfDiffs{
 		Created: NewStructuredConf(),
 		Updated: NewStructuredConf(),
 		Deleted: NewStructuredConf(),

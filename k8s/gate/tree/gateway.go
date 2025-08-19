@@ -30,8 +30,6 @@ import (
 
 // Gateway represents the Gateway resource.
 type Gateway struct {
-	// TreeStatus
-	TreeStatus TreeUpdate[Gateway]
 	// K8sResource is the source resource.
 	K8sResource *gatewayv1.Gateway
 	// Conditions include Conditions for the Gateway.
@@ -40,9 +38,13 @@ type Gateway struct {
 	HaproxyGate *v3.HaproxyGate
 	// Final Conditions
 	Conditions conditions.Conditions
+	// TreeStatus
+	TreeStatus TreeUpdate[Gateway]
 	// ConditionType Accepted checks
 	CheckParamsRef         CheckResult
 	CheckValidGatewayClass CheckResult
+	// Listeners include the listeners of the Gateway.
+	Listeners []*Listener
 	// Valid shows whether the Gateway is valid.
 	Valid bool
 }
@@ -93,6 +95,10 @@ func (g *Gateway) resetChecks() {
 	g.CheckParamsRef = CheckResult{}
 	g.CheckValidGatewayClass = CheckResult{}
 	g.Valid = false
+	// Reset listener checks
+	for _, listener := range g.Listeners {
+		listener.CheckRouteGroupKind = CheckResult{}
+	}
 }
 
 func (g *Gateway) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
@@ -133,6 +139,12 @@ func (g *Gateway) DeepCopy() *Gateway {
 		Valid: g.Valid,
 		// Status not copied
 	}
+}
+
+func (g *Gateway) processChecks(controllerStore ControllerStore) {
+	g.checkParametersRef(controllerStore)
+	g.checkGatewayClassIsValid(controllerStore)
+	g.Valid = g.CheckParamsRef.Valid && g.CheckValidGatewayClass.Valid
 }
 
 func (g *Gateway) checkParametersRef(controllerStore ControllerStore) {
@@ -196,6 +208,12 @@ func (g *Gateway) checkGatewayClassIsValid(controllerStore ControllerStore) {
 		Valid:      false,
 		Conditions: conditions.NewGatewayAcceptedInvalidConditions(string(g.K8sResource.Spec.GatewayClassName)),
 	}
+}
+
+func (g *Gateway) checkGatewayClassExistsInControllerStore(controllerStore ControllerStore) bool {
+	gwcKey := types.NamespacedName{Name: string(g.K8sResource.Spec.GatewayClassName)}
+	_, ok := controllerStore.GateTree.GatewayClasses[gwcKey]
+	return ok
 }
 
 func getGatewayParamsRefKey(gw *gatewayv1.Gateway) (types.NamespacedName, bool) {

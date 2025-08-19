@@ -133,15 +133,13 @@ func setupGateConfig(ctrlConfig ctrlconfig.ControllerConfig) gateconfig.GateConf
 		logging.LogCategoryBatch:  slog.LevelInfo,
 	}
 
-	haproxyConfCh := make(chan haproxy.HaproxyCfgDiffs, 100)
+	haproxyConfCh := make(chan haproxy.HaproxyConfDiffs, 100)
 
 	// Read the haproy.cfg file at startup, and initializes the library with the initial haproxy configuration
 	initialStructured, err := startup.StructuredFromFile(ctrlConfig.HaproxyDirs.MainCfgFile, ctrlConfig.HaproxyDirs.CfgDir)
 	if err != nil {
 		panic(err)
 	}
-	// Defaults section name is mandatory for the initial configuration
-	initialStructured.DefaultsSectionName = gateconfig.DefaultsSectionName
 
 	opts := gateconfig.GateConfigOptions{
 		opt.KubeConfig(kubeconfig),
@@ -163,6 +161,7 @@ func setupGateConfig(ctrlConfig ctrlconfig.ControllerConfig) gateconfig.GateConf
 		opt.LinkID("link1"),
 		opt.InitialStructured(initialStructured),
 		opt.CacheReSyncPeriod(ctrlConfig.CacheResyncPeriod),
+		opt.DefaultsSectionName(gateconfig.DefaultsSectionName),
 	}
 	if ctrlConfig.DisableIPv4 {
 		opts = append(opts, opt.DisableIPv4())

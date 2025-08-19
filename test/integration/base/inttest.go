@@ -45,7 +45,7 @@ import (
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	gwv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func init() {
@@ -54,7 +54,7 @@ func init() {
 	utilruntime.Must(discoveryV1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(apiext.AddToScheme(scheme.Scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme.Scheme))
-	utilruntime.Must(gwv1.Install(scheme.Scheme))
+	utilruntime.Must(gatewayv1.Install(scheme.Scheme))
 }
 
 const (
@@ -161,10 +161,10 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		opt.ControllerName(controllerName),
 		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logLevels),
 		opt.InitialStructured(haproxy.Structured{
-			DefaultsSectionName: config.DefaultsSectionName,
-			Backends:            make(map[string]*models.Backend),
-			Frontends:           make(map[string]*models.Frontend),
+			Backends:  make(map[string]*models.Backend),
+			Frontends: make(map[string]*models.Frontend),
 		}),
+		opt.DefaultsSectionName(config.DefaultsSectionName),
 		opt.Namespaces([]string{test.Namespace}),
 		opt.LinkID("linkid"),
 	}

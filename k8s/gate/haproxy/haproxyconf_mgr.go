@@ -22,21 +22,23 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 )
 
-type HaproxyCfgMgr interface {
+type HaproxyConfMgr interface {
 	// ComputeDiffs computes the HAProxy configuration diffs.
 	ComputeDiffs() error
+	GetDiffs() HaproxyConfDiffs
 }
 
-var _ HaproxyCfgMgr = &HaproxyConfMgrImpl{}
+var _ HaproxyConfMgr = &HaproxyConfMgrImpl{}
 
 type HaproxyConfMgrParams struct {
 	extractGVK utils.ExtractGVK
 	Templates
-	iPV4BindAddr string
-	iPV6BindAddr string
-	linkID       string
-	disableIPv4  bool
-	disableIPv6  bool
+	iPV4BindAddr        string
+	iPV6BindAddr        string
+	linkID              string
+	defaultsSectionName string // Name of the default section to use for create backends and frontends
+	disableIPv4         bool
+	disableIPv6         bool
 }
 
 type HaproxyConfMgrImpl struct {
@@ -59,19 +61,21 @@ func NewHaproxyCfgMgrParams(extractGVK utils.ExtractGVK,
 	disableIPv4, disableIPv6 bool,
 	iPV4BindAddr, iPV6BindAddr string,
 	linkID string,
+	defaultsSectionName string,
 ) HaproxyConfMgrParams {
 	return HaproxyConfMgrParams{
-		extractGVK:   extractGVK,
-		Templates:    templates,
-		disableIPv4:  disableIPv4,
-		disableIPv6:  disableIPv6,
-		iPV4BindAddr: iPV4BindAddr,
-		iPV6BindAddr: iPV6BindAddr,
-		linkID:       linkID,
+		extractGVK:          extractGVK,
+		Templates:           templates,
+		disableIPv4:         disableIPv4,
+		disableIPv6:         disableIPv6,
+		iPV4BindAddr:        iPV4BindAddr,
+		iPV6BindAddr:        iPV6BindAddr,
+		linkID:              linkID,
+		defaultsSectionName: defaultsSectionName,
 	}
 }
 
-func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured Structured, builderConfig HaproxyConfMgrParams) HaproxyConfMgrImpl {
+func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured Structured, builderConfig HaproxyConfMgrParams) HaproxyConfMgr {
 	firstSync := true
 	impl := HaproxyConfMgrImpl{
 		controllerStore: controllerStore,
@@ -85,7 +89,7 @@ func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore
 		frontendsOwnedbyGateway:       NewFrontendsOwnedbyGateway(),
 	}
 
-	return impl
+	return &impl
 }
 
 func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
@@ -109,7 +113,7 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
 	return nil
 }
 
-func (b *HaproxyConfMgrImpl) GetDiffs() HaproxyCfgDiffs {
+func (b *HaproxyConfMgrImpl) GetDiffs() HaproxyConfDiffs {
 	return b.configuration.diffs
 }
 

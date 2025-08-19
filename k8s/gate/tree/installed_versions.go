@@ -25,15 +25,15 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type SupportedVersions []string
 
 var (
 	SupportedGatewayAPIBundleVersion = SupportedVersions{"v1.2", "v1.3"}
-	SupportedParametersRefKind       = v1.Kind("HaproxyGate")
-	SupportedParametersRefGroup      = v1.Group("gate.v3.haproxy.org")
+	SupportedParametersRefKind       = gatewayv1.Kind("HaproxyGate")
+	SupportedParametersRefGroup      = gatewayv1.Group("gate.v3.haproxy.org")
 )
 
 type InstalledVersions struct {

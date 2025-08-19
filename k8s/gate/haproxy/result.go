@@ -11,16 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package opt
+package haproxy
 
-import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
-)
-
-func HaproxyConfChannel(treeCh chan haproxy.HaproxyConfDiffs) func(o *config.Configuration) error {
-	return func(o *config.Configuration) error {
-		o.TransferHaproxyConfChannel = treeCh
-		return nil
-	}
+type HaproxyConfUpdateResult struct {
+	Error error
 }

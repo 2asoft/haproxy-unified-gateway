@@ -16,7 +16,7 @@ package predicate
 import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // GatewayClassPredicate implements a predicate function based on the controllerName of a GatewayClass.
@@ -32,7 +32,7 @@ func (gcp GatewayClassPredicate) Create(e event.CreateEvent) bool {
 		return false
 	}
 
-	gc, ok := e.Object.(*v1.GatewayClass)
+	gc, ok := e.Object.(*gatewayv1.GatewayClass)
 	if !ok {
 		return false
 	}
@@ -43,14 +43,14 @@ func (gcp GatewayClassPredicate) Create(e event.CreateEvent) bool {
 // Update implements default UpdateEvent filter for validating a GatewayClass controllerName.
 func (gcp GatewayClassPredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectOld != nil {
-		gcOld, ok := e.ObjectOld.(*v1.GatewayClass)
+		gcOld, ok := e.ObjectOld.(*gatewayv1.GatewayClass)
 		if ok && string(gcOld.Spec.ControllerName) == gcp.ControllerName {
 			return true
 		}
 	}
 
 	if e.ObjectNew != nil {
-		gcNew, ok := e.ObjectNew.(*v1.GatewayClass)
+		gcNew, ok := e.ObjectNew.(*gatewayv1.GatewayClass)
 		if ok && string(gcNew.Spec.ControllerName) == gcp.ControllerName {
 			return true
 		}
@@ -65,7 +65,7 @@ func (gcp GatewayClassPredicate) Delete(e event.DeleteEvent) bool {
 		return false
 	}
 
-	gc, ok := e.Object.(*v1.GatewayClass)
+	gc, ok := e.Object.(*gatewayv1.GatewayClass)
 	if !ok {
 		return false
 	}

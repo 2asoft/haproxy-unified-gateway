@@ -178,6 +178,7 @@ func Add(
 		cfg.DisableIPv4, cfg.DisableIPv6,
 		cfg.IPv4BindAddress, cfg.IPv6BindAddress,
 		cfg.LinkID,
+		cfg.DefaultsSectionName,
 	)
 	eventHandler := handler.NewEventHandlerImpl(
 		clusterStore,

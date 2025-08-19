@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/go-logr/logr v1.4.2
+	github.com/google/go-cmp v0.7.0
 	github.com/google/renameio v1.0.1
 	github.com/haproxytech/client-native/v6 v6.2.2
 	github.com/imdario/mergo v0.3.16
@@ -50,7 +51,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/haproxytech/go-logger v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect

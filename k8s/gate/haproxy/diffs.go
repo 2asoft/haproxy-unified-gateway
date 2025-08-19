@@ -15,17 +15,17 @@ package haproxy
 
 import "fmt"
 
-type HaproxyCfgDiffs struct {
+type HaproxyConfDiffs struct {
 	Created Structured
 	Updated Structured
 	Deleted Structured
 }
 
-func (c HaproxyCfgDiffs) IsEmpty() bool {
+func (c HaproxyConfDiffs) IsEmpty() bool {
 	return c.Created.IsEmpty() && c.Updated.IsEmpty() && c.Deleted.IsEmpty()
 }
 
-func (c HaproxyCfgDiffs) Stats() string {
+func (c HaproxyConfDiffs) Stats() string {
 	return fmt.Sprintf("Created[FE:%d/BE:%d] Updated[FE:%d/BE:%d] Deleted[FE:%d/BE:%d]",
 		len(c.Created.Frontends), len(c.Created.Backends),
 		len(c.Updated.Frontends), len(c.Updated.Backends),

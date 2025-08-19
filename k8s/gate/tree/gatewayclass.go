@@ -25,7 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // GatewayClass represents the GatewayClass resource.
@@ -33,7 +33,7 @@ type GatewayClass struct {
 	// TreeStatus
 	TreeStatus TreeUpdate[GatewayClass]
 	// K8sResource is the source resource.
-	K8sResource *v1.GatewayClass
+	K8sResource *gatewayv1.GatewayClass
 	// HaproxyGate is the linked HaproxyGate from ParamsRef
 	HaproxyGate *v3.HaproxyGate
 	// Conditions include Conditions for the GatewayClass.
@@ -48,7 +48,7 @@ type GatewayClass struct {
 
 var _ utils.ObjectWithTimestamp = &GatewayClass{}
 
-func NewGatewayClass(k8sObject *v1.GatewayClass) *GatewayClass {
+func NewGatewayClass(k8sObject *gatewayv1.GatewayClass) *GatewayClass {
 	return &GatewayClass{
 		K8sResource: k8sObject,
 		Valid:       false,
@@ -61,7 +61,7 @@ func NewGatewayClass(k8sObject *v1.GatewayClass) *GatewayClass {
 	}
 }
 
-func (g *GatewayClass) SetAsUpserted(logger *slog.Logger, newK8sResource *v1.GatewayClass) {
+func (g *GatewayClass) SetAsUpserted(logger *slog.Logger, newK8sResource *gatewayv1.GatewayClass) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass upserted",
 		logging.LogAttrObjectKey(newK8sResource))
 	g.TreeStatus.Status = store.StatusUpserted
@@ -137,7 +137,7 @@ func (g *GatewayClass) BuildConditions(controllerStore ControllerStore) {
 	}
 }
 
-func getGatewayClassParamsRefKey(gwc *v1.GatewayClass) (types.NamespacedName, bool) {
+func getGatewayClassParamsRefKey(gwc *gatewayv1.GatewayClass) (types.NamespacedName, bool) {
 	paramsRef := gwc.Spec.ParametersRef
 	if paramsRef == nil {
 		return types.NamespacedName{}, false

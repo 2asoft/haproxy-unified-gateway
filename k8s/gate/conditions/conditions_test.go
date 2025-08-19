@@ -17,20 +17,20 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func TestMergeOverrideConditions(t *testing.T) {
 	// Initial base conditions
 	a := Conditions{
-		ConditionType(v1.GatewayClassConditionStatusAccepted): Condition{
-			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
+		ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): Condition{
+			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  "resaon1",
 			Message: "msg1",
 		},
-		ConditionType(v1.GatewayClassConditionStatusSupportedVersion): Condition{
-			Type:    ConditionType(v1.GatewayClassConditionStatusSupportedVersion),
+		ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion): Condition{
+			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion),
 			Status:  metav1.ConditionTrue,
 			Reason:  "reason2",
 			Message: "msg2",
@@ -39,8 +39,8 @@ func TestMergeOverrideConditions(t *testing.T) {
 
 	// Incoming override conditions
 	b := Conditions{
-		ConditionType(v1.GatewayClassConditionStatusAccepted): Condition{
-			Type:    ConditionType(v1.GatewayClassConditionStatusAccepted),
+		ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): Condition{
+			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionTrue,
 			Reason:  "reason1-2",
 			Message: "msg1-2",
@@ -61,13 +61,13 @@ func TestMergeOverrideConditions(t *testing.T) {
 	}
 
 	// Check overridden
-	c := a[ConditionType(v1.GatewayClassConditionStatusAccepted)]
+	c := a[ConditionType(gatewayv1.GatewayClassConditionStatusAccepted)]
 	if c.Status != metav1.ConditionTrue || c.Reason != "reason1-2" || c.Message != "msg1-2" {
 		t.Errorf("override failed for 'Accepted': got %+v", c)
 	}
 
 	// Check unchanged
-	c = a[ConditionType(v1.GatewayClassConditionStatusSupportedVersion)]
+	c = a[ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion)]
 	if c.Status != metav1.ConditionTrue || c.Reason != "reason2" || c.Message != "msg2" {
 		t.Errorf("unexpected change for 'SupportedVersion': got %+v", c)
 	}

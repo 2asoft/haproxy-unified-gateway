@@ -48,7 +48,7 @@ type GateTreeConfig struct {
 	BaseLogger                 *slog.Logger
 	LogCategoryFilterHandler   *logging.CategoryFilterHandler
 	ExtractGVK                 utils.ExtractGVK
-	TransferHaproxyConfChannel chan haproxy.HaproxyCfgDiffs
+	TransferHaproxyConfChannel chan haproxy.HaproxyConfDiffs
 	//  Namespace and name of the controller conf CRD
 	ControllerConfNsName types.NamespacedName
 }
@@ -59,10 +59,10 @@ type GateTreeConfig struct {
 // - building the GateTree
 type eventHandlerImpl struct {
 	clusterStoreUpdater store.ClusterStoreUpdater
+	haproxyConfBuilder  haproxy.HaproxyConfMgr
 	logger              *slog.Logger
 	config              GateTreeConfig
 	treeBuilder         GateTreeBuilder
-	haproxyConfBuilder  haproxy.HaproxyConfMgrImpl
 }
 
 // NewEventHandlerImpl creates a new eventHandlerImpl.
@@ -71,7 +71,7 @@ func NewEventHandlerImpl(
 	gateTreeConfig GateTreeConfig,
 	haproxyCfgBuilderConfig haproxy.HaproxyConfMgrParams,
 	initialStructuredConf haproxy.Structured,
-) *eventHandlerImpl {
+) EventHandler {
 	clusterStoreUpdater := store.NewClusterStoreUpdaterImpl(
 		clusterStore,
 		gateTreeConfig.ExtractGVK,
@@ -174,7 +174,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	// 	fmt.Sprintf("JUST AN EXAMPLE to show cache indexes usage. eps for http-echo svc %v", endpointSliceList))
 	// END EXAMPLE
 
-	statusUpdater := status.NewStatusUpdaterImpl(
+	statusUpdater := status.NewStatusUpdater(
 		status.NewStatusUpdaterConf(
 			h.treeBuilder.cfg.K8sClient,
 			h.config.ExtractGVK,

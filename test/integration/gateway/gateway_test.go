@@ -50,9 +50,11 @@ func (s *GatewayTestSuite) Test_Gateway_InvalidRef() {
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses.yaml")
+	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
 
 	gwName := "gateway"
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions)
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 }
 
 func (s *GatewayTestSuite) Test_Gateway_validRef() {
@@ -67,7 +69,9 @@ func (s *GatewayTestSuite) Test_Gateway_validRef() {
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses.yaml")
+	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
 
 	gwName := "gateway"
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions)
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 }

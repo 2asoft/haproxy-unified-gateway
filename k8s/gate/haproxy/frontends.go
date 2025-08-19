@@ -215,7 +215,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 	fe := &models.Frontend{
 		FrontendBase: models.FrontendBase{
 			Name:     feName,
-			From:     b.configuration.structured.DefaultsSectionName,
+			From:     b.params.defaultsSectionName,
 			Metadata: md,
 			Mode: func() string {
 				if listener.Protocol == gatewayv1.HTTPProtocolType || listener.Protocol == gatewayv1.HTTPSProtocolType {

@@ -18,18 +18,18 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-var _ ConditionAccessor[*v1.Gateway] = &GatewayConditionImpl{}
+var _ ConditionAccessor[*gatewayv1.Gateway] = &GatewayConditionImpl{}
 
 type GatewayConditionImpl struct{}
 
-func (*GatewayConditionImpl) GetConditions(obj *v1.Gateway) Conditions {
+func (*GatewayConditionImpl) GetConditions(obj *gatewayv1.Gateway) Conditions {
 	return NewConditionsFromMetav1Conditions(obj.Status.Conditions)
 }
 
-func (*GatewayConditionImpl) SetConditions(obj *v1.Gateway, conds Conditions) {
+func (*GatewayConditionImpl) SetConditions(obj *gatewayv1.Gateway, conds Conditions) {
 	obj.Status.Conditions = conds.ToMetav1Conditions()
 }
 
@@ -38,10 +38,10 @@ func (*GatewayConditionImpl) SetConditions(obj *v1.Gateway, conds Conditions) {
 
 func NewGatewayAcceptedOK() Conditions {
 	return Conditions{
-		ConditionType(v1.GatewayConditionAccepted): {
-			Type:    ConditionType(v1.GatewayConditionAccepted),
+		ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
 			Status:  metav1.ConditionTrue,
-			Reason:  string(v1.GatewayReasonAccepted),
+			Reason:  string(gatewayv1.GatewayReasonAccepted),
 			Message: "Gateway is accepted",
 		},
 	}
@@ -49,10 +49,10 @@ func NewGatewayAcceptedOK() Conditions {
 
 func NewGatewayAcceptedInvalidConditions(msg string) Conditions {
 	return Conditions{
-		ConditionType(v1.GatewayConditionAccepted): {
-			Type:    ConditionType(v1.GatewayConditionAccepted),
+		ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
 			Status:  metav1.ConditionFalse,
-			Reason:  string(v1.GatewayReasonInvalid),
+			Reason:  string(gatewayv1.GatewayReasonInvalid),
 			Message: fmt.Sprintf("GatewayClass '%s' is not accepted", msg),
 		},
 	}
@@ -60,10 +60,10 @@ func NewGatewayAcceptedInvalidConditions(msg string) Conditions {
 
 func NewGatewayAcceptedInvalidParameters(err *field.Error) Conditions {
 	return Conditions{
-		ConditionType(v1.GatewayConditionAccepted): {
-			Type:    ConditionType(v1.GatewayReasonInvalidParameters),
+		ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    ConditionType(gatewayv1.GatewayReasonInvalidParameters),
 			Status:  metav1.ConditionFalse,
-			Reason:  string(v1.GatewayReasonInvalidParameters),
+			Reason:  string(gatewayv1.GatewayReasonInvalidParameters),
 			Message: fmt.Sprintf("invalid parametersRef: %s", err),
 		},
 	}
@@ -74,10 +74,10 @@ func NewGatewayAcceptedInvalidParameters(err *field.Error) Conditions {
 
 func NewGatewayProgrammedOK() Conditions {
 	return Conditions{
-		ConditionType(v1.GatewayConditionProgrammed): {
-			Type:    ConditionType(v1.GatewayConditionProgrammed),
+		ConditionType(gatewayv1.GatewayConditionProgrammed): {
+			Type:    ConditionType(gatewayv1.GatewayConditionProgrammed),
 			Status:  metav1.ConditionTrue,
-			Reason:  string(v1.GatewayConditionProgrammed),
+			Reason:  string(gatewayv1.GatewayConditionProgrammed),
 			Message: "Gateway is programmed",
 		},
 	}
@@ -85,10 +85,10 @@ func NewGatewayProgrammedOK() Conditions {
 
 func NewGatewayProgrammedInvalidParameters(msg string) Conditions {
 	return Conditions{
-		ConditionType(v1.GatewayConditionProgrammed): {
-			Type:    ConditionType(v1.GatewayConditionProgrammed),
+		ConditionType(gatewayv1.GatewayConditionProgrammed): {
+			Type:    ConditionType(gatewayv1.GatewayConditionProgrammed),
 			Status:  metav1.ConditionFalse,
-			Reason:  string(v1.GatewayReasonInvalidParameters),
+			Reason:  string(gatewayv1.GatewayReasonInvalidParameters),
 			Message: msg,
 		},
 	}

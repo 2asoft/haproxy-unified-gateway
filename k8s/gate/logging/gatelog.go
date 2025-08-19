@@ -19,9 +19,11 @@ import (
 	"time"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 const (
@@ -118,4 +120,8 @@ func LogAttrBackendendName(name string) slog.Attr {
 
 func LogAttrServerName(name string) slog.Attr {
 	return slog.String("serverName", name)
+}
+
+func LogAttrRouteGroupKinds(routesGK []gatewayv1.RouteGroupKind) slog.Attr {
+	return slog.String("routeGroupKinds", utils.RouteGroupKindsToString(routesGK))
 }

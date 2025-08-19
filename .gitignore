@@ -6,3 +6,4 @@ build/kubernetes-controller
 cmd/controller/controller
 .test/*
 .envrc
+__debug_bin*

@@ -24,6 +24,7 @@ Available options:
 | CacheReSyncPeriod | `syncPeriod`(time.Duration) |
 | ControllerConfCRD | `controllerConf`(types.NamespacedName) |
 | ControllerName | `controllerName`(string) |
+| DefaultsSectionName | `name`(string) |
 | DisableIPv4 |  |
 | DisableIPv6 |  |
 | FrontendNameTemplate | `template`(string) |
@@ -92,6 +93,19 @@ import (
 )
 
 controller, err := controller.New(opt.ControllerName(controllerName))
+```
+
+### DefaultsSectionName
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.DefaultsSectionName(name))
 ```
 
 ### DisableIPv4

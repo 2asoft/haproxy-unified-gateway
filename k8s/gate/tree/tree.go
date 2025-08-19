@@ -50,7 +50,11 @@ type ReferencedObjects struct {
 
 type CheckResult struct {
 	Conditions conditions.Conditions
-	Valid      bool
+	// If Valid = true, then Conditions should be empty
+	// If Valid = false:
+	// - Conditions are set if there is an invalid check
+	// - Conditions is empty if the check does not make sense (for example no listener status for an invalid Gateway)
+	Valid bool
 }
 
 func NewGateTree() *GateTree {

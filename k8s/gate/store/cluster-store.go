@@ -63,7 +63,7 @@ func NewClusterStoreUpdaterImpl(
 	clusterStore *ClusterStore,
 	extractGVK utils.ExtractGVK,
 	logger *slog.Logger,
-) *ClusterStoreUpdaterImpl {
+) ClusterStoreUpdater {
 	return &ClusterStoreUpdaterImpl{
 		clusterStore: clusterStore,
 		storeAdapter: &storeAdapter{

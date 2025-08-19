@@ -43,11 +43,11 @@ type StatusUpdaterImpl struct {
 	Gateways       map[types.NamespacedName]*tree.Gateway
 }
 
-func NewStatusUpdaterImpl(
+func NewStatusUpdater(
 	cfg StatusUpdaterConf,
 	gatewayClasses map[types.NamespacedName]*tree.GatewayClass,
 	gateways map[types.NamespacedName]*tree.Gateway,
-) *StatusUpdaterImpl {
+) StatusUpdater {
 	return &StatusUpdaterImpl{
 		config:         cfg,
 		GatewayClasses: gatewayClasses,
@@ -121,21 +121,22 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 }
 
 type StatusUpdateParams[T client.Object] struct {
-	Object            T
-	DesiredConditions conditions.Conditions
-	Getter            client.Client
-	StatusUpdater     client.SubResourceWriter
-	Logger            *slog.Logger
-	ConditionHandler  conditions.ConditionAccessor[T]
-	extractGVK        utils.ExtractGVK
+	Object           T
+	StatusEqualer    StatusPatcher
+	Getter           client.Client
+	StatusUpdater    client.SubResourceWriter
+	ConditionHandler conditions.ConditionAccessor[T]
+	Logger           *slog.Logger
+	extractGVK       utils.ExtractGVK
+	NsName           types.NamespacedName
 }
 
 func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx context.Context) (bool, error) {
 	return func(ctx context.Context) (bool, error) {
-		objAttr := logging.LogAttrResource(param.Object, param.extractGVK(param.Object))
+		objAttr := logging.LogAttrKeyGVK(param.NsName, param.extractGVK(param.Object))
 
 		// Create a fresh empty object of type T
-		obj, ok := param.Object.DeepCopyObject().(T)
+		clusterObj, ok := param.Object.DeepCopyObject().(T)
 		if !ok {
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when copying object",
@@ -143,9 +144,9 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			return false, nil
 		}
 		err := param.Getter.Get(ctx, types.NamespacedName{
-			Namespace: param.Object.GetNamespace(),
-			Name:      param.Object.GetName(),
-		}, obj)
+			Namespace: param.NsName.Namespace,
+			Name:      param.NsName.Name,
+		}, clusterObj)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return true, nil
@@ -156,20 +157,31 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			return false, nil
 		}
 
-		currentConditions := param.ConditionHandler.GetConditions(obj)
-		if currentConditions.Equal(param.DesiredConditions) {
+		statusAlreadyUpToDate, err := param.StatusEqualer.StatusEqual(clusterObj)
+		if err != nil {
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when checking status equality",
+				objAttr)
+			return false, nil
+		}
+
+		if statusAlreadyUpToDate {
 			param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 				"Status already up to date",
 				objAttr)
 			return true, nil
 		}
 
-		param.ConditionHandler.SetConditions(obj, param.DesiredConditions)
-
-		if err := param.StatusUpdater.Update(ctx, obj); err != nil {
+		// Status update
+		if err := param.StatusEqualer.SetStatus(clusterObj); err != nil {
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when setting status",
+				objAttr)
+			return false, nil
+		}
+		if err := param.StatusUpdater.Update(ctx, clusterObj); err != nil {
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when updating status",
-				// logging.LogAttrCategory(logging.LogCategoryStatus),
 				objAttr,
 				logging.LogAttrError(err))
 			return false, nil
@@ -177,7 +189,6 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 
 		param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
 			"Successfully updated status",
-			//	logging.LogAttrCategory(logging.LogCategoryStatus),
 			objAttr,
 		)
 		return true, nil

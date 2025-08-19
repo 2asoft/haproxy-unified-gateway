@@ -21,20 +21,24 @@ import (
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func (s *StatusUpdaterImpl) writeGatewayClassStatus(ctx context.Context, gwc *tree.GatewayClass) {
-	updateOptions := StatusUpdateParams[*v1.GatewayClass]{
-		Object:            gwc.K8sResource,
-		DesiredConditions: gwc.Conditions,
-		Getter:            s.config.client,
-		StatusUpdater:     s.config.client.Status(),
-		Logger:            s.config.logger,
-		ConditionHandler:  &conditions.GatewayClassConditionImpl{},
-		extractGVK:        s.config.extractGVK,
+	updateOptions := StatusUpdateParams[*gatewayv1.GatewayClass]{
+		Object:           objtypes.ObjectTypeGatewayClass,
+		NsName:           types.NamespacedName{Name: gwc.K8sResource.Name, Namespace: gwc.K8sResource.Namespace},
+		StatusEqualer:    newGatewayClassStatusPatcher(gwc),
+		Getter:           s.config.client,
+		StatusUpdater:    s.config.client.Status(),
+		Logger:           s.config.logger,
+		ConditionHandler: &conditions.GatewayClassConditionImpl{},
+		extractGVK:       s.config.extractGVK,
 	}
 
 	err := wait.ExponentialBackoffWithContext(

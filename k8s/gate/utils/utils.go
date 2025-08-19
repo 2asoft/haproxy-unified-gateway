@@ -126,3 +126,11 @@ func ObjectKeyFromNamespacedName(s string) (client.ObjectKey, error) {
 		Name:      parts[1],
 	}, nil
 }
+
+func RouteGroupKindsToString(routesGK []gatewayv1.RouteGroupKind) string {
+	kinds := make([]string, 0, len(routesGK))
+	for _, kind := range routesGK {
+		kinds = append(kinds, string(kind.Kind))
+	}
+	return fmt.Sprintf("[%s]", strings.Join(kinds, ", "))
+}

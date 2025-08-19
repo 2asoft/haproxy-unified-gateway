@@ -22,6 +22,12 @@ ControllerName:
     args:
         - name: controllerName
           type: string
+DefaultsSectionName:
+    name: DefaultsSectionName
+    comment: ""
+    args:
+        - name: name
+          type: string
 DisableIPv4:
     name: DisableIPv4
     comment: ""

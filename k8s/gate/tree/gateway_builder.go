@@ -15,6 +15,7 @@ package tree
 
 import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -113,18 +114,31 @@ func (b *GatewayBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, gw
 		} else {
 			treeGw = NewGateway(gwUpdate.NewObject)
 		}
+		// If the GatewayClass is not in the store, it means that the GatewayClass is not managed by our controller
+		if ok := treeGw.checkGatewayClassExistsInControllerStore(b.ControllerStore); !ok {
+			return
+		}
+
 		// Do we keep it in Managed or Unmanaged???
-		treeGw.checkParametersRef(b.ControllerStore)
-		treeGw.checkGatewayClassIsValid(b.ControllerStore)
-		treeGw.Valid = treeGw.CheckParamsRef.Valid && treeGw.CheckValidGatewayClass.Valid
-		// Compute status only if managed Gateway
-		// If not managed, then we should not update the status
-		treeGw.BuildConditions()
+		treeGw.processChecks(b.ControllerStore)
+
 		if treeGw.isManaged() {
 			treeGw.SetAsManaged(b.Logger, b.ControllerStore)
 		} else {
 			treeGw.SetAsUnmanaged(b.Logger, b.ControllerStore)
 		}
+
+		// Process Listeners
+		b.buildListeners(treeGw)
+
+		// Compute status only if managed Gateway
+		// If not managed, then we should not update the status
+		treeGw.BuildConditions()
+		// Build Listener conditions
+		for _, listener := range treeGw.Listeners {
+			listener.BuildConditions(treeGw)
+		}
+
 	case store.StatusDeleted:
 		if treeGw != nil {
 			treeGw.SetAsDeleted(b.Logger)
@@ -150,5 +164,32 @@ func (b *GatewayBuilderImpl) CleanTreeUpdates() {
 			continue
 		}
 		treeGw.TreeStatus = TreeUpdate[Gateway]{}
+	}
+}
+
+func (*GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
+	processedListeners := make([]*Listener, 0, len(treeGw.K8sResource.Spec.Listeners))
+
+	for _, listener := range treeGw.K8sResource.Spec.Listeners {
+		kinds := supportedKinds(listener, gateSupportedRouteKindsByProtocol)
+		processedListener := Listener{
+			K8sResource:       listener,
+			AllowedRouteKinds: kinds,
+			Conditions:        make(conditions.Conditions),
+		}
+		processedListeners = append(processedListeners, &processedListener)
+	}
+	treeGw.Listeners = processedListeners
+
+	// Performs all needed checks
+	// Only Checks and update listener status if the Gateway is Valid
+	for _, listener := range treeGw.Listeners {
+		switch listener.K8sResource.Protocol {
+		// This switch will be completed with all needed checks per protocol
+		case gatewayv1.HTTPProtocolType:
+			listener.checkRouteGroupKind(treeGw, gateSupportedRouteKindsByProtocol)
+		default:
+			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
+		}
 	}
 }

@@ -15,6 +15,7 @@ package objtypes
 
 import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	apiv1 "k8s.io/api/core/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -26,4 +27,20 @@ var (
 	ObjectTypeService      = &apiv1.Service{}
 	ObjectTypeSecret       = &apiv1.Secret{}
 	ObjectTypeHaproxyGate  = &v3.HaproxyGate{}
+)
+
+var (
+	KindHTTPRoute = "HTTPRoute"
+	KindTLSRoute  = "TLSRoute"
+	KindGRPCRoute = "GRPCRoute"
+	KindTCPRoute  = "TCPRoute"
+	KindUDPRoute  = "UDPRoute"
+)
+
+var (
+	RouteKindHTTP = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindHTTPRoute)}
+	RouteKindTLS  = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindTLSRoute)}
+	RouteKindGRPC = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindGRPCRoute)}
+	RouteKindTCP  = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindTCPRoute)}
+	RouteKindUDP  = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindUDPRoute)}
 )

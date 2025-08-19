@@ -13,14 +13,11 @@
 // limitations under the License.
 package opt
 
-import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
-)
+import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
-func HaproxyConfChannel(treeCh chan haproxy.HaproxyConfDiffs) func(o *config.Configuration) error {
+func DefaultsSectionName(name string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.TransferHaproxyConfChannel = treeCh
+		o.DefaultsSectionName = name
 		return nil
 	}
 }
