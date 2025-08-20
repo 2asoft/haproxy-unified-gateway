@@ -22,6 +22,7 @@ var (
 	LogCategoryHaproxyCfgMgr v3.Category = "haproxycfg"
 	LogCategoryApp           v3.Category = "app"
 	LogCategoryBatch         v3.Category = "batch"
+	LogCategoryReloadMgr     v3.Category = "reloadmgr"
 )
 
 type LogHandlerType string

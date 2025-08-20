@@ -55,6 +55,7 @@ spec:
                           - haproxycfg
                           - app
                           - batch
+                          - reloadmgr
                           type: string
                         level:
                           enum:

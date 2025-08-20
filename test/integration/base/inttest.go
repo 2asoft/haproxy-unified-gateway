@@ -149,6 +149,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		logging.LogCategoryHaproxyCfgMgr: slog.LevelDebug,
 		logging.LogCategoryBatch:         slog.LevelInfo,
 		logging.LogCategoryStatus:        slog.LevelDebug,
+		logging.LogCategoryReloadMgr:     slog.LevelInfo,
 	}
 
 	syncPeriod := 1 * time.Second

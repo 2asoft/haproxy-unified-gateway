@@ -125,3 +125,10 @@ func LogAttrServerName(name string) slog.Attr {
 func LogAttrRouteGroupKinds(routesGK []gatewayv1.RouteGroupKind) slog.Attr {
 	return slog.String("routeGroupKinds", utils.RouteGroupKindsToString(routesGK))
 }
+
+func LogAttrReloadMgrAction(state bool, reason string, args ...any) slog.Attr {
+	return slog.Group("reload",
+		slog.Bool("state", state),
+		slog.String("reason", fmt.Sprintf(reason, args...)),
+	)
+}
