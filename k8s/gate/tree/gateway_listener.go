@@ -36,6 +36,8 @@ type Listener struct {
 	CheckProtocol       CheckResult
 	// AllowedRouteKinds is the list of allowed route kinds for this listener.
 	AllowedRouteKinds []gatewayv1.RouteGroupKind
+	// Valid
+	Valid bool
 }
 
 type RouteGroupKind struct {
@@ -213,5 +215,6 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 		l.Conditions.MergeOverrideConditions(conditions.NewListenerProgrammedPending())
 	}
 
+	l.Valid = shouldProgramm
 	l.Conditions.SetGeneration(treeGw.K8sResource.GetGeneration())
 }

@@ -155,7 +155,11 @@ func (b *HaproxyConfMgrImpl) onUnmanagedGateway(gwKey k8stypes.NamespacedName, g
 }
 
 func (b *HaproxyConfMgrImpl) upsertFrontends(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	for _, listener := range gw.K8sResource.Spec.Listeners {
+	for _, listener := range gw.Listeners {
+		if !listener.Valid {
+			return b.deleteFrontendForListener(gwKey, listener.K8sResource)
+		}
+
 		newFe, err := b.newFrontend(gwKey, gw, listener)
 		if err != nil {
 			return err
@@ -200,7 +204,9 @@ func (b *HaproxyConfMgrImpl) finalizeFrontendsByGateway() {
 	}
 }
 
-func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *tree.Gateway, listener gatewayv1.Listener) (*models.Frontend, error) {
+func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *tree.Gateway, treeListener *tree.Listener) (*models.Frontend, error) {
+	listener := treeListener.K8sResource
+
 	// Create a frontend for each listener
 	feName, err := b.getFrontendName(gwKey, listener)
 	if err != nil {
@@ -273,23 +279,30 @@ func (b *HaproxyConfMgrImpl) deleteFrontendForAllListeners(gwKey k8stypes.Namesp
 	}
 
 	for _, listener := range k8sGateway.Spec.Listeners {
-		// Frontend for each listener
-		feName, err := b.getFrontendName(gwKey, listener)
-		if err != nil {
-			b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-				slog.String("frontendNameTemplate", b.params.frontendNameTemplate),
-				logging.LogAttrKey(gwKey))
+		if err := b.deleteFrontendForListener(gwKey, listener); err != nil {
 			continue
 		}
-		if err := b.deleteFrontend(gwKey, feName); err != nil {
-			b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to delete frontend",
-				logging.LogAttrFrontendName(feName),
-				logging.LogAttrError(err))
-			continue
-		}
-		if b.firstSync {
-			delete(b.frontendsContainedInFirstSync, feName)
-		}
+	}
+	return nil
+}
+
+func (b *HaproxyConfMgrImpl) deleteFrontendForListener(gwKey k8stypes.NamespacedName, listener gatewayv1.Listener) error {
+	// Frontend for each listener
+	feName, err := b.getFrontendName(gwKey, listener)
+	if err != nil {
+		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
+			slog.String("frontendNameTemplate", b.params.frontendNameTemplate),
+			logging.LogAttrKey(gwKey))
+		return err
+	}
+	if err := b.deleteFrontend(gwKey, feName); err != nil {
+		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to delete frontend",
+			logging.LogAttrFrontendName(feName),
+			logging.LogAttrError(err))
+		return err
+	}
+	if b.firstSync {
+		delete(b.frontendsContainedInFirstSync, feName)
 	}
 	return nil
 }
