@@ -14,5 +14,6 @@
 package haproxy
 
 type HaproxyConfUpdateResult struct {
-	Error error
+	Error                   error          // nil if successful
+	UpdatedSectionsMetaData map[string]any // map[section name]metadata
 }
