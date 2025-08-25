@@ -6,12 +6,12 @@ spec:
   gatewayClassName: haproxy
   listeners:
   - name: http
-    port: 80
+    port: 8080
     protocol: HTTP
     hostname: "*.haproxy.local"
   - name: https
     protocol: HTTPS
-    port: 443
+    port: 8443
     # tls:
     #   certificateRefs:
     #   - kind: Secret
