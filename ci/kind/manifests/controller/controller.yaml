@@ -64,7 +64,18 @@ metadata:
 spec:
   selector:
     run: haproxy-controller
+  type: NodePort
   ports:
     - name: stat
       port: 1024
       targetPort: 1024
+    - name: http
+      port: 80
+      targetPort: 8080
+      nodePort: 31080
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 8443
+      nodePort: 31443
+      protocol: TCP
