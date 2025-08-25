@@ -29,7 +29,7 @@ RUN mkdir -p /var/run/vars && \
         -tags="$BUILD_TAGS" \
         -o fs/kubernetes-controller ./cmd/controller
 
-FROM haproxytech/haproxy-alpine:3.2
+FROM haproxytech/haproxy-alpine:3.1
 
 ARG TARGETPLATFORM
 
