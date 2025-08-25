@@ -22,10 +22,12 @@ import (
 
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 	"github.com/stretchr/testify/suite"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	timeout  = time.Second * 15
+	timeout  = time.Second * 30
 	interval = time.Second * 1
 )
 
@@ -74,4 +76,91 @@ func (s *GatewayTestSuite) Test_Gateway_validRef() {
 
 	gwName := "gateway"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+}
+
+func (s *GatewayTestSuite) Test_Gateway_TLS_missingSecret() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "tls/missingSecret"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses.yaml")
+	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
+
+	gwName := "gateway"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+}
+
+func (s *GatewayTestSuite) Test_Gateway_TLS_okSecret() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "tls/okSecret"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses.yaml")
+	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
+
+	gwName := "gateway"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+}
+
+func (s *GatewayTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "tls/dynamicSecret"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath)
+	defer s.CleanupFixtures(fixturePath)
+
+	// Expected Conditions
+	// 1 - Secret is present OK
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses_ok_1.yaml")
+	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
+
+	gwName := "gateway"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// 2 - Delete the secret
+	secret := s.deleteSecret("offload")
+	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses_ko_2.yaml")
+	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// // 3 - Re-create the secret
+	s.createSecret(secret)
+	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses_ok_3.yaml")
+	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+}
+
+func (s *GatewayTestSuite) deleteSecret(name string) *v1.Secret {
+	var secret v1.Secret
+	err := s.Test().Client.Get(s.Test().Ctx, client.ObjectKey{Name: name, Namespace: s.Test().Namespace}, &secret)
+	s.Require().NoError(err)
+
+	err = s.Test().Client.Delete(s.Test().Ctx, &secret)
+	s.Require().NoError(err)
+
+	return &secret
+}
+
+func (s *GatewayTestSuite) createSecret(secret *v1.Secret) {
+	secret.ResourceVersion = ""
+	err := s.Test().Client.Create(s.Test().Ctx, secret)
+	s.Require().NoError(err)
 }

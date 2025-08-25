@@ -45,6 +45,7 @@ import (
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -113,9 +114,15 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 	g.Expect(cfg).ToNot(gomega.BeNil())
+	// metricsConfig := config.MetricsConfig{
+	// 	Port:    6062,
+	// 	Enabled: false,
+	// 	Secure:  false,
+	// }
 
 	mgr, err := ctrlruntime.NewManager(cfg, ctrlruntime.Options{
-		Scheme: scheme.Scheme,
+		Scheme:  scheme.Scheme,
+		Metrics: metricsserver.Options{BindAddress: "0"},
 	})
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
@@ -133,11 +140,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 
 	// Values to get from flags
 	// to implement:  flags
-	metricsConfig := config.MetricsConfig{
-		Port:    6062,
-		Enabled: false,
-		Secure:  false,
-	}
+
 	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
 	// (through the spec.controllerName)
 	controllerName := "gate.haproxy.org/unified-controller"
@@ -145,7 +148,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	logLevels := map[v3.Category]slog.Level{
 		logging.LogCategoryK8s:           slog.LevelWarn,
 		logging.LogCategoryGate:          slog.LevelDebug,
-		logging.LogCategoryApp:           slog.LevelInfo,
+		logging.LogCategoryApp:           slog.LevelDebug,
 		logging.LogCategoryHaproxyCfgMgr: slog.LevelDebug,
 		logging.LogCategoryBatch:         slog.LevelInfo,
 		logging.LogCategoryStatus:        slog.LevelDebug,
@@ -158,7 +161,6 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		//	opt.KubeConfig(kubeconfig),
 		opt.ControllerConfCRD(controllerCfgNsName),
 		opt.SyncPeriod(syncPeriod),
-		opt.MetricsConfig(metricsConfig),
 		opt.ControllerName(controllerName),
 		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logLevels),
 		opt.InitialStructured(haproxy.Structured{

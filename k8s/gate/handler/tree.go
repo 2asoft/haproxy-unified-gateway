@@ -59,9 +59,9 @@ func NewGateTreeBuilder(
 		referenceManager: referenceManager,
 		ControllerStore:  controllerStore,
 		builder: []tree.Builder{
+			secretBuilder,
 			gatewayClassBuilder,
 			gatewayBuilder,
-			secretBuilder,
 		},
 	}
 

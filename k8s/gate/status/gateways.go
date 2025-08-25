@@ -33,7 +33,7 @@ func (s *StatusUpdaterImpl) writeGatewayStatus(ctx context.Context, gw *tree.Gat
 	updateOptions := StatusUpdateParams[*gatewayv1.Gateway]{
 		Object:           objtypes.ObjectTypeGateway,
 		NsName:           types.NamespacedName{Name: gw.K8sResource.Name, Namespace: gw.K8sResource.Namespace},
-		StatusEqualer:    newGatewayStatusPatcher(gw),
+		StatusPatcher:    newGatewayStatusPatcher(gw),
 		Getter:           s.config.client,
 		StatusUpdater:    s.config.client.Status(),
 		Logger:           s.config.logger,

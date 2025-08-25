@@ -122,7 +122,7 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 
 type StatusUpdateParams[T client.Object] struct {
 	Object           T
-	StatusEqualer    StatusPatcher
+	StatusPatcher    StatusPatcher
 	Getter           client.Client
 	StatusUpdater    client.SubResourceWriter
 	ConditionHandler conditions.ConditionAccessor[T]
@@ -157,7 +157,7 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			return false, nil
 		}
 
-		statusAlreadyUpToDate, err := param.StatusEqualer.StatusEqual(clusterObj)
+		statusAlreadyUpToDate, err := param.StatusPatcher.StatusEqual(clusterObj)
 		if err != nil {
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when checking status equality",
@@ -173,7 +173,7 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 		}
 
 		// Status update
-		if err := param.StatusEqualer.SetStatus(clusterObj); err != nil {
+		if err := param.StatusPatcher.SetStatus(clusterObj); err != nil {
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when setting status",
 				objAttr)
