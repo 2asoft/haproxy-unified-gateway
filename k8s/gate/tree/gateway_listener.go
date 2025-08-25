@@ -21,6 +21,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -34,6 +35,7 @@ type Listener struct {
 	// Checks results
 	CheckRouteGroupKind CheckResult
 	CheckProtocol       CheckResult
+	CheckSecret         CheckResult
 	// AllowedRouteKinds is the list of allowed route kinds for this listener.
 	AllowedRouteKinds []gatewayv1.RouteGroupKind
 	// Valid
@@ -187,9 +189,55 @@ func (l *Listener) checkProtocol(gateSupportedRouteKinds map[gatewayv1.ProtocolT
 	}
 }
 
+func (l *Listener) checkCertificateRefs(treeGw *Gateway, gateSecrets map[types.NamespacedName]*Secret) {
+	if !treeGw.Valid {
+		l.CheckSecret = CheckResult{}
+		return
+	}
+
+	listener := l.K8sResource
+	if listener.TLS == nil || len(listener.TLS.CertificateRefs) == 0 {
+		l.CheckSecret = CheckResult{
+			Valid: true,
+		}
+		return
+	}
+
+	// Check is the secret exists
+	// We only accept Secret as CertificateRefs
+	// We only accept v1.Secret
+	for _, certRef := range listener.TLS.CertificateRefs {
+		if !l.isSupportedCertKindGroup(certRef) {
+			msg := "Listener CertificateRefs must be of Group/Kind Secret"
+			l.CheckSecret = CheckResult{
+				Valid:      false,
+				Conditions: conditions.NewListenerResolvedRefInvalidCertificateRefs(msg),
+			}
+			break
+		}
+
+		nsName := getNamespacedName(certRef, treeGw.K8sResource)
+		_, ok := gateSecrets[nsName]
+		if !ok {
+			msg := fmt.Sprintf("Secret %s/%s does not exist", nsName.Namespace, nsName.Name)
+			l.CheckSecret = CheckResult{
+				Valid:      false,
+				Conditions: conditions.NewListenerResolvedRefInvalidCertificateRefs(msg),
+			}
+		}
+	}
+}
+
+func (*Listener) isSupportedCertKindGroup(certRef gatewayv1.SecretObjectReference) bool {
+	supportedKind := certRef.Kind == nil || *certRef.Kind == "Secret"
+	supportedGroup := certRef.Group == nil || *certRef.Group == ""
+	return supportedKind && supportedGroup
+}
+
 func (l *Listener) BuildConditions(treeGw *Gateway) {
 	l.Conditions.MergeOverrideConditions(l.CheckRouteGroupKind.Conditions)
 	l.Conditions.MergeOverrideConditions(l.CheckProtocol.Conditions)
+	l.Conditions.MergeOverrideConditions(l.CheckSecret.Conditions)
 
 	// Should we process with Haproxy programmation
 	shouldProgramm := true

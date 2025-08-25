@@ -15,6 +15,7 @@ package tree
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
@@ -168,16 +169,20 @@ func (g *GatewayClass) buildConditionsIgnored(_ *slog.Logger) {
 }
 
 func (g *GatewayClass) DeepCopy() *GatewayClass {
-	return &GatewayClass{
-		K8sResource: g.K8sResource.DeepCopy(),
-		HaproxyGate: g.HaproxyGate.DeepCopy(),
-		Conditions:  utils.DeepCopyMap(g.Conditions),
-		CheckParamsRef: CheckResult{
-			Valid:      g.CheckParamsRef.Valid,
-			Conditions: utils.DeepCopyMap(g.CheckParamsRef.Conditions),
-		},
-		Valid:   g.Valid,
-		Managed: g.Managed,
-		// Status not copied
+	if g == nil {
+		return nil
 	}
+	// Save TreeStatus
+	treeStatus := g.TreeStatus
+	g.TreeStatus = TreeUpdate[GatewayClass]{}
+
+	var copied GatewayClass
+	data, err := json.Marshal(g) // Serialize to JSON
+	if err != nil {
+		return nil
+	}
+	_ = json.Unmarshal(data, &copied) // Deserialize to a new struct	return &copied
+	// Restore TreeStatus
+	g.TreeStatus = treeStatus
+	return &copied
 }

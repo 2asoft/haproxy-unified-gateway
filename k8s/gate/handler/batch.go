@@ -185,10 +185,6 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	)
 
 	statusUpdater.UpdateStatus(ctx)
-
-	// h.treeBuilder.cleanGateTreeUpdates()
-	// h.updateHAProxy(ctx, logger)  //revive:disable:unused-parameters
-	// h.updateStatuses(ctx, logger) //revive:disable:unused-parameter
 }
 
 func (h *eventHandlerImpl) processBatch(batch events.EventBatch) bool {

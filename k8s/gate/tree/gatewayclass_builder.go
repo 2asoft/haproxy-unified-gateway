@@ -31,7 +31,7 @@ type GatewayClassBuilderParams struct {
 	ControllerStore
 }
 
-func NewGatewayClassBuilder(params GatewayClassBuilderParams) *GatewayClassBuilderImpl {
+func NewGatewayClassBuilder(params GatewayClassBuilderParams) Builder {
 	builder := &GatewayClassBuilderImpl{
 		ControllerStore: params.ControllerStore,
 	}

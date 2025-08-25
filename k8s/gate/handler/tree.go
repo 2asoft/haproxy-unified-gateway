@@ -50,6 +50,10 @@ func NewGateTreeBuilder(
 		ControllerStore: controllerStore,
 	})
 
+	// --------------
+	// Secret
+	secretBuilder := tree.NewSecretBuilder(controllerStore)
+
 	treeBuilder := GateTreeBuilder{
 		cfg:              cfg,
 		referenceManager: referenceManager,
@@ -57,6 +61,7 @@ func NewGateTreeBuilder(
 		builder: []tree.Builder{
 			gatewayClassBuilder,
 			gatewayBuilder,
+			secretBuilder,
 		},
 	}
 

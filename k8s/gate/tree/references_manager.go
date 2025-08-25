@@ -30,7 +30,9 @@ func (rm *ReferenceManager) UpdateRefences() {
 
 	needsHaproGatesReferencesRebuild := rm.needsReferencedHaproxyGatesRebuild()
 	needsGatewayClassesReferencesRebuild := rm.needsReferencedGatewayClassesRebuild()
-	if !needsHaproGatesReferencesRebuild && !needsGatewayClassesReferencesRebuild {
+	needsSecretsReferencesRebuild := rm.needsReferencedSecretsRebuild()
+
+	if !needsHaproGatesReferencesRebuild && !needsGatewayClassesReferencesRebuild && !needsSecretsReferencesRebuild {
 		return
 	}
 
@@ -67,6 +69,28 @@ func (rm *ReferenceManager) UpdateRefences() {
 			}
 		}
 	}
+
+	// Secrets refs
+	if needsSecretsReferencesRebuild {
+		for _, gw := range rm.ClusterStore.Gateways {
+			for _, listener := range gw.Spec.Listeners {
+				if listener.TLS == nil {
+					continue
+				}
+				for _, certRef := range listener.TLS.CertificateRefs {
+					// We only accept v1.Secret
+					if certRef.Kind != nil && *certRef.Kind != "Secret" {
+						continue
+					}
+					if certRef.Group != nil && *certRef.Group != "" {
+						continue
+					}
+					nsName := getNamespacedName(certRef, gw)
+					rm.ReferencedObjects.ReferencedSecrets.AddReferencedBy(rm.Logger, nsName, gw)
+				}
+			}
+		}
+	}
 }
 
 func (rm *ReferenceManager) needsReferencedHaproxyGatesRebuild() bool {
@@ -80,11 +104,18 @@ func (rm *ReferenceManager) needsReferencedGatewayClassesRebuild() bool {
 	return len(rm.ClusterStore.Updates.Gateways) > 0
 }
 
+func (rm *ReferenceManager) needsReferencedSecretsRebuild() bool {
+	return len(rm.ClusterStore.Updates.Gateways) > 0
+}
+
 func (rm *ReferenceManager) cleanReferencedObjects() {
 	if rm.needsReferencedGatewayClassesRebuild() {
 		rm.ReferencedObjects.ReferencedGatewayClasses.CleanOwners()
 	}
 	if rm.needsReferencedHaproxyGatesRebuild() {
 		rm.ReferencedObjects.ReferencedHaproxyGates.CleanOwners()
+	}
+	if rm.needsReferencedSecretsRebuild() {
+		rm.ReferencedObjects.ReferencedSecrets.CleanOwners()
 	}
 }

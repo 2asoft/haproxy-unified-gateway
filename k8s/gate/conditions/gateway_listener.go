@@ -32,6 +32,17 @@ func NewListenerResolvedRefInvalidRouteKinds(msg string) Conditions {
 	}
 }
 
+func NewListenerResolvedRefInvalidCertificateRefs(msg string) Conditions {
+	return Conditions{
+		ConditionType(gatewayv1.ListenerConditionResolvedRefs): {
+			Type:    ConditionType(gatewayv1.ListenerConditionResolvedRefs),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(gatewayv1.ListenerReasonResolvedRefs),
+			Message: msg,
+		},
+	}
+}
+
 func NewListenerResolvedRefOK() Conditions {
 	return Conditions{
 		ConditionType(gatewayv1.ListenerConditionResolvedRefs): {

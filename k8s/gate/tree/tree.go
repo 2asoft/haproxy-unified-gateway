@@ -39,6 +39,7 @@ type GateTree struct {
 	// GatewayClasses holds the GatewayClasses resource that are accepted and ignored
 	GatewayClasses map[types.NamespacedName]*GatewayClass
 	Gateways       map[types.NamespacedName]*Gateway
+	Secrets        map[types.NamespacedName]*Secret
 }
 
 type ReferencedObjects struct {
@@ -46,6 +47,8 @@ type ReferencedObjects struct {
 	ReferencedHaproxyGates references.ReferencedBy
 	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
 	ReferencedGatewayClasses references.ReferencedBy
+	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
+	ReferencedSecrets references.ReferencedBy
 }
 
 type CheckResult struct {
@@ -61,6 +64,7 @@ func NewGateTree() *GateTree {
 	return &GateTree{
 		GatewayClasses: make(map[types.NamespacedName]*GatewayClass),
 		Gateways:       make(map[types.NamespacedName]*Gateway),
+		Secrets:        make(map[types.NamespacedName]*Secret),
 	}
 }
 
@@ -68,6 +72,7 @@ func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 	return &ReferencedObjects{
 		ReferencedHaproxyGates:   references.NewReferencedBy("haproxygate", extractGVK),
 		ReferencedGatewayClasses: references.NewReferencedBy("gatewayclass", extractGVK),
+		ReferencedSecrets:        references.NewReferencedBy("secret", extractGVK),
 	}
 }
 

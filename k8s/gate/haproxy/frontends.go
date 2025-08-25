@@ -223,6 +223,8 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 			Name:     feName,
 			From:     b.params.defaultsSectionName,
 			Metadata: md,
+			// TODO: remove this, only temporary for test
+			DefaultBackend: "be_tmp_test",
 			Mode: func() string {
 				if listener.Protocol == gatewayv1.HTTPProtocolType || listener.Protocol == gatewayv1.HTTPSProtocolType {
 					return "http"

@@ -104,6 +104,24 @@ func DeepCopyMap[K comparable, V any](src map[K]V) map[K]V {
 	return dst
 }
 
+// DeepCopySlice creates a deep copy of a slice.
+func DeepCopySlice[T any](src []T) []T {
+	// Return nil if the source slice is nil to avoid panics.
+	if src == nil {
+		return nil
+	}
+
+	// Create a new slice with the same length as the source slice.
+	dst := make([]T, len(src))
+
+	// Copy the elements from the source to the destination.
+	// The built-in copy function is more efficient than a manual loop
+	// for this operation.
+	copy(dst, src)
+
+	return dst
+}
+
 func NamespaceAsString(ns *gatewayv1.Namespace) string {
 	if ns == nil {
 		return ""

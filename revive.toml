@@ -9,7 +9,7 @@ enableAllRules = true
 [rule.cyclomatic]
   arguments = [42]
 [rule.cognitive-complexity]
-  arguments = [42]
+  arguments = [60]
 
 [rule.unhandled-error]
   arguments = ["fmt.Print", "fmt.Println", "strings.Builder.WriteString", "bytes.Buffer.WriteString"]

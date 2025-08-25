@@ -15,13 +15,13 @@ package tree
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -124,21 +124,22 @@ func (g *Gateway) isManaged() bool {
 }
 
 func (g *Gateway) DeepCopy() *Gateway {
-	return &Gateway{
-		K8sResource: g.K8sResource.DeepCopy(),
-		HaproxyGate: g.HaproxyGate.DeepCopy(),
-		Conditions:  utils.DeepCopyMap(g.Conditions),
-		CheckParamsRef: CheckResult{
-			Valid:      g.CheckParamsRef.Valid,
-			Conditions: utils.DeepCopyMap(g.CheckParamsRef.Conditions),
-		},
-		CheckValidGatewayClass: CheckResult{
-			Valid:      g.CheckValidGatewayClass.Valid,
-			Conditions: utils.DeepCopyMap(g.CheckValidGatewayClass.Conditions),
-		},
-		Valid: g.Valid,
-		// Status not copied
+	if g == nil {
+		return nil
 	}
+	// Save TreeStatus
+	treeStatus := g.TreeStatus
+	g.TreeStatus = TreeUpdate[Gateway]{}
+
+	var copied Gateway
+	data, err := json.Marshal(g) // Serialize to JSON
+	if err != nil {
+		return nil
+	}
+	_ = json.Unmarshal(data, &copied) // Deserialize to a new struct	return &copied
+	// Restore TreeStatus
+	g.TreeStatus = treeStatus
+	return &copied
 }
 
 func (g *Gateway) processChecks(controllerStore ControllerStore) {
