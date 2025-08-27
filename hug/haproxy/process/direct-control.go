@@ -1,0 +1,114 @@
+package process
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/exec"
+	"syscall"
+	"time"
+
+	"github.com/haproxytech/client-native/v6/runtime"
+	"github.com/haproxytech/client-native/v6/runtime/options"
+	hapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
+	"github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+)
+
+type directControl struct {
+	API               hapi.HAProxyClient
+	masterSocket      runtime.Runtime
+	logger            *slog.Logger
+	Params            params.Params
+	useAuxFile        bool
+	masterSocketValid bool
+}
+
+func newDirectControl(api hapi.HAProxyClient, param params.Params, logger *slog.Logger) *directControl {
+	dc := directControl{
+		API:    api,
+		Params: param,
+		logger: logger,
+	}
+	_ = dc.Service("start")
+
+	masterSocketArg := param.MasterSocket
+	masterSocket, err := runtime.New(context.Background(), options.MasterSocket(masterSocketArg), options.AllowDelayedStart(time.Minute, time.Second))
+	if err != nil {
+		dc.logger.LogAttrs(context.Background(), slog.LevelError,
+			"failed to initialize master socket",
+			logging.LogAttrError(err))
+		return &dc
+	}
+	dc.masterSocketValid = true
+	dc.masterSocket = masterSocket
+
+	return &dc
+}
+
+func (d *directControl) Service(action string) (err error) {
+	if d.Params.Test {
+		d.logger.LogAttrs(context.Background(), slog.LevelInfo,
+			fmt.Sprintf("HAProxy would be %sed now", action))
+		return nil
+	}
+	var cmd *exec.Cmd
+	// if processErr is nil, process variable will automatically
+	// hold information about a running Master HAproxy process
+	process, processErr := haproxyProcess(d.Params.PIDFile)
+
+	masterSocketArg := d.Params.MasterSocket + ",level,admin"
+
+	//nolint:gosec //checks on HAProxyBinary should be done in configuration module.
+	switch action {
+	case "start":
+		if processErr == nil {
+			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is already running")
+			return nil
+		}
+		cmd = exec.Command(d.Params.HaproxyBinary, "-W", "-S", masterSocketArg, "-f", d.Params.MainCfgFile)
+		if d.useAuxFile {
+			cmd = exec.Command(d.Params.HaproxyBinary, "-W", "-S", masterSocketArg, "-f", d.Params.MainCfgFile, "-f", d.Params.AuxDir)
+		}
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	case "stop":
+		if processErr != nil {
+			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is already stopped")
+			return processErr
+		}
+		if err = process.Signal(syscall.SIGUSR1); err != nil {
+			return err
+		}
+		return err
+	case "reload":
+		if d.masterSocketValid {
+			msg, err := d.masterSocket.Reload()
+			if err == nil {
+				d.logger.LogAttrs(context.Background(), slog.LevelDebug, msg)
+				return nil
+			}
+			d.logger.LogAttrs(context.Background(), slog.LevelError,
+				"failed to reload",
+				logging.LogAttrError(err))
+			return err
+		}
+		if processErr != nil {
+			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is not running, trying to start it")
+			return d.Service("start")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown command '%s'", action)
+	}
+}
+
+func (d *directControl) UseAuxFile(useAuxFile bool) {
+	d.useAuxFile = useAuxFile
+}
+
+func (d *directControl) SetAPI(api hapi.HAProxyClient) {
+	d.API = api
+}

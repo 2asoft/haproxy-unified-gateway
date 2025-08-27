@@ -11,10 +11,10 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
-	ctrlconfig "github.com/haproxytech/kubernetes-controller/controller/configuration"
-	haproxymgr "github.com/haproxytech/kubernetes-controller/controller/haproxy"
-	haproxyparams "github.com/haproxytech/kubernetes-controller/controller/haproxy/params"
-	"github.com/haproxytech/kubernetes-controller/controller/startup"
+	hugconfig "github.com/haproxytech/kubernetes-controller/hug/configuration"
+	haproxymgr "github.com/haproxytech/kubernetes-controller/hug/haproxy"
+	haproxyparams "github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
+	"github.com/haproxytech/kubernetes-controller/hug/startup"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
@@ -56,14 +56,14 @@ func main() {
 	fmt.Println(string(version.Info))
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
 
-	// Controller ctrlConfig from Flags
-	ctrlConfig, err := ctrlconfig.Get()
+	// Controller HUGConfig from Flags
+	hugConfig, err := hugconfig.Get()
 	if err != nil {
 		panic(err)
 	}
 
-	// GateConfig
-	opts := setupGateConfig(ctrlConfig)
+	// Setup Gate lib configuration from HUG binary configuration
+	opts := setupGateConfig(hugConfig)
 
 	// Start controller
 	cntlr, err := controller.New(opts)
@@ -81,9 +81,9 @@ func main() {
 
 	// Start the HAProxy configuration manager
 	params := haproxyparams.Params{
-		Test:             ctrlConfig.Test,
-		UseWiths6Overlay: ctrlConfig.UseWiths6Overlay,
-		HaproxyDirs:      ctrlConfig.HaproxyDirs,
+		Test:             hugConfig.Test,
+		UseWiths6Overlay: hugConfig.UseWiths6Overlay,
+		HaproxyDirs:      hugConfig.HaproxyDirs,
 	}
 	haproxyCfgManager, err := haproxymgr.NewAppManager(ctx, &wg,
 		cntlr.Configuration.TransferHaproxyConfChannel,
@@ -112,7 +112,7 @@ func main() {
 	cntlr.Configuration.Logger.Info("Graceful shutdown complete. Exiting.")
 }
 
-func setupGateConfig(ctrlConfig ctrlconfig.ControllerConfig) gateconfig.GateConfigOptions {
+func setupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions {
 	metricsConfig := gateconfig.MetricsConfig{
 		Port:    6062,
 		Enabled: false,
@@ -136,7 +136,7 @@ func setupGateConfig(ctrlConfig ctrlconfig.ControllerConfig) gateconfig.GateConf
 	haproxyConfCh := make(chan haproxy.HaproxyConfDiffs, 100)
 
 	// Read the haproy.cfg file at startup, and initializes the library with the initial haproxy configuration
-	initialStructured, err := startup.StructuredFromFile(ctrlConfig.HaproxyDirs.MainCfgFile, ctrlConfig.HaproxyDirs.CfgDir)
+	initialStructured, err := startup.StructuredFromFile(hugConfig.HaproxyDirs.MainCfgFile, hugConfig.HaproxyDirs.CfgDir)
 	if err != nil {
 		panic(err)
 	}
@@ -144,29 +144,29 @@ func setupGateConfig(ctrlConfig ctrlconfig.ControllerConfig) gateconfig.GateConf
 	opts := gateconfig.GateConfigOptions{
 		opt.KubeConfig(kubeconfig),
 		opt.ControllerConfCRD(types.NamespacedName{
-			Namespace: ctrlConfig.ControllerConfCRD.Namespace,
-			Name:      ctrlConfig.ControllerConfCRD.Name,
+			Namespace: hugConfig.ControllerConfCRD.Namespace,
+			Name:      hugConfig.ControllerConfCRD.Name,
 		}),
-		opt.SyncPeriod(ctrlConfig.SyncPeriod),
-		opt.StartupSyncPeriod(ctrlConfig.StartupSyncPeriod),
+		opt.SyncPeriod(hugConfig.SyncPeriod),
+		opt.StartupSyncPeriod(hugConfig.StartupSyncPeriod),
 		opt.MetricsConfig(metricsConfig),
-		opt.LeaderElectionConfig(ctrlConfig.LeaderElectionEnabled),
-		opt.ControllerName(ctrlConfig.ControllerName),
-		opt.Namespaces(ctrlConfig.Namespaces),
-		opt.Logging(logging.LogHandlerType(ctrlConfig.LogType), logLevelIfCategoryEmpty, logCategoryLevels),
+		opt.LeaderElectionConfig(hugConfig.LeaderElectionEnabled),
+		opt.ControllerName(hugConfig.ControllerName),
+		opt.Namespaces(hugConfig.Namespaces),
+		opt.Logging(logging.LogHandlerType(hugConfig.LogType), logLevelIfCategoryEmpty, logCategoryLevels),
 		opt.HaproxyConfChannel(haproxyConfCh),
-		opt.IPV4BindAddr(ctrlConfig.IPV4BindAddr),
-		opt.IPV6BindAddr(ctrlConfig.IPV6BindAddr),
-		opt.HaproxyDirs(ctrlConfig.HaproxyDirs),
+		opt.IPV4BindAddr(hugConfig.IPV4BindAddr),
+		opt.IPV6BindAddr(hugConfig.IPV6BindAddr),
+		opt.HaproxyDirs(hugConfig.HaproxyDirs),
 		opt.LinkID("link1"),
 		opt.InitialStructured(initialStructured),
-		opt.CacheReSyncPeriod(ctrlConfig.CacheResyncPeriod),
+		opt.CacheReSyncPeriod(hugConfig.CacheResyncPeriod),
 		opt.DefaultsSectionName(gateconfig.DefaultsSectionName),
 	}
-	if ctrlConfig.DisableIPv4 {
+	if hugConfig.DisableIPv4 {
 		opts = append(opts, opt.DisableIPv4())
 	}
-	if ctrlConfig.DisableIPv6 {
+	if hugConfig.DisableIPv6 {
 		opts = append(opts, opt.DisableIPv6())
 	}
 	return opts
