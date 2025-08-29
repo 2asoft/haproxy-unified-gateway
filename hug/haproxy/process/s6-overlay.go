@@ -43,27 +43,27 @@ func newS6Control(api hapi.HAProxyClient, param params.Params, logger *slog.Logg
 	return &sc
 }
 
-func (c *s6Control) Service(action string) error {
+func (c *s6Control) Service(action string) (string, error) {
 	if c.Params.Test {
 		c.logger.LogAttrs(context.Background(), slog.LevelError,
 			"HAProxy would be %sed now")
-		return nil
+		return "", nil
 	}
 	var cmd *exec.Cmd
 
 	switch action {
 	case "start":
 		// no need to start it is up already (s6)
-		return nil
+		return "", nil
 	case "stop":
 		// no need to stop it (s6)
-		return nil
+		return "", nil
 	case "reload":
 		if c.masterSocketValid {
 			msg, err := c.masterSocket.Reload()
 			if err == nil {
 				c.logger.LogAttrs(context.Background(), slog.LevelDebug, msg)
-				return nil
+				return msg, nil
 			}
 			c.logger.LogAttrs(context.Background(), slog.LevelError,
 				"failed to reload",
@@ -73,9 +73,9 @@ func (c *s6Control) Service(action string) error {
 		cmd = exec.Command("s6-svc", "-2", "/run/service/haproxy")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		return cmd.Run()
+		return "", cmd.Run()
 	default:
-		return fmt.Errorf("unknown command '%s'", action)
+		return "", fmt.Errorf("unknown command '%s'", action)
 	}
 }
 

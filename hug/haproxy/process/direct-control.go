@@ -31,7 +31,7 @@ func newDirectControl(api hapi.HAProxyClient, param params.Params, logger *slog.
 		Params: param,
 		logger: logger,
 	}
-	_ = dc.Service("start")
+	_, _ = dc.Service("start")
 
 	masterSocketArg := param.MasterSocket
 	masterSocket, err := runtime.New(context.Background(), options.MasterSocket(masterSocketArg), options.AllowDelayedStart(time.Minute, time.Second))
@@ -47,11 +47,11 @@ func newDirectControl(api hapi.HAProxyClient, param params.Params, logger *slog.
 	return &dc
 }
 
-func (d *directControl) Service(action string) (err error) {
+func (d *directControl) Service(action string) (string, error) {
 	if d.Params.Test {
 		d.logger.LogAttrs(context.Background(), slog.LevelInfo,
 			fmt.Sprintf("HAProxy would be %sed now", action))
-		return nil
+		return "", nil
 	}
 	var cmd *exec.Cmd
 	// if processErr is nil, process variable will automatically
@@ -65,7 +65,7 @@ func (d *directControl) Service(action string) (err error) {
 	case "start":
 		if processErr == nil {
 			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is already running")
-			return nil
+			return "", nil
 		}
 		cmd = exec.Command(d.Params.HaproxyBinary, "-W", "-S", masterSocketArg, "-f", d.Params.MainCfgFile)
 		if d.useAuxFile {
@@ -73,35 +73,35 @@ func (d *directControl) Service(action string) (err error) {
 		}
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		return cmd.Run()
+		return "", cmd.Run()
 	case "stop":
 		if processErr != nil {
 			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is already stopped")
-			return processErr
+			return "", processErr
 		}
-		if err = process.Signal(syscall.SIGUSR1); err != nil {
-			return err
+		if err := process.Signal(syscall.SIGUSR1); err != nil {
+			return "", err
 		}
-		return err
+		return "", nil
 	case "reload":
 		if d.masterSocketValid {
 			msg, err := d.masterSocket.Reload()
 			if err == nil {
 				d.logger.LogAttrs(context.Background(), slog.LevelDebug, msg)
-				return nil
+				return "", nil
 			}
 			d.logger.LogAttrs(context.Background(), slog.LevelError,
 				"failed to reload",
 				logging.LogAttrError(err))
-			return err
+			return msg, err
 		}
 		if processErr != nil {
 			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is not running, trying to start it")
 			return d.Service("start")
 		}
-		return nil
+		return "", nil
 	default:
-		return fmt.Errorf("unknown command '%s'", action)
+		return "", fmt.Errorf("unknown command '%s'", action)
 	}
 }
 

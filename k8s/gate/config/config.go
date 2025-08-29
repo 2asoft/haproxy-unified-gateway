@@ -20,6 +20,8 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/lmittmann/tint"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,32 +44,29 @@ import (
 type GateConfigOptions []func(c *Configuration) error
 
 type Configuration struct {
-	Logger     *slog.Logger
-	LogHandler *logging.CategoryFilterHandler
+	// Initial Structured config used at startup
+	InitialStructuredHaproxyConf structured.Structured
+	Logger                       *slog.Logger
+	LogHandler                   *logging.CategoryFilterHandler
 	// TransferHaproxyConfChannel is used to send the HaproxyConfDiffs to the application
-	TransferHaproxyConfChannel chan haproxy.HaproxyConfDiffs
-
+	TransferHaproxyConfChannel chan diffs.HaproxyConfDiffs
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	//  Namespace and name of the controller conf CRD:  HaproxyGateCtrlCfg
 	ControllerConfCRD types.NamespacedName
-	// Initial Structured config used at startup
-	InitialStructuredHaproxyConf haproxy.Structured
 	// LogHandlerType defines the type of log Handler we want: json or text
 	// Default will be json
 	LogHandlerType logging.LogHandlerType
 	Kubeconfig     string
 	// ControllerName is the name of this controller.
 	ControllerName string
-	// LindID: an ID for the link to the cluster
-	LinkID string
-	// HaproxyConfiguration contains the needed configuration to compute the FE/BE/...
-	HaproxyConfiguration
 	// LeaderElectionConfig contains the configuration for leader election.
 	LeaderElectionConfig LeaderElectionConfig
 	// Namespaces is a list of namespaces to watch.
 	// If empty, all namespaces are watched.
 	Namespaces []string
+	// HaproxyConfParams contains the needed configuration to compute the FE/BE/...
+	HaproxyParams haproxy.HaproxyConfParams
 	// MetricsConfig specifies the metrics config.
 	MetricsConfig MetricsConfig
 	// SyncPeriod is the duration we wait after handling one batch before the next one
@@ -87,43 +86,6 @@ type Configuration struct {
 	CacheResyncPeriod time.Duration
 	// InitialStructuredHaproxyConfOK bool
 	InitialStructuredHaproxyConfOK bool
-}
-
-type HaproxyConfiguration struct {
-	// HaproxyDirs contains all the needed dir
-	// used for example in map files reference
-	HaproxyDirs
-	// FrontendNameTemplate: the template for the frontend name.
-	FrontendNameTemplate string
-	// BackendNameTemplate: the template for the backend name.
-	BackendNameTemplate string
-	// ServerNameTemplate: the template for the server name.
-	ServerNameTemplate string
-	// IPv4BindAddress is the IPv4 address to bind to.
-	IPv4BindAddress string
-	// IPv6BindAddress is the IPv6 address to bind to.
-	IPv6BindAddress string
-	// DefaultsSectionName is the defaults name to use to create FE/BE/...
-	DefaultsSectionName string
-	// DisableIPv4 indicates whether IPv4 is disabled.
-	DisableIPv4 bool
-	// DisableIPv6 indicates whether IPv6 is disabled.
-	DisableIPv6 bool
-}
-
-type HaproxyDirs struct {
-	CfgDir        string
-	MainCfgFile   string
-	HaproxyBinary string
-	RuntimeDir    string
-	StateDir      string
-	AuxDir        string
-	PIDFile       string
-	RuntimeSocket string
-	MasterSocket  string
-	MapsDir       string
-	PatternDir    string
-	ErrFileDir    string
 }
 
 // ControllerPodConfig contains information about this Pod.

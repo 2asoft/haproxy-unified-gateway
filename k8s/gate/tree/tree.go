@@ -47,8 +47,10 @@ type ReferencedObjects struct {
 	ReferencedHaproxyGates references.ReferencedBy
 	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
 	ReferencedGatewayClasses references.ReferencedBy
-	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
-	ReferencedSecrets references.ReferencedBy
+	//  ReferencedSecrets includes the GatewayClasses that are references by Gateways Listeners
+	// Owners are Listeners
+	ReferencedSecrets         references.ReferencedBy
+	PreviousReferencedSecrets references.ReferencedBy
 }
 
 type CheckResult struct {
@@ -70,9 +72,10 @@ func NewGateTree() *GateTree {
 
 func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 	return &ReferencedObjects{
-		ReferencedHaproxyGates:   references.NewReferencedBy("haproxygate", extractGVK),
-		ReferencedGatewayClasses: references.NewReferencedBy("gatewayclass", extractGVK),
-		ReferencedSecrets:        references.NewReferencedBy("secret", extractGVK),
+		ReferencedHaproxyGates:    references.NewReferencedBy("haproxygate", extractGVK),
+		ReferencedGatewayClasses:  references.NewReferencedBy("gatewayclass", extractGVK),
+		ReferencedSecrets:         references.NewReferencedBy("secret", extractGVK),
+		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),
 	}
 }
 
@@ -82,6 +85,7 @@ func addIndirectFromReferenced[OWNED client.Object, OWNER client.Object](
 	ownerMap map[client.ObjectKey]OWNER,
 	updateMap map[client.ObjectKey]store.Update[OWNER],
 	ownergvk schema.GroupVersionKind,
+	ownerKeyTransformer func(client.ObjectKey) client.ObjectKey,
 ) {
 	var owned OWNED
 	switch ownedUpdate.Status {
@@ -94,6 +98,9 @@ func addIndirectFromReferenced[OWNED client.Object, OWNER client.Object](
 	ownerKeys := referencedBy.ReferencedBy(owned, ownergvk)
 
 	for ownerKey := range ownerKeys {
+		if ownerKeyTransformer != nil {
+			ownerKey = ownerKeyTransformer(ownerKey)
+		}
 		owner := ownerMap[ownerKey]
 		if _, alreadyPresent := updateMap[ownerKey]; alreadyPresent {
 			continue

@@ -23,10 +23,10 @@ func (c *Configuration) Check() error {
 	if !c.InitialStructuredHaproxyConfOK {
 		return errors.New("initial structured configuration is not set")
 	}
-	if c.DefaultsSectionName == "" {
+	if c.HaproxyParams.DefaultsSectionName == "" {
 		return errors.New("defaults section name is not set")
 	}
-	if c.LinkID == "" {
+	if c.HaproxyParams.LinkID == "" {
 		return errors.New("link ID is not set")
 	}
 	return nil

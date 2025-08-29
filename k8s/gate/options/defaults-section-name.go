@@ -17,7 +17,7 @@ import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
 func DefaultsSectionName(name string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.DefaultsSectionName = name
+		o.HaproxyParams.DefaultsSectionName = name
 		return nil
 	}
 }

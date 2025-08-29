@@ -11,18 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package haproxy
+package opt
 
-type Templates struct {
-	frontendNameTemplate string
-	backendNameTemplate  string
-	serverNameTemplate   string
-}
+import (
+	"time"
 
-func NewTemplates(feTemplate, beTemplate, seTemplate string) Templates {
-	return Templates{
-		frontendNameTemplate: feTemplate,
-		backendNameTemplate:  beTemplate,
-		serverNameTemplate:   seTemplate,
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+)
+
+// RuntimeUpdate sets the option to perform runtime commands through the runtime socket
+// The timeout specifies the max time to wait for the HUG application to sen the runtime.Runtime
+// to the library at start up.
+func RuntimeUpdate(timeout time.Duration) func(o *config.Configuration) error {
+	return func(o *config.Configuration) error {
+		o.HaproxyParams.RuntimeUpdateHaproxy = true
+		o.HaproxyParams.TimeoutWaitForRuntime = timeout
+		return nil
 	}
 }

@@ -13,7 +13,10 @@
 // limitations under the License.
 package tree
 
-import "sigs.k8s.io/controller-runtime/pkg/client"
+import (
+	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
 
 type ReferenceManager struct {
 	ControllerStore
@@ -79,14 +82,12 @@ func (rm *ReferenceManager) UpdateRefences() {
 				}
 				for _, certRef := range listener.TLS.CertificateRefs {
 					// We only accept v1.Secret
-					if certRef.Kind != nil && *certRef.Kind != "Secret" {
+					if !isSecretGroupKindSupported(certRef) {
 						continue
 					}
-					if certRef.Group != nil && *certRef.Group != "" {
-						continue
-					}
-					nsName := getNamespacedName(certRef, gw)
-					rm.ReferencedObjects.ReferencedSecrets.AddReferencedBy(rm.Logger, nsName, gw)
+					nsName := GetCertificateRefNamespacedName(certRef, gw)
+					ownerGVK := rm.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway)
+					rm.ReferencedObjects.ReferencedSecrets.AddReferencedByUsingKeys(rm.Logger, nsName, ListenerKey(gw, listener), ownerGVK)
 				}
 			}
 		}
@@ -115,6 +116,7 @@ func (rm *ReferenceManager) cleanReferencedObjects() {
 	if rm.needsReferencedHaproxyGatesRebuild() {
 		rm.ReferencedObjects.ReferencedHaproxyGates.CleanOwners()
 	}
+	rm.ReferencedObjects.PreviousReferencedSecrets = rm.ReferencedObjects.ReferencedSecrets.DeepCopy()
 	if rm.needsReferencedSecretsRebuild() {
 		rm.ReferencedObjects.ReferencedSecrets.CleanOwners()
 	}

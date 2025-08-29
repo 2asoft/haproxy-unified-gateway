@@ -15,10 +15,10 @@ package opt
 
 import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
 )
 
-func HaproxyConfChannel(treeCh chan haproxy.HaproxyConfDiffs) func(o *config.Configuration) error {
+func HaproxyConfChannel(treeCh chan diffs.HaproxyConfDiffs) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
 		o.TransferHaproxyConfChannel = treeCh
 		return nil

@@ -217,7 +217,7 @@ func (l *Listener) checkCertificateRefs(treeGw *Gateway, gateSecrets map[types.N
 			break
 		}
 
-		nsName := getNamespacedName(certRef, treeGw.K8sResource)
+		nsName := GetCertificateRefNamespacedName(certRef, treeGw.K8sResource)
 		treeSecret, ok := gateSecrets[nsName]
 		if !ok || treeSecret.TreeStatus.Status == store.StatusDeleted {
 			msg := fmt.Sprintf("Secret %s/%s does not exist", nsName.Namespace, nsName.Name)

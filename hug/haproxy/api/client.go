@@ -37,6 +37,7 @@ type HAProxyClient interface { //nolint:interfacebloat
 	APIDisposeTransaction()
 	Frontend
 	Bind
+	RuntimeClient() runtime.Runtime
 }
 
 type Frontend interface {
@@ -191,4 +192,9 @@ func (c *clientNative) APIFinalCommitTransaction() error {
 
 func (c *clientNative) APIDisposeTransaction() {
 	c.activeTransaction = ""
+}
+
+func (c *clientNative) RuntimeClient() runtime.Runtime {
+	runtimeClient, _ := c.nativeAPI.Runtime()
+	return runtimeClient
 }

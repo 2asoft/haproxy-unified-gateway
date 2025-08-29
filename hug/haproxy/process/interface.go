@@ -15,7 +15,7 @@ import (
 const MASTER_SOCKET_PATH = "/var/run/haproxy-master.sock" // revive:disable:var-naming
 
 type Process interface {
-	Service(action string) (err error)
+	Service(action string) (msg string, err error)
 	UseAuxFile(useAuxFile bool)
 	SetAPI(api hapi.HAProxyClient)
 }

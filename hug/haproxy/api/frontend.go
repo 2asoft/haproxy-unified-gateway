@@ -40,7 +40,7 @@ func (c *clientNative) FrontendCreate(frontend models.Frontend) error {
 			return err
 		}
 	}
-	reload.GetInstance().SetReload("Frontend upserted %s", frontend.Name)
+	reload.Instance().SetReload("Frontend upserted %s", frontend.Name)
 
 	// Binds
 	if errDel := c.BindDeleteAll(parser.Frontends, frontend.Name); errDel != nil {
@@ -64,7 +64,7 @@ func (c *clientNative) FrontendDelete(frontendName string) error {
 	if err != nil {
 		return err
 	}
-	reload.GetInstance().SetReload("Frontend deleted %s", frontendName)
+	reload.Instance().SetReload("Frontend deleted %s", frontendName)
 	return configuration.DeleteFrontend(frontendName, c.activeTransaction, 0)
 }
 
@@ -105,7 +105,7 @@ func (c *clientNative) FrontendEdit(frontend models.Frontend) error {
 		return err
 	}
 
-	reload.GetInstance().SetReload("Frontend upserted %s", frontend.Name)
+	reload.Instance().SetReload("Frontend upserted %s", frontend.Name)
 
 	// Binds
 	if errDel := c.BindDeleteAll(parser.Frontends, frontend.Name); errDel != nil {

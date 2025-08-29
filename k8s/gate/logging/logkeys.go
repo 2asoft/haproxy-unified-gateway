@@ -23,6 +23,7 @@ var (
 	LogCategoryApp           v3.Category = "app"
 	LogCategoryBatch         v3.Category = "batch"
 	LogCategoryReloadMgr     v3.Category = "reloadmgr"
+	LogCategoryCertsStorage  v3.Category = "certsstorage"
 )
 
 type LogHandlerType string

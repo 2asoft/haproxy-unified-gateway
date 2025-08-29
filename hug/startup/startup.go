@@ -19,7 +19,8 @@ import (
 	"github.com/haproxytech/client-native/v6/configuration"
 	cfgoptions "github.com/haproxytech/client-native/v6/configuration/options"
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	md "github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 )
 
 type ownerMetaData interface {
@@ -31,41 +32,41 @@ type ownerMetaData interface {
 // Frontends/Backends
 // that have the unified gateway metadata
 // (the objects that the gateway manages)
-func StructuredFromFile(cfgFile, transactionDir string) (haproxy.Structured, error) {
+func StructuredFromFile(cfgFile, transactionDir string) (structured.Structured, error) {
 	confClient, err := configuration.New(context.Background(),
 		cfgoptions.ConfigurationFile(cfgFile),
 		cfgoptions.TransactionsDir(transactionDir),
 		cfgoptions.UseMd5Hash,
 	)
 	if err != nil {
-		return haproxy.Structured{}, err
+		return structured.Structured{}, err
 	}
 
 	_, backends, err := confClient.GetStructuredBackends("")
 	if err != nil {
-		return haproxy.Structured{}, err
+		return structured.Structured{}, err
 	}
 	_, frontends, err := confClient.GetStructuredFrontends("")
 	if err != nil {
-		return haproxy.Structured{}, err
+		return structured.Structured{}, err
 	}
 
-	structured := haproxy.Structured{
+	structuredCfg := structured.Structured{
 		Backends:  make(map[string]*models.Backend),
 		Frontends: make(map[string]*models.Frontend),
 	}
 	for _, backend := range backends {
 		if isUnifiedGatewayManaged(backend) {
-			structured.Backends[backend.Name] = backend
+			structuredCfg.Backends[backend.Name] = backend
 		}
 	}
 	for _, frontend := range frontends {
 		if isUnifiedGatewayManaged(frontend) {
-			structured.Frontends[frontend.Name] = frontend
+			structuredCfg.Frontends[frontend.Name] = frontend
 		}
 	}
 
-	return structured, nil
+	return structuredCfg, nil
 }
 
 // isUnifiedGatewayManaged returns true if the object is managed by the Unified Gateway
@@ -81,7 +82,7 @@ func isUnifiedGatewayManaged[T ownerMetaData](obj T) bool {
 	default:
 		return false
 	}
-	if _, ok := metadata[haproxy.UnifiedGatewayMetatDataKey]; ok {
+	if _, ok := metadata[md.UnifiedGatewayMetatDataKey]; ok {
 		return true
 	}
 	return false

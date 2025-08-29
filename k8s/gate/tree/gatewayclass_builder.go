@@ -72,6 +72,7 @@ func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHaproxyGate(hapro
 		b.ClusterStore.GatewayClasses,
 		b.ClusterStore.Updates.GatewayClasses,
 		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGatewayClass),
+		nil, // no ownerKey transformation
 	)
 }
 

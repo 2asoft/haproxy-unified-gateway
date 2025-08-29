@@ -13,11 +13,14 @@
 // limitations under the License.
 package opt
 
-import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+import (
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+)
 
-func HaproxyDirs(dirs config.HaproxyDirs) func(o *config.Configuration) error {
+func HaproxyDirs(dirs haproxy.HaproxyDirs) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.HaproxyDirs = dirs
+		o.HaproxyParams.HaproxyDirs = dirs
 		return nil
 	}
 }

@@ -18,8 +18,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/haproxytech/client-native/v6/runtime"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
@@ -45,12 +50,17 @@ type GateTreeConfig struct {
 	K8sClient client.Client
 	// k8sReader is a Kubernets API reader.
 	K8sReader                  client.Reader
+	CertificateStorage         storage.CertificateStorage
 	BaseLogger                 *slog.Logger
 	LogCategoryFilterHandler   *logging.CategoryFilterHandler
 	ExtractGVK                 utils.ExtractGVK
-	TransferHaproxyConfChannel chan haproxy.HaproxyConfDiffs
+	TransferHaproxyConfChannel chan diffs.HaproxyConfDiffs
 	//  Namespace and name of the controller conf CRD
 	ControllerConfNsName types.NamespacedName
+	// StoreCertificatesOnDisk is a flag that indicates to the gate library to store certificates on disk
+	StoreCertificateOnDisk bool
+	// RuntimeUpdateHaproxy
+	RuntimeUpdateHaproxy bool
 }
 
 // eventHandlerImpl implements EventHandler.
@@ -69,8 +79,9 @@ type eventHandlerImpl struct {
 func NewEventHandlerImpl(
 	clusterStore *store.ClusterStore,
 	gateTreeConfig GateTreeConfig,
-	haproxyCfgBuilderConfig haproxy.HaproxyConfMgrParams,
-	initialStructuredConf haproxy.Structured,
+	haproxyCfgManagerParams haproxy.HaproxyConfMgrParams,
+	initialStructuredConf structured.Structured,
+	runtimeClient runtime.Runtime,
 ) EventHandler {
 	clusterStoreUpdater := store.NewClusterStoreUpdaterImpl(
 		clusterStore,
@@ -92,20 +103,28 @@ func NewEventHandlerImpl(
 		InstalledGwAPIVersions: &tree.InstalledVersions{
 			Versions: make(map[string]int),
 		},
+		CertificateUpdates: &tree.CertificateUpdates{
+			Created: make(map[string]certificate.CertificateData),
+			Updated: make(map[string]certificate.CertificateData),
+			Deleted: make(map[string]certificate.CertificateData),
+		},
+		CrtListUpdates: &tree.CrtListUpdates{
+			Created: make(map[string]certificate.CrtListData),
+			Updated: make(map[string]certificate.CrtListData),
+			Deleted: make(map[string]certificate.CrtListData),
+		},
 	}
 
-	treeBuilder := NewGateTreeBuilder(
-		controllerStore,
-		gateTreeConfig,
-	)
+	treeBuilder := NewGateTreeBuilder(controllerStore, gateTreeConfig)
 
-	haproxyConfBuilder := haproxy.NewHaproxyConfMgr(gateTreeConfig.BaseLogger, controllerStore, initialStructuredConf, haproxyCfgBuilderConfig)
+	haproxyConfMgr := haproxy.NewHaproxyConfMgr(gateTreeConfig.BaseLogger, controllerStore, initialStructuredConf,
+		haproxyCfgManagerParams, runtimeClient)
 
 	handler := &eventHandlerImpl{
 		treeBuilder:         treeBuilder,
 		config:              gateTreeConfig,
 		clusterStoreUpdater: clusterStoreUpdater,
-		haproxyConfBuilder:  haproxyConfBuilder,
+		haproxyConfBuilder:  haproxyConfMgr,
 		logger:              gateTreeConfig.BaseLogger.With(logging.LogAttrCategory(logging.LogCategoryBatch)),
 	}
 

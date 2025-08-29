@@ -33,8 +33,8 @@ type reloadMgr struct {
 	reload bool
 }
 
-// GetInstance returns the singleton instance.
-func GetInstance() *reloadMgr {
+// Instance returns the singleton instance.
+func Instance() *reloadMgr {
 	once.Do(func() {
 		rlm = &reloadMgr{} // Initialization logic
 	})

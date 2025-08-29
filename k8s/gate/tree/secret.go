@@ -16,7 +16,9 @@ package tree
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
@@ -34,6 +36,7 @@ type Secret struct {
 	TreeStatus TreeUpdate[Secret]
 }
 
+// NewSecret creates a new Secret for the GateTree.
 func NewSecret(k8sObject *v1.Secret) *Secret {
 	return &Secret{
 		K8sResource: k8sObject,
@@ -44,6 +47,7 @@ func NewSecret(k8sObject *v1.Secret) *Secret {
 	}
 }
 
+// SetAsUpserted marks the Secret as upserted in the GateTree.
 func (s *Secret) SetAsUpserted(logger *slog.Logger, newK8sResource *v1.Secret) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeSecret Upserted",
 		logging.LogAttrObjectKey(newK8sResource))
@@ -52,6 +56,7 @@ func (s *Secret) SetAsUpserted(logger *slog.Logger, newK8sResource *v1.Secret) {
 	s.K8sResource = newK8sResource
 }
 
+// SetAsDeleted marks the Secret as deleted in the GateTree.
 func (s *Secret) SetAsDeleted(logger *slog.Logger) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeSecret Deleted",
 		logging.LogAttrObjectKey(s.K8sResource))
@@ -60,6 +65,7 @@ func (s *Secret) SetAsDeleted(logger *slog.Logger) {
 	s.K8sResource = nil
 }
 
+// SetAsManaged moves the Secret to the managed GateTree.
 func (s *Secret) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeSecret Managed",
 		logging.LogAttrObjectKey(s.K8sResource))
@@ -67,6 +73,7 @@ func (s *Secret) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
 	cs.GateTree.Secrets[key] = s
 }
 
+// DeepCopy creates a deep copy of the Secret.
 func (s *Secret) DeepCopy() *Secret {
 	if s == nil {
 		return nil
@@ -86,7 +93,9 @@ func (s *Secret) DeepCopy() *Secret {
 	return &copied
 }
 
-func getNamespacedName(certRef gatewayv1.SecretObjectReference, gw *gatewayv1.Gateway) types.NamespacedName {
+// GetCertificateRefNamespacedName returns the namespaced name for a certificate reference,
+// using the Gateway's namespace as a default if the reference does not specify one.
+func GetCertificateRefNamespacedName(certRef gatewayv1.SecretObjectReference, gw *gatewayv1.Gateway) types.NamespacedName {
 	namespace := gw.Namespace
 	if certRef.Namespace != nil {
 		namespace = string(*certRef.Namespace)
@@ -95,4 +104,59 @@ func getNamespacedName(certRef gatewayv1.SecretObjectReference, gw *gatewayv1.Ga
 		Namespace: namespace,
 		Name:      string(certRef.Name),
 	}
+}
+
+// ListenerKey returns the Certificate owner key appending the listener name to it
+// For Gateway ns/gateway, if the Listener name is "https", will return
+// ns/gateway_https
+// = Listener Key
+func ListenerKey(gw *gatewayv1.Gateway, listener gatewayv1.Listener) client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: gw.Namespace,
+		Name: fmt.Sprintf("%s_%s",
+			gw.Name,
+			listener.Name,
+		),
+	}
+}
+
+// ConvertListenerKeyToGatewayKey converts a listener key back to a gateway key.
+// It assumes the listener key is in the format "gateway-name_listener-name", built by the previous ListenerKey function.
+// For a listener key with namespace "ns" and name "my-gateway_https",
+// it returns a gateway key with namespace "ns" and name "my-gateway".
+func ConvertListenerKeyToGatewayKey(listenerKey client.ObjectKey) client.ObjectKey {
+	gatewayKey, _, err := ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey)
+	if err != nil {
+		return listenerKey
+	}
+	return gatewayKey
+}
+
+// ConvertListenerKeyToGatewayKeyAndListenerName converts a listener key back to a gateway key and listener name.
+// It assumes the listener key is in the format "gateway-name_listener-name", built by the ListenerKey function.
+// For a listener key with namespace "ns" and name "my-gateway_https",
+// it returns a gateway key with namespace "ns" and name "my-gateway", the listener name "https", and no error.
+// If the format is invalid, it returns an error.
+func ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey client.ObjectKey) (client.ObjectKey, string, error) {
+	parts := strings.Split(listenerKey.Name, "_")
+	if len(parts) != 2 {
+		return client.ObjectKey{}, "", fmt.Errorf("invalid listener key format: %s", listenerKey.Name)
+	}
+	gatewayKey := client.ObjectKey{
+		Namespace: listenerKey.Namespace,
+		Name:      parts[0],
+	}
+	return gatewayKey, parts[1], nil
+}
+
+// isSecretGroupKindSupported checks if the provided certificate reference has a supported Group and Kind.
+// It only supports core `v1.Secret` resources.
+func isSecretGroupKindSupported(certRef gatewayv1.SecretObjectReference) bool {
+	if certRef.Kind != nil && *certRef.Kind != "Secret" {
+		return false
+	}
+	if certRef.Group != nil && *certRef.Group != "" {
+		return false
+	}
+	return true
 }

@@ -16,6 +16,7 @@ package tree
 import (
 	"log/slog"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 )
@@ -29,10 +30,62 @@ type ControllerStore struct {
 	InstalledGwAPIVersions *InstalledVersions
 	Logger                 *slog.Logger
 	ExtractGVK             utils.ExtractGVK
+	CertificateUpdates     *CertificateUpdates
+	CrtListUpdates         *CrtListUpdates
+	Certificates           map[string]certificate.CertificateData // cert file name
+	CrtLists               map[string]certificate.CrtListData     // crt-list file name
+}
+
+type CertificateUpdates struct {
+	Created map[string]certificate.CertificateData
+	Updated map[string]certificate.CertificateData
+	Deleted map[string]certificate.CertificateData
 }
 
 func (b *ControllerStore) CleanInstalledVersionsUpdates() {
 	if b.InstalledGwAPIVersions.Updated != nil {
 		*b.InstalledGwAPIVersions.Updated = false
 	}
+}
+
+func (b *ControllerStore) addCreatedCertificate(certData certificate.CertificateData) {
+	b.CertificateUpdates.Created[certData.MapKey()] = certData
+}
+
+func (b *ControllerStore) addUpdatedCertificate(certData certificate.CertificateData) {
+	b.CertificateUpdates.Updated[certData.MapKey()] = certData
+}
+
+func (b *ControllerStore) addDeletedCertificate(certData certificate.CertificateData) {
+	b.CertificateUpdates.Deleted[certData.MapKey()] = certData
+}
+
+func (b *ControllerStore) ResetCertificateUpdates() {
+	b.CertificateUpdates.Created = make(map[string]certificate.CertificateData)
+	b.CertificateUpdates.Updated = make(map[string]certificate.CertificateData)
+	b.CertificateUpdates.Deleted = make(map[string]certificate.CertificateData)
+}
+
+type CrtListUpdates struct {
+	Created map[string]certificate.CrtListData
+	Updated map[string]certificate.CrtListData
+	Deleted map[string]certificate.CrtListData
+}
+
+func (b *ControllerStore) addCreatedCrtList(crtListData certificate.CrtListData) {
+	b.CrtListUpdates.Created[crtListData.MapKey()] = crtListData
+}
+
+func (b *ControllerStore) addUpdatedCrtList(crtListData certificate.CrtListData) {
+	b.CrtListUpdates.Updated[crtListData.MapKey()] = crtListData
+}
+
+func (b *ControllerStore) addDeletedCrtList(crtListData certificate.CrtListData) {
+	b.CrtListUpdates.Deleted[crtListData.MapKey()] = crtListData
+}
+
+func (b *ControllerStore) ResetCrtListUpdates() {
+	b.CrtListUpdates.Created = make(map[string]certificate.CrtListData)
+	b.CrtListUpdates.Updated = make(map[string]certificate.CrtListData)
+	b.CrtListUpdates.Deleted = make(map[string]certificate.CrtListData)
 }

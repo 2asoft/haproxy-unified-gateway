@@ -13,7 +13,9 @@
 // limitations under the License.
 package configuration
 
-import gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+import (
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+)
 
 func externalDefaults() External {
 	return External{
@@ -25,8 +27,8 @@ func externalDefaults() External {
 	}
 }
 
-func HaproxyDefaults() gateconfig.HaproxyDirs {
-	return gateconfig.HaproxyDirs{
+func HaproxyDefaults() haproxy.HaproxyDirs {
+	return haproxy.HaproxyDirs{
 		HaproxyBinary: "/usr/local/sbin/haproxy",
 		CfgDir:        "/usr/local/unified-controller",
 		AuxDir:        "/usr/local/unified-controller/aux",

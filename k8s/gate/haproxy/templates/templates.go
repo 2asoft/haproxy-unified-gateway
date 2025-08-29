@@ -11,30 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package haproxy
+package templates
 
-import (
-	"github.com/haproxytech/client-native/v6/models"
-)
-
-type Structured struct {
-	Frontends map[string]*models.Frontend
-	Backends  map[string]*models.Backend
-}
-
-const (
-	UnifiedGatewayMetatDataKey string = "k8s-unified-ctl"
-)
-
-type (
-	MetaData map[string]any
-)
-
-func NewStructuredConf() Structured {
-	return Structured{
-		Frontends: make(map[string]*models.Frontend),
-		Backends:  make(map[string]*models.Backend),
-	}
+type Templates struct {
+	FrontendNameTemplate string
+	BackendNameTemplate  string
+	ServerNameTemplate   string
 }
 
 type TemplateData struct {
@@ -45,11 +27,3 @@ type TemplateData struct {
 	LINK_ID           string
 	// revive:enable:var-naming
 }
-
-func (c Structured) IsEmpty() bool {
-	return len(c.Frontends) == 0 && len(c.Backends) == 0
-}
-
-// Maps
-// Certs
-// Runtime

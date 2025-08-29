@@ -17,7 +17,7 @@ import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
 func LinkID(template string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.LinkID = template
+		o.HaproxyParams.LinkID = template
 		return nil
 	}
 }

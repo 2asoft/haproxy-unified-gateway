@@ -17,7 +17,7 @@ import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
 func IPV6BindAddr(addr string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.IPv6BindAddress = addr
+		o.HaproxyParams.IPv6BindAddress = addr
 		return nil
 	}
 }

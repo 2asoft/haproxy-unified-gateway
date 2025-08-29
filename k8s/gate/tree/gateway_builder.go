@@ -16,6 +16,7 @@ package tree
 import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	v1 "k8s.io/api/core/v1"
@@ -27,15 +28,18 @@ var _ Builder = &GatewayBuilderImpl{}
 
 type GatewayBuilderImpl struct {
 	ControllerStore
+	certStorage storage.CertificateStorage
 }
 
 type GatewayBuilderParams struct {
 	ControllerStore
+	storage.CertificateStorage
 }
 
 func NewGatewayBuilder(params GatewayBuilderParams) Builder {
 	return &GatewayBuilderImpl{
 		ControllerStore: params.ControllerStore,
+		certStorage:     params.CertificateStorage,
 	}
 }
 
@@ -74,6 +78,7 @@ func (b *GatewayBuilderImpl) addIndirectGatewaysFromHaproxyGate(haproxyGateUpdat
 		b.ControllerStore.ClusterStore.Gateways,
 		b.ClusterStore.Updates.Gateways,
 		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
+		nil, // no ownerKey transformation
 	)
 }
 
@@ -90,6 +95,7 @@ func (b *GatewayBuilderImpl) addIndirectGatewaysFromGatewayClass(gwcUpdate store
 		b.ClusterStore.Gateways,
 		b.ClusterStore.Updates.Gateways,
 		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
+		nil, // no ownerKey transformation
 	)
 }
 
@@ -106,6 +112,7 @@ func (b *GatewayBuilderImpl) addIndirectGatewaysFromSecret(secretUpdate store.Up
 		b.ClusterStore.Gateways,
 		b.ClusterStore.Updates.Gateways,
 		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
+		ConvertListenerKeyToGatewayKey,
 	)
 }
 
@@ -187,7 +194,7 @@ func (b *GatewayBuilderImpl) CleanTreeUpdates() {
 }
 
 func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
-	processedListeners := make([]*Listener, 0, len(treeGw.K8sResource.Spec.Listeners))
+	processedListeners := make(map[string]*Listener)
 
 	for _, listener := range treeGw.K8sResource.Spec.Listeners {
 		kinds := supportedKinds(listener, gateSupportedRouteKindsByProtocol)
@@ -196,20 +203,22 @@ func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
 			AllowedRouteKinds: kinds,
 			Conditions:        make(conditions.Conditions),
 		}
-		processedListeners = append(processedListeners, &processedListener)
+		processedListeners[string(listener.Name)] = &processedListener
 	}
 	treeGw.Listeners = processedListeners
 
 	// Performs all needed checks
-	// Only Checks and update listener status if the Gateway is Valid
 	for _, listener := range treeGw.Listeners {
 		switch listener.K8sResource.Protocol {
 		// This switch will be completed with all needed checks per protocol
 		case gatewayv1.HTTPProtocolType:
 			listener.checkRouteGroupKind(treeGw, gateSupportedRouteKindsByProtocol)
+			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
+
 		case gatewayv1.HTTPSProtocolType:
 			listener.checkRouteGroupKind(treeGw, gateSupportedRouteKindsByProtocol)
 			listener.checkCertificateRefs(treeGw, b.GateTree.Secrets)
+			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
 		default:
 			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
 		}

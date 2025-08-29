@@ -16,6 +16,7 @@ package config
 import (
 	"time"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
@@ -28,6 +29,12 @@ const (
 	defaultBackendNameTemplate    = ""
 	defaultServerNameTemplate     = ""
 	DefaultsSectionName           = "haproxytech"
+	DefaultWaitForRuntimeTimeout  = 10 * time.Second
+	DefaultCertsDirName           = "certs"
+	DefaultCertFilesDirName       = "certlistfiles"
+	DefaultMapsDirName            = "maps"
+	DefaultErrFilesDirName        = "errorfiles"
+	DefaultPattenrDirName         = "patterns"
 )
 
 func (cfg *Configuration) ApplyDefaults() {
@@ -50,16 +57,37 @@ func (cfg *Configuration) ApplyDefaults() {
 	if cfg.StartupSyncPeriod == 0 {
 		cfg.StartupSyncPeriod = cfg.SyncPeriod
 	}
-	if cfg.FrontendNameTemplate == "" {
-		cfg.FrontendNameTemplate = defaultFrontendNameTemplate
+	if cfg.HaproxyParams.FrontendNameTemplate == "" {
+		cfg.HaproxyParams.FrontendNameTemplate = defaultFrontendNameTemplate
 	}
-	if cfg.BackendNameTemplate == "" {
-		cfg.BackendNameTemplate = defaultBackendNameTemplate
+	if cfg.HaproxyParams.BackendNameTemplate == "" {
+		cfg.HaproxyParams.BackendNameTemplate = defaultBackendNameTemplate
 	}
-	if cfg.ServerNameTemplate == "" {
-		cfg.ServerNameTemplate = defaultServerNameTemplate
+	if cfg.HaproxyParams.ServerNameTemplate == "" {
+		cfg.HaproxyParams.ServerNameTemplate = defaultServerNameTemplate
 	}
-	if cfg.LinkID == "" {
-		cfg.LinkID = "linkid"
+	if cfg.HaproxyParams.LinkID == "" {
+		cfg.HaproxyParams.LinkID = "linkid"
+	}
+	if cfg.HaproxyParams.TimeoutWaitForRuntime == 0 {
+		cfg.HaproxyParams.TimeoutWaitForRuntime = DefaultWaitForRuntimeTimeout
+	}
+	if cfg.HaproxyParams.StoreCertificateStructureType == "" {
+		cfg.HaproxyParams.StoreCertificateStructureType = storage.StructureTypeCertDefault
+	}
+	if cfg.HaproxyParams.HaproxyDirs.CertsDir == "" {
+		cfg.HaproxyParams.HaproxyDirs.CertsDir = DefaultCertsDirName
+	}
+	if cfg.HaproxyParams.HaproxyDirs.CertListDir == "" {
+		cfg.HaproxyParams.HaproxyDirs.CertListDir = DefaultCertFilesDirName
+	}
+	if cfg.HaproxyParams.HaproxyDirs.MapsDir == "" {
+		cfg.HaproxyParams.HaproxyDirs.MapsDir = DefaultMapsDirName
+	}
+	if cfg.HaproxyParams.HaproxyDirs.ErrFileDir == "" {
+		cfg.HaproxyParams.HaproxyDirs.ErrFileDir = DefaultErrFilesDirName
+	}
+	if cfg.HaproxyParams.HaproxyDirs.PatternDir == "" {
+		cfg.HaproxyParams.HaproxyDirs.PatternDir = DefaultPattenrDirName
 	}
 }

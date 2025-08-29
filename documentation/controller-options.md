@@ -29,18 +29,20 @@ Available options:
 | DisableIPv6 |  |
 | FrontendNameTemplate | `template`(string) |
 | HaproxyConfChannel | `treeCh`(*ast.ChanType) |
-| HaproxyDirs | `dirs`(config.HaproxyDirs) |
+| HaproxyDirs | `dirs`(haproxy.HaproxyDirs) |
 | IPV4BindAddr | `addr`(string) |
 | IPV6BindAddr | `addr`(string) |
-| InitialStructured | `structured`(haproxy.Structured) |
+| InitialStructured | `structuredCfg`(structured.Structured) |
 | KubeConfig | `kubeconfig`(string) |
 | LeaderElectionConfig | `leaderElectionEnabled`(bool) |
 | LinkID | `template`(string) |
 | Logging | `handlerType`(logging.LogHandlerType), `defaultLevel`(slog.Level), `logSettings`(*ast.MapType) |
 | MetricsConfig | `metricsConfig`(config.MetricsConfig) |
 | Namespaces | `namespaces`(*ast.ArrayType) |
+| RuntimeUpdate | `timeout`(time.Duration) |
 | ServerNameTemplate | `template`(string) |
 | StartupSyncPeriod | `syncPeriod`(time.Duration) |
+| StoreCertificateOnDisk | `structureType`(storage.StructureType) |
 | SyncPeriod | `syncPeriod`(time.Duration) |
 
 ### BackendNameTemplate
@@ -209,7 +211,7 @@ import (
   github.com/haproxytech/kubernetes-controller/k8s/gate/options
 )
 
-controller, err := controller.New(opt.InitialStructured(structured))
+controller, err := controller.New(opt.InitialStructured(structuredCfg))
 ```
 
 ### KubeConfig
@@ -291,6 +293,22 @@ import (
 controller, err := controller.New(opt.Namespaces(namespaces))
 ```
 
+### RuntimeUpdate
+
+RuntimeUpdate sets the option to perform runtime commands through the runtime socket
+The timeout specifies the max time to wait for the HUG application to sen the runtime.Runtime
+to the library at start up.
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.RuntimeUpdate(timeout))
+```
+
 ### ServerNameTemplate
 
 
@@ -315,6 +333,19 @@ import (
 )
 
 controller, err := controller.New(opt.StartupSyncPeriod(syncPeriod))
+```
+
+### StoreCertificateOnDisk
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.StoreCertificateOnDisk(structureType))
 ```
 
 ### SyncPeriod

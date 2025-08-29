@@ -101,6 +101,20 @@ func (r *ReferencedBy) ReferencedByUsingKeys(ownedKey client.ObjectKey, ownerGVK
 	return r.Owner[ownedKey][ownerGVK]
 }
 
+// AllReferenced returns all owned keys that are referenced by a given ownerGVK, along with the list of owner keys
+// For examples, return all secrets that are referenced by a Gateway, along with the owner Gateway keys
+// map[ownedKey] => map [ownerKey] => struct{}
+func (r *ReferencedBy) AllReferenced(ownerGVK schema.GroupVersionKind) map[client.ObjectKey]map[client.ObjectKey]struct{} {
+	referenced := make(map[client.ObjectKey]map[client.ObjectKey]struct{})
+	for ownedKey, ownerByGVK := range r.Owner {
+		gwOwners := ownerByGVK[ownerGVK]
+		if len(gwOwners) != 0 {
+			referenced[ownedKey] = gwOwners
+		}
+	}
+	return referenced
+}
+
 func (r ReferencedBy) DeepCopy() ReferencedBy {
 	// Deep copy of owner map
 	ownerCopy := make(map[client.ObjectKey]map[schema.GroupVersionKind]map[client.ObjectKey]struct{}, len(r.Owner))

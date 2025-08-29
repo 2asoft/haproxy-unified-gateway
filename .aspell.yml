@@ -8,6 +8,7 @@ allowed:
   - cfg
   - config
   - crd
+  - crt
   - env
   - entreprise
   - entrypoint

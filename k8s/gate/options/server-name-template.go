@@ -17,7 +17,7 @@ import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
 func ServerNameTemplate(template string) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.ServerNameTemplate = template
+		o.HaproxyParams.ServerNameTemplate = template
 		return nil
 	}
 }

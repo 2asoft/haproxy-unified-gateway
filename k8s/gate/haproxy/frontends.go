@@ -22,6 +22,7 @@ import (
 	"log/slog"
 
 	"github.com/haproxytech/client-native/v6/models"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/templates"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
@@ -30,28 +31,22 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-type K8sObjectInfo struct {
-	LinkID     string
-	Generation int64
-}
-
 type FrontendsOwnedbyGateway struct {
 	current map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
 	updated map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
 }
 
-type FrontendMetaData map[string]map[string]K8sObjectInfo // map[kind] -> map[objectKey]K8sObjectInfo
 func (b *HaproxyConfMgrImpl) getFrontendName(gwKey k8stypes.NamespacedName, listener gatewayv1.Listener) (string, error) {
-	tmpl, err := template.New("frontend").Parse(b.params.frontendNameTemplate)
+	tmpl, err := template.New("frontend").Parse(b.params.FrontendNameTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse frontend name template: %w", err)
 	}
 
-	data := TemplateData{
+	data := templates.TemplateData{
 		GATEWAY_NAMESPACE: gwKey.Namespace,
 		GATEWAY_NAME:      gwKey.Name,
 		LISTENER_NAME:     string(listener.Name),
-		LINK_ID:           b.params.linkID,
+		LINK_ID:           b.params.LinkID,
 	}
 
 	var buf bytes.Buffer
@@ -212,16 +207,16 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 	if err != nil {
 		b.logger.LogAttrs(context.Background(), slog.LevelError,
 			"Failed to get frontend name",
-			slog.String("frontendNameTemplate", b.params.frontendNameTemplate),
+			slog.String("frontendNameTemplate", b.params.FrontendNameTemplate),
 			logging.LogAttrKey(gwKey))
 		return nil, fmt.Errorf("failed to get frontend name: %w", err)
 	}
 
-	md := b.frontendMetaData(treeGw)
+	md := b.metadataManager.FrontendMetaData(treeGw)
 	fe := &models.Frontend{
 		FrontendBase: models.FrontendBase{
 			Name:     feName,
-			From:     b.params.defaultsSectionName,
+			From:     b.params.DefaultsSectionName,
 			Metadata: md,
 			// TODO: remove this, only temporary for test
 			DefaultBackend: "be_tmp_test",
@@ -238,32 +233,32 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 	}
 	// Set other frontend properties based on the listener
 	port := int64(listener.Port)
-	if !b.params.disableIPv4 {
+	if !b.params.DisableIPv4 {
 		bind := models.Bind{
 			Port: &port,
 			Address: func() string {
-				if b.params.iPV4BindAddr != "" {
-					return b.params.iPV4BindAddr
+				if b.params.IPv4BindAddress != "" {
+					return b.params.IPv4BindAddress
 				}
 				return "0.0.0.0"
 			}(),
-			BindParams: models.BindParams{Name: "v4"},
+			BindParams: b.bindParams(feName, "v4", treeGw, treeListener),
 		}
 		if fe.Binds == nil {
 			fe.Binds = make(map[string]models.Bind)
 		}
 		fe.Binds[bind.Name] = bind
 	}
-	if !b.params.disableIPv6 {
+	if !b.params.DisableIPv6 {
 		bind := models.Bind{
 			Port: &port,
 			Address: func() string {
-				if b.params.iPV6BindAddr != "" {
-					return b.params.iPV6BindAddr
+				if b.params.IPv6BindAddress != "" {
+					return b.params.IPv6BindAddress
 				}
 				return "::"
 			}(),
-			BindParams: models.BindParams{Name: "v6"},
+			BindParams: b.bindParams(feName, "v6", treeGw, treeListener),
 		}
 		if fe.Binds == nil {
 			fe.Binds = make(map[string]models.Bind)
@@ -293,7 +288,7 @@ func (b *HaproxyConfMgrImpl) deleteFrontendForListener(gwKey k8stypes.Namespaced
 	feName, err := b.getFrontendName(gwKey, listener)
 	if err != nil {
 		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-			slog.String("frontendNameTemplate", b.params.frontendNameTemplate),
+			slog.String("frontendNameTemplate", b.params.FrontendNameTemplate),
 			logging.LogAttrKey(gwKey))
 		return err
 	}
@@ -336,61 +331,6 @@ func DeepCopyFrontend(original *models.Frontend) (*models.Frontend, error) {
 	return &copied, nil
 }
 
-func (b *HaproxyConfMgrImpl) frontendMetaData(treeGw *tree.Gateway) MetaData {
-	frontendMetadata := make(FrontendMetaData)
-
-	k8sResource := treeGw.GetK8sResource()
-	gvk := b.params.extractGVK(k8sResource)
-
-	gatewayMetadata := make(map[string]K8sObjectInfo)
-	objKey := client.ObjectKeyFromObject(k8sResource)
-	objInfo := K8sObjectInfo{
-		Generation: k8sResource.GetGeneration(),
-		LinkID:     b.params.linkID,
-	}
-	gatewayMetadata[objKey.String()] = objInfo
-
-	frontendMetadata[gvk.Kind] = gatewayMetadata
-
-	md := make(MetaData)
-	// Gateway metatdata marshall/unmarshal
-	// This step is required to ensure that the metadata is in a format that is the same after the one returned from parsing out the metadata from configuration
-	o := make(map[string]any)
-	by, _ := json.Marshal(frontendMetadata)
-	_ = json.Unmarshal(by, &o)
-
-	md[UnifiedGatewayMetatDataKey] = o
-
-	return md
-}
-
-// func (b *HaproxyConfMgrImpl) gatewayKeysFromFrontendMetadata(frontend *models.Frontend) (map[string]struct{}, error) {
-// 	frontendMetadataI, ok := frontend.Metadata[UnifiedGatewayMetatDataKey]
-// 	gateways := make(map[string]struct{})
-// 	if !ok {
-// 		return nil, fmt.Errorf("no %s metadata found in frontend %s", UnifiedGatewayMetatDataKey, frontend.Name)
-// 	}
-
-// 	by, err := json.Marshal(frontendMetadataI)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	var fmd FrontendMetaData
-// 	if err := json.Unmarshal(by, &fmd); err != nil {
-// 		return nil, fmt.Errorf("failed to unmarshal frontend metadata: %w", err)
-// 	}
-
-// 	gatewayMetadata, ok := fmd[b.params.extractGVK(objtypes.ObjectTypeGateway).Kind]
-// 	if !ok {
-// 		return nil, fmt.Errorf("no %s metadata found in frontend %s", b.params.extractGVK(objtypes.ObjectTypeGateway).Kind, frontend.Name)
-// 	}
-
-// 	for key := range gatewayMetadata {
-// 		gateways[key] = struct{}{}
-// 	}
-// 	return gateways, nil
-// }
-
 func NewFrontendsOwnedbyGateway() FrontendsOwnedbyGateway {
 	return FrontendsOwnedbyGateway{
 		current: make(map[client.ObjectKey]map[string]struct{}),
@@ -409,4 +349,22 @@ func (f *FrontendsOwnedbyGateway) RemoveFromUpdated(gwKey client.ObjectKey, fron
 	if _, ok := f.updated[gwKey]; ok {
 		delete(f.updated[gwKey], frontendName)
 	}
+}
+
+func (b *HaproxyConfMgrImpl) bindParams(_, bindName string, treeGw *tree.Gateway, treeListener *tree.Listener) models.BindParams {
+	params := models.BindParams{}
+	params.Name = bindName
+
+	// If no TLS
+	if treeListener.K8sResource.TLS == nil {
+		return params
+	}
+
+	// TLS terminate
+	listenerKey := tree.ListenerKey(treeGw.K8sResource, treeListener.K8sResource)
+	certFileDir := b.params.certificateStorage.CertListPath(listenerKey)
+	params.CrtList = certFileDir.FullPath()
+	params.Ssl = true
+
+	return params
 }

@@ -96,29 +96,11 @@ func ClearMap[K comparable, V any](m map[K]V) {
 	}
 }
 
-func DeepCopyMap[K comparable, V any](src map[K]V) map[K]V {
-	dst := make(map[K]V, len(src))
-	for k, v := range src {
-		dst[k] = v
+func Keys[K comparable, V any](src map[K]V) map[K]struct{} {
+	dst := make(map[K]struct{})
+	for k := range src {
+		dst[k] = struct{}{}
 	}
-	return dst
-}
-
-// DeepCopySlice creates a deep copy of a slice.
-func DeepCopySlice[T any](src []T) []T {
-	// Return nil if the source slice is nil to avoid panics.
-	if src == nil {
-		return nil
-	}
-
-	// Create a new slice with the same length as the source slice.
-	dst := make([]T, len(src))
-
-	// Copy the elements from the source to the destination.
-	// The built-in copy function is more efficient than a manual loop
-	// for this operation.
-	copy(dst, src)
-
 	return dst
 }
 
@@ -151,4 +133,26 @@ func RouteGroupKindsToString(routesGK []gatewayv1.RouteGroupKind) string {
 		kinds = append(kinds, string(kind.Kind))
 	}
 	return fmt.Sprintf("[%s]", strings.Join(kinds, ", "))
+}
+
+// SetDifference finds the keys that are in mapA but not in mapB.
+// It works for any map with a comparable key type K and any value type V.
+func SetDifference[K comparable, V any](mapA, mapB map[K]V) map[K]struct{} {
+	diff := make(map[K]struct{})
+	for key := range mapA {
+		if _, exists := mapB[key]; !exists {
+			diff[key] = struct{}{}
+		}
+	}
+	return diff
+}
+
+func SetIntersection[K comparable, V any](mapA, mapB map[K]V) map[K]struct{} {
+	intersection := make(map[K]struct{})
+	for key := range mapA {
+		if _, exists := mapB[key]; exists {
+			intersection[key] = struct{}{}
+		}
+	}
+	return intersection
 }

@@ -19,20 +19,22 @@ import (
 	"log/slog"
 
 	"github.com/haproxytech/client-native/v6/models"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
 type Configuration struct {
 	// structured contains the complete Structured configuration
-	structured Structured
-	diffs      HaproxyConfDiffs
+	structured structured.Structured
+	diffs      diffs.HaproxyConfDiffs
 }
 
 func (c *Configuration) resetDiffs() {
-	c.diffs = HaproxyConfDiffs{
-		Created: NewStructuredConf(),
-		Updated: NewStructuredConf(),
-		Deleted: NewStructuredConf(),
+	c.diffs = diffs.HaproxyConfDiffs{
+		Created: structured.NewStructuredConf(),
+		Updated: structured.NewStructuredConf(),
+		Deleted: structured.NewStructuredConf(),
 	}
 }
 
@@ -100,11 +102,8 @@ func (c *Configuration) deleteFrontend(logger *slog.Logger, feName string) error
 	)
 	// We need to deep copy the frontend to avoid modifying the original
 	// as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
-	deepCopied, err := DeepCopyFrontend(fe)
-	if err != nil {
-		return err
-	}
-	c.diffs.Deleted.Frontends[fe.Name] = deepCopied
+
+	c.diffs.Deleted.Frontends[fe.Name] = nil
 	delete(c.structured.Frontends, feName)
 	return nil
 }

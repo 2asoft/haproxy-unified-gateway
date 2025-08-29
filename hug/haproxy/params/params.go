@@ -13,12 +13,10 @@
 // limitations under the License.
 package params
 
-import (
-	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-)
+import "github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 
 type Params struct {
-	gateconfig.HaproxyDirs
+	haproxy.HaproxyDirs
 	Test             bool
 	UseWiths6Overlay bool
 }

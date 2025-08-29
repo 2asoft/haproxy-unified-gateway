@@ -14,6 +14,7 @@
 package handler
 
 import (
+	"github.com/haproxytech/kubernetes-controller/hug/reload"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 )
 
@@ -28,10 +29,7 @@ func (b *GateTreeBuilder) GetTree() *tree.GateTree {
 	return b.GateTree
 }
 
-func NewGateTreeBuilder(
-	controllerStore tree.ControllerStore,
-	cfg GateTreeConfig,
-) GateTreeBuilder {
+func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig) GateTreeBuilder {
 	// --------------
 	// Update References
 	// --------------
@@ -47,12 +45,17 @@ func NewGateTreeBuilder(
 	// --------------
 	// Gateway
 	gatewayBuilder := tree.NewGatewayBuilder(tree.GatewayBuilderParams{
-		ControllerStore: controllerStore,
+		ControllerStore:    controllerStore,
+		CertificateStorage: cfg.CertificateStorage,
 	})
 
 	// --------------
 	// Secret
-	secretBuilder := tree.NewSecretBuilder(controllerStore)
+	secretBuilder := tree.NewSecretBuilder(controllerStore, cfg.StoreCertificateOnDisk, cfg.CertificateStorage)
+
+	// --------------
+	// Certificate
+	certificateBuilder := tree.NewCertificateBuilder(controllerStore, cfg.StoreCertificateOnDisk, cfg.RuntimeUpdateHaproxy, cfg.CertificateStorage)
 
 	treeBuilder := GateTreeBuilder{
 		cfg:              cfg,
@@ -62,6 +65,7 @@ func NewGateTreeBuilder(
 			secretBuilder,
 			gatewayClassBuilder,
 			gatewayBuilder,
+			certificateBuilder,
 		},
 	}
 
@@ -76,7 +80,6 @@ func (b *GateTreeBuilder) buildGateTree() {
 	// --------------
 	// Update the references
 	// --------------
-
 	b.referenceManager.UpdateRefences()
 
 	// ControllerConf CRD
@@ -93,6 +96,8 @@ func (b *GateTreeBuilder) buildGateTree() {
 }
 
 func (b *GateTreeBuilder) startBuild() {
+	// reloadMgr reset
+	reload.Instance().Reset()
 	// --------------
 	// Clean TreeUpdates
 	// --------------
@@ -100,6 +105,8 @@ func (b *GateTreeBuilder) startBuild() {
 		builder.CleanTreeUpdates()
 	}
 	b.ControllerStore.CleanInstalledVersionsUpdates()
+	b.ControllerStore.ResetCertificateUpdates()
+	b.ControllerStore.ResetCrtListUpdates()
 }
 
 func (b *GateTreeBuilder) buildControllerConfCRDUpdates() {

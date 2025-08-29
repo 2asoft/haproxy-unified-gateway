@@ -8,7 +8,9 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/haproxytech/client-native/v6/runtime"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
 	hugconfig "github.com/haproxytech/kubernetes-controller/hug/configuration"
@@ -17,7 +19,8 @@ import (
 	"github.com/haproxytech/kubernetes-controller/hug/startup"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
 
@@ -70,29 +73,50 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	var wg sync.WaitGroup
+
+	// Setup the HAProxy configuration manager
+	var runtimeClientCh chan runtime.Runtime
+	if cntlr.Configuration.HaproxyParams.RuntimeUpdateHaproxy {
+		// Buffered Channel to not block AppManager
+		runtimeClientCh = make(chan runtime.Runtime, 1)
+	}
+
+	params := haproxyparams.Params{
+		Test:             hugConfig.Test,
+		UseWiths6Overlay: hugConfig.UseWiths6Overlay,
+		HaproxyDirs:      hugConfig.HaproxyDirs,
+	}
+	haproxyAppManager, err := haproxymgr.NewAppManager(ctx, &wg,
+		cntlr.Configuration.TransferHaproxyConfChannel,
+		runtimeClientCh,
+		params,
+		cntlr.Configuration.Logger)
+	if err != nil {
+		panic(err)
+	}
+
+	// Wait for the runtime client
+	if cntlr.Configuration.HaproxyParams.RuntimeUpdateHaproxy {
+		runtimeClient, err := waitWithTimeoutForRuntimeClient(cntlr.Configuration.Logger, runtimeClientCh, cntlr.Configuration.HaproxyParams.TimeoutWaitForRuntime)
+		if err != nil {
+			panic(err)
+		}
+		cntlr.RuntimeClient = runtimeClient
+	}
+
+	// ----------------
+	// Start Haproxy App manager
+	haproxyAppManager.Run()
+
+	// ----------------
+	// Start the controller
 	go func() {
 		err := cntlr.Run(ctx, &wg)
 		if err != nil {
 			panic(err)
 		}
 	}()
-
-	// Start the HAProxy configuration manager
-	params := haproxyparams.Params{
-		Test:             hugConfig.Test,
-		UseWiths6Overlay: hugConfig.UseWiths6Overlay,
-		HaproxyDirs:      hugConfig.HaproxyDirs,
-	}
-	haproxyCfgManager, err := haproxymgr.NewAppManager(ctx, &wg,
-		cntlr.Configuration.TransferHaproxyConfChannel,
-		params,
-		cntlr.Configuration.Logger)
-	if err != nil {
-		panic(err)
-	}
-	haproxyCfgManager.Run()
 
 	// --------------
 	// Shutdown
@@ -105,7 +129,7 @@ func main() {
 	cntlr.Configuration.Logger.Info("Graceful shutdown requested...")
 
 	// Stop your controller logic
-	haproxyCfgManager.Stop()
+	haproxyAppManager.Stop()
 
 	// Wait for background goroutines to finish
 	wg.Wait()
@@ -127,13 +151,15 @@ func setupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 	// along with opt.ControllerConfCRD to specify which CRD to watcg
 	logLevelIfCategoryEmpty := slog.LevelInfo
 	logCategoryLevels := map[v3.Category]slog.Level{
-		logging.LogCategoryK8s:    slog.LevelInfo,
-		logging.LogCategoryGate:   slog.LevelDebug,
-		logging.LogCategoryStatus: slog.LevelInfo,
-		logging.LogCategoryBatch:  slog.LevelInfo,
+		logging.LogCategoryK8s:          slog.LevelInfo,
+		logging.LogCategoryGate:         slog.LevelDebug,
+		logging.LogCategoryStatus:       slog.LevelInfo,
+		logging.LogCategoryBatch:        slog.LevelInfo,
+		logging.LogCategoryApp:          slog.LevelInfo,
+		logging.LogCategoryCertsStorage: slog.LevelInfo,
 	}
 
-	haproxyConfCh := make(chan haproxy.HaproxyConfDiffs, 100)
+	haproxyConfCh := make(chan diffs.HaproxyConfDiffs, 100)
 
 	// Read the haproy.cfg file at startup, and initializes the library with the initial haproxy configuration
 	initialStructured, err := startup.StructuredFromFile(hugConfig.HaproxyDirs.MainCfgFile, hugConfig.HaproxyDirs.CfgDir)
@@ -162,6 +188,8 @@ func setupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 		opt.InitialStructured(initialStructured),
 		opt.CacheReSyncPeriod(hugConfig.CacheResyncPeriod),
 		opt.DefaultsSectionName(gateconfig.DefaultsSectionName),
+		opt.RuntimeUpdate(gateconfig.DefaultWaitForRuntimeTimeout),   // Send commands through runtime in Gate library
+		opt.StoreCertificateOnDisk(storage.StructureTypeCertDefault), // Store the certificates on disk
 	}
 	if hugConfig.DisableIPv4 {
 		opts = append(opts, opt.DisableIPv4())
@@ -170,4 +198,16 @@ func setupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 		opts = append(opts, opt.DisableIPv6())
 	}
 	return opts
+}
+
+func waitWithTimeoutForRuntimeClient(logger *slog.Logger, runtimeClientCh chan runtime.Runtime, timeout time.Duration) (runtime.Runtime, error) {
+	var err error
+	select {
+	case runtimeClient := <-runtimeClientCh:
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Runtime client received from AppManager")
+		return runtimeClient, nil
+	case <-time.After(timeout):
+		err = fmt.Errorf("timeout reached. No Runtime client received from AppManagerin %v ", timeout)
+		return nil, err
+	}
 }

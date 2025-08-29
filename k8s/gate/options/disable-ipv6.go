@@ -17,7 +17,7 @@ import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 
 func DisableIPv6() func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.DisableIPv6 = true
+		o.HaproxyParams.DisableIPv6 = true
 		return nil
 	}
 }

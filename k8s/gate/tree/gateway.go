@@ -38,13 +38,13 @@ type Gateway struct {
 	HaproxyGate *v3.HaproxyGate
 	// Final Conditions
 	Conditions conditions.Conditions
+	// Listeners include the listeners of the Gateway.
+	Listeners map[string]*Listener // map[listenerName]
 	// TreeStatus
 	TreeStatus TreeUpdate[Gateway]
 	// ConditionType Accepted checks
 	CheckParamsRef         CheckResult
 	CheckValidGatewayClass CheckResult
-	// Listeners include the listeners of the Gateway.
-	Listeners []*Listener
 	// Valid shows whether the Gateway is valid.
 	Valid bool
 }

@@ -28,7 +28,7 @@ import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	gate "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
@@ -153,6 +153,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		logging.LogCategoryBatch:         slog.LevelInfo,
 		logging.LogCategoryStatus:        slog.LevelDebug,
 		logging.LogCategoryReloadMgr:     slog.LevelInfo,
+		logging.LogCategoryCertsStorage:  slog.LevelDebug,
 	}
 
 	syncPeriod := 1 * time.Second
@@ -163,7 +164,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		opt.SyncPeriod(syncPeriod),
 		opt.ControllerName(controllerName),
 		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logLevels),
-		opt.InitialStructured(haproxy.Structured{
+		opt.InitialStructured(structured.Structured{
 			Backends:  make(map[string]*models.Backend),
 			Frontends: make(map[string]*models.Frontend),
 		}),
@@ -172,6 +173,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 		opt.LinkID("linkid"),
 	}
 	gatecontrollercfg := config.Configuration{}
+	gatecontrollercfg.ApplyDefaults()
 
 	for _, o := range opts {
 		_ = o(&gatecontrollercfg)
@@ -179,7 +181,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	logrLoggerFromSlog := logr.FromSlogHandler(gatecontrollercfg.LogHandler)
 	ctrlruntime.SetLogger(logrLoggerFromSlog)
 
-	err = gate.Add(test.Ctx, gatecontrollercfg, mgr)
+	err = gate.Add(test.Ctx, gatecontrollercfg, nil, mgr)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {

@@ -17,36 +17,31 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/haproxytech/client-native/v6/runtime"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 )
 
 type HaproxyConfMgr interface {
 	// ComputeDiffs computes the HAProxy configuration diffs.
 	ComputeDiffs() error
-	GetDiffs() HaproxyConfDiffs
+	GetDiffs() diffs.HaproxyConfDiffs
 }
 
 var _ HaproxyConfMgr = &HaproxyConfMgrImpl{}
-
-type HaproxyConfMgrParams struct {
-	extractGVK utils.ExtractGVK
-	Templates
-	iPV4BindAddr        string
-	iPV6BindAddr        string
-	linkID              string
-	defaultsSectionName string // Name of the default section to use for create backends and frontends
-	disableIPv4         bool
-	disableIPv6         bool
-}
 
 type HaproxyConfMgrImpl struct {
 	controllerStore tree.ControllerStore
 	// frontendsOwnedbyGateway keeps track of frontends owned by each Gateway
 	// This is usefull to cleanup the frontends removed from a Gateway (some listeners removed)
 	frontendsOwnedbyGateway FrontendsOwnedbyGateway // map[gwKey] -> map[frontendName]struct{}
-	logger                  *slog.Logger
+	metadataManager         metadata.Manager
+	// RuntimeClient is set if HaproxyConfMgrParams.UpdateHaproxyThroughRuntime is true
+	runtimeClient runtime.Runtime
+	logger        *slog.Logger
 	// frontendsContainedInFirstSync that are present at startup, used to cleanup after the first sync
 	// the frontends that are not anymore in the cluster
 	frontendsContainedInFirstSync map[string]struct{}
@@ -56,26 +51,9 @@ type HaproxyConfMgrImpl struct {
 	firstSync bool // True if this is the initial sync
 }
 
-func NewHaproxyCfgMgrParams(extractGVK utils.ExtractGVK,
-	templates Templates,
-	disableIPv4, disableIPv6 bool,
-	iPV4BindAddr, iPV6BindAddr string,
-	linkID string,
-	defaultsSectionName string,
-) HaproxyConfMgrParams {
-	return HaproxyConfMgrParams{
-		extractGVK:          extractGVK,
-		Templates:           templates,
-		disableIPv4:         disableIPv4,
-		disableIPv6:         disableIPv6,
-		iPV4BindAddr:        iPV4BindAddr,
-		iPV6BindAddr:        iPV6BindAddr,
-		linkID:              linkID,
-		defaultsSectionName: defaultsSectionName,
-	}
-}
-
-func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured Structured, builderConfig HaproxyConfMgrParams) HaproxyConfMgr {
+func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured structured.Structured,
+	params HaproxyConfMgrParams, runtimeClient runtime.Runtime,
+) HaproxyConfMgr {
 	firstSync := true
 	impl := HaproxyConfMgrImpl{
 		controllerStore: controllerStore,
@@ -83,10 +61,12 @@ func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore
 			structured: startupStructured,
 		},
 		firstSync:                     firstSync,
-		params:                        builderConfig,
+		params:                        params,
 		logger:                        logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)),
 		frontendsContainedInFirstSync: make(map[string]struct{}),
 		frontendsOwnedbyGateway:       NewFrontendsOwnedbyGateway(),
+		metadataManager:               metadata.NewManager(params.extractGVK, params.LinkID),
+		runtimeClient:                 runtimeClient,
 	}
 
 	return &impl
@@ -113,7 +93,7 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
 	return nil
 }
 
-func (b *HaproxyConfMgrImpl) GetDiffs() HaproxyConfDiffs {
+func (b *HaproxyConfMgrImpl) GetDiffs() diffs.HaproxyConfDiffs {
 	return b.configuration.diffs
 }
 

@@ -18,9 +18,23 @@ spec:
     port: 8443
     tls:
       certificateRefs:
+      # test
       - kind: Secret
         group: ""
         name: offload
+      - kind: Secret
+        group: ""
+        name: offload2
+        namespace: test
+      ## test2
+      - kind: Secret
+        group: ""
+        name: offload
+        namespace: test2
+      - kind: Secret
+        group: ""
+        name: offload2
+        namespace: test2
     allowedRoutes:
       kinds:
       - group: gateway.networking.k8s.io

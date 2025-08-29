@@ -20,11 +20,14 @@ import (
 	"sync"
 
 	"github.com/haproxytech/client-native/v6/models"
+	"github.com/haproxytech/client-native/v6/runtime"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/process"
 	"github.com/haproxytech/kubernetes-controller/hug/reload"
 	gatehaproxy "github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
@@ -39,13 +42,14 @@ type AppManagerImpl struct {
 	ctx          context.Context
 	wg           *sync.WaitGroup
 	logger       *slog.Logger
-	haproxyCfgCh chan gatehaproxy.HaproxyConfDiffs
+	haproxyCfgCh chan diffs.HaproxyConfDiffs
 	params       params.Params
 }
 
 var _ AppManager = &AppManagerImpl{}
 
-func NewAppManager(ctx context.Context, wg *sync.WaitGroup, cfgCh chan gatehaproxy.HaproxyConfDiffs,
+func NewAppManager(ctx context.Context, wg *sync.WaitGroup,
+	cfgCh chan diffs.HaproxyConfDiffs, runtimeClientCh chan runtime.Runtime,
 	param params.Params,
 	logger *slog.Logger,
 ) (AppManager, error) {
@@ -60,7 +64,13 @@ func NewAppManager(ctx context.Context, wg *sync.WaitGroup, cfgCh chan gatehapro
 	p := process.New(param, haproxyClient, logger)
 	p.SetAPI(haproxyClient)
 
-	reload.GetInstance().SetLogger(logger)
+	reload.Instance().SetLogger(logger)
+
+	// Send the runtime client to the library
+	if runtimeClientCh != nil {
+		runtimeClientCh <- haproxyClient.RuntimeClient()
+		close(runtimeClientCh)
+	}
 
 	return &AppManagerImpl{
 		client:       haproxyClient,
@@ -74,7 +84,7 @@ func NewAppManager(ctx context.Context, wg *sync.WaitGroup, cfgCh chan gatehapro
 }
 
 func (h *AppManagerImpl) Stop() {
-	err := h.process.Service("stop")
+	_, err := h.process.Service("stop")
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +105,7 @@ func (h *AppManagerImpl) Run() {
 			case haproxyCfg := <-h.haproxyCfgCh:
 				err := h.applyCfgUpdates(haproxyCfg)
 				if err != nil {
-					h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to updated Haproxy config",
+					h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to update Haproxy config",
 						logging.LogAttrError(err),
 					)
 				}
@@ -104,19 +114,19 @@ func (h *AppManagerImpl) Run() {
 	}()
 }
 
-func (h *AppManagerImpl) applyCfgUpdates(diffs gatehaproxy.HaproxyConfDiffs) error {
+func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs) error {
 	var err error
-	if diffs.IsEmpty() {
+	if haproxyCfgDiffs.IsEmpty() {
 		// Should not happen, already checked before
 		return nil
 	}
 	// Process the received HaproxyConfDiffs
 	h.logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"Starting processing HaproxyConfDiffs",
-		slog.String("HaproxyConfDiffs", fmt.Sprintf("%+v", diffs.Stats())))
+		slog.String("HaproxyConfDiffs", fmt.Sprintf("%+v", haproxyCfgDiffs.Stats())))
 	// Log, send result to the controller to update status
 	defer func() {
-		h.confUpdateProcessed(diffs, err)
+		h.confUpdateProcessed(haproxyCfgDiffs, err)
 	}()
 
 	// -----------------
@@ -130,13 +140,13 @@ func (h *AppManagerImpl) applyCfgUpdates(diffs gatehaproxy.HaproxyConfDiffs) err
 		return err
 	}
 
-	if err = h.processCreate(diffs.Created); err != nil {
+	if err = h.processCreate(haproxyCfgDiffs.Created); err != nil {
 		return err
 	}
-	if err = h.processUpdate(diffs.Updated); err != nil {
+	if err = h.processUpdate(haproxyCfgDiffs.Updated); err != nil {
 		return err
 	}
-	if err = h.processDelete(diffs.Deleted); err != nil {
+	if err = h.processDelete(haproxyCfgDiffs.Deleted); err != nil {
 		return err
 	}
 
@@ -153,11 +163,13 @@ func (h *AppManagerImpl) applyCfgUpdates(diffs gatehaproxy.HaproxyConfDiffs) err
 
 	// -----------------
 	// Reload ?
-	if reload.GetInstance().NeedReload() {
+	if reload.Instance().NeedReload() {
 		h.logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Haproxy reload")
-		if err = h.process.Service("reload"); err != nil {
+		msg := ""
+		if msg, err = h.process.Service("reload"); err != nil {
 			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to reload Haproxy",
+				slog.String("reason", msg),
 				logging.LogAttrError(err),
 			)
 			return err
@@ -169,7 +181,7 @@ func (h *AppManagerImpl) applyCfgUpdates(diffs gatehaproxy.HaproxyConfDiffs) err
 	return nil
 }
 
-func (h *AppManagerImpl) processCreate(created gatehaproxy.Structured) error {
+func (h *AppManagerImpl) processCreate(created structured.Structured) error {
 	for _, createdFE := range created.Frontends {
 		if createdFE == nil {
 			// Should not happend
@@ -190,17 +202,11 @@ func (h *AppManagerImpl) processCreate(created gatehaproxy.Structured) error {
 	return nil
 }
 
-func (h *AppManagerImpl) processDelete(deleted gatehaproxy.Structured) error {
-	for _, deletedFE := range deleted.Frontends {
-		if deletedFE == nil {
-			// Should not happend
-			h.logger.LogAttrs(context.Background(), slog.LevelError, "nil frontend")
-			continue
-		}
-
-		err := h.client.FrontendDelete(deletedFE.Name)
+func (h *AppManagerImpl) processDelete(deleted structured.Structured) error {
+	for feName := range deleted.Frontends {
+		err := h.client.FrontendDelete(feName)
 		if err != nil {
-			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to create frontend",
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to delete frontend",
 				logging.LogAttrError(err),
 			)
 			return err
@@ -211,13 +217,15 @@ func (h *AppManagerImpl) processDelete(deleted gatehaproxy.Structured) error {
 	return nil
 }
 
-func (h *AppManagerImpl) processUpdate(updated gatehaproxy.Structured) error {
+func (h *AppManagerImpl) processUpdate(updated structured.Structured) error {
 	for _, udpatedFE := range updated.Frontends {
 		if udpatedFE == nil {
 			// Should not happend
 			h.logger.LogAttrs(context.Background(), slog.LevelError, "nil frontend")
 			continue
 		}
+		// TODO: need to check if only the Metadata has changed
+		// If so, no need to reload
 
 		err := h.client.FrontendEdit(*udpatedFE)
 		if err != nil {
@@ -232,7 +240,7 @@ func (h *AppManagerImpl) processUpdate(updated gatehaproxy.Structured) error {
 	return nil
 }
 
-func (h *AppManagerImpl) confUpdateProcessed(diffs gatehaproxy.HaproxyConfDiffs, err error) {
+func (h *AppManagerImpl) confUpdateProcessed(haproxyCfgDiffs diffs.HaproxyConfDiffs, err error) {
 	h.client.APIDisposeTransaction()
 
 	result := gatehaproxy.HaproxyConfUpdateResult{
@@ -241,23 +249,23 @@ func (h *AppManagerImpl) confUpdateProcessed(diffs gatehaproxy.HaproxyConfDiffs,
 	}
 
 	// Frontends
-	for _, fe := range diffs.Created.Frontends {
+	for _, fe := range haproxyCfgDiffs.Created.Frontends {
 		addFrontendMetadataToResult(result.UpdatedSectionsMetaData, fe)
 	}
-	for _, fe := range diffs.Updated.Frontends {
+	for _, fe := range haproxyCfgDiffs.Updated.Frontends {
 		addFrontendMetadataToResult(result.UpdatedSectionsMetaData, fe)
 	}
-	for _, fe := range diffs.Deleted.Frontends {
+	for _, fe := range haproxyCfgDiffs.Deleted.Frontends {
 		addFrontendMetadataToResult(result.UpdatedSectionsMetaData, fe)
 	}
 	// Backends
-	for _, be := range diffs.Created.Backends {
+	for _, be := range haproxyCfgDiffs.Created.Backends {
 		addBackendMetadataToResult(result.UpdatedSectionsMetaData, be)
 	}
-	for _, be := range diffs.Updated.Backends {
+	for _, be := range haproxyCfgDiffs.Updated.Backends {
 		addBackendMetadataToResult(result.UpdatedSectionsMetaData, be)
 	}
-	for _, be := range diffs.Deleted.Backends {
+	for _, be := range haproxyCfgDiffs.Deleted.Backends {
 		addBackendMetadataToResult(result.UpdatedSectionsMetaData, be)
 	}
 

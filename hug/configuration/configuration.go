@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/controller/certs"
-	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
@@ -30,8 +30,7 @@ import (
 
 //revive:disable:line-length-limit
 type HUGConfig struct {
-	gateconfig.HaproxyDirs
-	Certs             certs.Env
+	haproxy.HaproxyDirs
 	ControllerConfCRD NamespaceNameValue `ff:"          long: haproxyctrlconf-crd,     usage: 'namespace/name of the haproxyctrlconf CRD'"`
 	ControllerName    string             `ff:"          long: controller-name,         usage: 'spec.controllerName' GatewayClass selector'"`
 	IPV4BindAddr      string             `ff:"          long: ipv4-bind-address,       usage: 'IPv4 address to bind to'"`
@@ -162,18 +161,14 @@ func Get() (HUGConfig, error) {
 	}
 
 	// Directories
-	configuration.Certs.MainDir = filepath.Join(configuration.HaproxyDirs.CfgDir, "certs")
-	configuration.Certs.FrontendDir = filepath.Join(configuration.Certs.MainDir, "frontend")
-	configuration.Certs.BackendDir = filepath.Join(configuration.Certs.MainDir, "backend")
-	configuration.Certs.CaDir = filepath.Join(configuration.Certs.MainDir, "ca")
-	configuration.MapsDir = filepath.Join(configuration.HaproxyDirs.CfgDir, "maps")
-	configuration.PatternDir = filepath.Join(configuration.HaproxyDirs.CfgDir, "patterns")
-	configuration.ErrFileDir = filepath.Join(configuration.HaproxyDirs.CfgDir, "errorfiles")
+	configuration.CertsDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultCertsDirName)
+	configuration.CertListDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultCertFilesDirName)
+	configuration.MapsDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultMapsDirName)
+	configuration.PatternDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultPattenrDirName)
+	configuration.ErrFileDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultErrFilesDirName)
 	for _, d := range []string{
-		configuration.Certs.MainDir,
-		configuration.Certs.FrontendDir,
-		configuration.Certs.BackendDir,
-		configuration.Certs.CaDir,
+		configuration.CertsDir,
+		configuration.CertListDir,
 		configuration.MapsDir,
 		configuration.ErrFileDir,
 		configuration.HaproxyDirs.StateDir,

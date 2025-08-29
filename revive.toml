@@ -37,3 +37,6 @@ enableAllRules = true
 
 [rule.function-length]
   arguments = [50, 100]
+
+[rule.argument-limit]
+  arguments = [10]

@@ -11,24 +11,22 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package haproxy
+package storage
 
-import "fmt"
+type StructureType string
 
-type HaproxyConfDiffs struct {
-	Created Structured
-	Updated Structured
-	Deleted Structured
-}
+const (
+	// StructureTypeCertDefault handles a default storage algorithm
+	// Default algorithm for Certificate Storage
+	// namespace/take two first characters of a secret name as folder
+	// For example for secrets: namespace/secret-name-1 , namespace/secret-name-2, namespace/my-secret-name-1
+	// - /etc/unified.../certs/<namespace>/se/
+	// - /etc/unified.../certs/<namespace>/se/
+	// - /etc/unified.../certs/<namespace>/my/
+	StructureTypeCertDefault = "default"
+)
 
-func (c HaproxyConfDiffs) IsEmpty() bool {
-	return c.Created.IsEmpty() && c.Updated.IsEmpty() && c.Deleted.IsEmpty()
-}
-
-func (c HaproxyConfDiffs) Stats() string {
-	return fmt.Sprintf("Created[FE:%d/BE:%d] Updated[FE:%d/BE:%d] Deleted[FE:%d/BE:%d]",
-		len(c.Created.Frontends), len(c.Created.Backends),
-		len(c.Updated.Frontends), len(c.Updated.Backends),
-		len(c.Deleted.Frontends), len(c.Deleted.Backends),
-	)
+type CertificateStorage interface {
+	CertStorage
+	CrtListStorage
 }

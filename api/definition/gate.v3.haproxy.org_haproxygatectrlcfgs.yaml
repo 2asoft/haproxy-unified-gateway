@@ -56,6 +56,7 @@ spec:
                           - app
                           - batch
                           - reloadmgr
+                          - certsstorage
                           type: string
                         level:
                           enum:

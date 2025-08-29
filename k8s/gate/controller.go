@@ -22,11 +22,13 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	"github.com/haproxytech/client-native/v6/runtime"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	constant "github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/predicate"
@@ -48,6 +50,8 @@ import (
 )
 
 type Controller struct {
+	// RuntimeClient is set if Configuration.UpdateHaproxyThroughRuntime is true
+	RuntimeClient runtime.Runtime
 	Configuration config.Configuration
 }
 
@@ -120,7 +124,7 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("cannot build runtime manager: %w", err)
 	}
 
-	if err := Add(ctx, c.Configuration, mgr); err != nil {
+	if err := Add(ctx, c.Configuration, c.RuntimeClient, mgr); err != nil {
 		return err
 	}
 
@@ -134,6 +138,7 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 func Add(
 	ctx context.Context,
 	cfg config.Configuration,
+	runtimeClient runtime.Runtime,
 	mgr manager.Manager,
 ) error {
 	// Check if the controller configuration is valid
@@ -163,6 +168,15 @@ func Add(
 		Updates:         store.NewClusterUpdates(),
 	}
 
+	var certificateStorage storage.CertificateStorage
+	var err error
+
+	certificateStorage, err = storage.NewCertificateStorage(cfg.Logger, extractGVK, cfg.HaproxyParams.StoreCertificateStructureType,
+		cfg.HaproxyParams.CertsDir, cfg.HaproxyParams.CertListDir)
+	if err != nil {
+		return err
+	}
+
 	gateTreeConfig := handler.GateTreeConfig{
 		BaseLogger:                 cfg.Logger,
 		LogCategoryFilterHandler:   cfg.LogHandler,
@@ -171,20 +185,21 @@ func Add(
 		TransferHaproxyConfChannel: cfg.TransferHaproxyConfChannel,
 		K8sClient:                  mgr.GetClient(),
 		K8sReader:                  mgr.GetAPIReader(),
+		StoreCertificateOnDisk:     cfg.HaproxyParams.StoreCertificateOnDisk,
+		RuntimeUpdateHaproxy:       cfg.HaproxyParams.RuntimeUpdateHaproxy,
+		CertificateStorage:         certificateStorage,
 	}
-	haproxyCfgBuilderParams := haproxy.NewHaproxyCfgMgrParams(
-		extractGVK,
-		haproxy.NewTemplates(cfg.FrontendNameTemplate, cfg.BackendNameTemplate, cfg.ServerNameTemplate),
-		cfg.DisableIPv4, cfg.DisableIPv6,
-		cfg.IPv4BindAddress, cfg.IPv6BindAddress,
-		cfg.LinkID,
-		cfg.DefaultsSectionName,
-	)
+	haproxyCfgMgrParams, err := haproxy.NewHaproxyConfMgrParams(extractGVK, cfg.HaproxyParams, certificateStorage)
+	if err != nil {
+		return err
+	}
+
 	eventHandler := handler.NewEventHandlerImpl(
 		clusterStore,
 		gateTreeConfig,
-		haproxyCfgBuilderParams,
+		haproxyCfgMgrParams,
 		cfg.InitialStructuredHaproxyConf,
+		runtimeClient,
 	)
 
 	loopCfg := handler.EventLoopConfig{

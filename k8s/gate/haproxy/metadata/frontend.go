@@ -1,0 +1,78 @@
+// Copyright 2025 HAProxy Technologies LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package metadata
+
+import (
+	"encoding/json"
+
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type FrontendMetaData map[string]map[string]K8sObjectInfo // map[kind] -> map[objectKey]K8sObjectInfo
+
+func (mm *ManagerImpl) FrontendMetaData(treeGw *tree.Gateway) MetaData {
+	frontendMetadata := make(FrontendMetaData)
+
+	k8sResource := treeGw.GetK8sResource()
+	gvk := mm.extractGVK(k8sResource)
+
+	gatewayMetadata := make(map[string]K8sObjectInfo)
+	objKey := client.ObjectKeyFromObject(k8sResource)
+	objInfo := K8sObjectInfo{
+		Generation: k8sResource.GetGeneration(),
+		LinkID:     mm.linkID,
+	}
+	gatewayMetadata[objKey.String()] = objInfo
+
+	frontendMetadata[gvk.Kind] = gatewayMetadata
+
+	md := make(MetaData)
+	// Gateway metatdata marshall/unmarshal
+	// This step is required to ensure that the metadata is in a format that is the same after the one returned from parsing out the metadata from configuration
+	o := make(map[string]any)
+	by, _ := json.Marshal(frontendMetadata)
+	_ = json.Unmarshal(by, &o)
+
+	md[UnifiedGatewayMetatDataKey] = o
+
+	return md
+}
+
+// func (mm *ManagerImpl) gatewayKeysFromFrontendMetadata(frontend *models.Frontend) (map[string]struct{}, error) {
+// 	frontendMetadataI, ok := frontend.Metadata[UnifiedGatewayMetatDataKey]
+// 	gateways := make(map[string]struct{})
+// 	if !ok {
+// 		return nil, fmt.Errorf("no %s metadata found in frontend %s", UnifiedGatewayMetatDataKey, frontend.Name)
+// 	}
+
+// 	by, err := json.Marshal(frontendMetadataI)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	var fmd FrontendMetaData
+// 	if err := json.Unmarshal(by, &fmd); err != nil {
+// 		return nil, fmt.Errorf("failed to unmarshal frontend metadata: %w", err)
+// 	}
+
+// 	gatewayMetadata, ok := fmd[b.params.extractGVK(objtypes.ObjectTypeGateway).Kind]
+// 	if !ok {
+// 		return nil, fmt.Errorf("no %s metadata found in frontend %s", b.params.extractGVK(objtypes.ObjectTypeGateway).Kind, frontend.Name)
+// 	}
+
+// 	for key := range gatewayMetadata {
+// 		gateways[key] = struct{}{}
+// 	}
+// 	return gateways, nil
+// }

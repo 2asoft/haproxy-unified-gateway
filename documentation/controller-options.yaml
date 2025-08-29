@@ -53,7 +53,7 @@ HaproxyDirs:
     comment: ""
     args:
         - name: dirs
-          type: config.HaproxyDirs
+          type: haproxy.HaproxyDirs
 IPV4BindAddr:
     name: IPV4BindAddr
     comment: ""
@@ -70,8 +70,8 @@ InitialStructured:
     name: InitialStructured
     comment: ""
     args:
-        - name: structured
-          type: haproxy.Structured
+        - name: structuredCfg
+          type: structured.Structured
 KubeConfig:
     name: KubeConfig
     comment: ""
@@ -113,6 +113,15 @@ Namespaces:
     args:
         - name: namespaces
           type: '*ast.ArrayType'
+RuntimeUpdate:
+    name: RuntimeUpdate
+    comment: |
+        RuntimeUpdate sets the option to perform runtime commands through the runtime socket
+        The timeout specifies the max time to wait for the HUG application to sen the runtime.Runtime
+        to the library at start up.
+    args:
+        - name: timeout
+          type: time.Duration
 ServerNameTemplate:
     name: ServerNameTemplate
     comment: ""
@@ -125,6 +134,12 @@ StartupSyncPeriod:
     args:
         - name: syncPeriod
           type: time.Duration
+StoreCertificateOnDisk:
+    name: StoreCertificateOnDisk
+    comment: ""
+    args:
+        - name: structureType
+          type: storage.StructureType
 SyncPeriod:
     name: SyncPeriod
     comment: ""
