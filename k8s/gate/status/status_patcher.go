@@ -109,6 +109,8 @@ func (sm *gatewayStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
 }
 
 func ListenerStatusesEqual(a, b []gatewayv1.ListenerStatus) bool {
+	sortListenerStatusByName(a)
+	sortListenerStatusByName(b)
 	listenerStatusEqual := func(a, b gatewayv1.ListenerStatus) bool {
 		if a.Name != b.Name {
 			return false
@@ -141,4 +143,19 @@ func (sm *gatewayStatusPatcher) SetStatus(obj client.Object) error {
 		Listeners:  sm.listenerStatuses,
 	}
 	return nil
+}
+
+// sortListenerStatusByName sorts a slice of gatewayapi.ListenerStatus structs
+// in place, in ascending order based on the `Name` field.
+// It uses the standard library's `slices.SortFunc` for efficient sorting.
+func sortListenerStatusByName(listeners []gatewayv1.ListenerStatus) {
+	slices.SortFunc(listeners, func(a, b gatewayv1.ListenerStatus) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		if a.Name > b.Name {
+			return 1
+		}
+		return 0
+	})
 }
