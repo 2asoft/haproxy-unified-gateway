@@ -2,7 +2,6 @@ license:
   stage: security
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    - if: $CI_PIPELINE_SOURCE == 'push'
   image:
     name: $CI_REGISTRY_GO/golang:$GO_VERSION
     entrypoint: [ "" ]
@@ -16,7 +15,6 @@ govulncheck:
   stage: security
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    - if: $CI_PIPELINE_SOURCE == 'push'
   image:
     name: $CI_REGISTRY_GO/golang:$GO_VERSION
     entrypoint: [ "" ]

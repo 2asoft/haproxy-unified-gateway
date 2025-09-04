@@ -1,4 +1,5 @@
 stages:
+  - bots
   - diff
   - lint
   - unit-tests
@@ -12,6 +13,7 @@ variables:
   DOCKER_VERSION: "26.0"
 
 include:
+  - local: .gitlab/bots.yml
   - local: .gitlab/diff.yml
   - local: .gitlab/lint.yml
   - local: .gitlab/security.yml

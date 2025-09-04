@@ -18,6 +18,8 @@ diff:
     - test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || exit "Documentation created untracked files, cannot proceed"
 check-large-files:
   stage: diff
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   tags:
     - go
   script:
