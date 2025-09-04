@@ -226,11 +226,11 @@ func TestObjectStoreImpl_Concurrency(t *testing.T) {
 	numOpsPerGoroutine := 50
 	var wg sync.WaitGroup
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < numOpsPerGoroutine; j++ {
+			for j := range numOpsPerGoroutine {
 				idRoutine := strconv.Itoa(i)
 				idOp := strconv.Itoa(j)
 				nsName := types.NamespacedName{Name: "test" + "-" + idRoutine + "-" + idOp} // Unique name

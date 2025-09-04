@@ -66,9 +66,9 @@ func CreateRuntimeObjectsFromYAMLFiles(params RuntimeYamlParams) error {
 		if err != nil {
 			return err
 		}
-		manifests := bytes.Split(manifestData, []byte("\n---\n"))
+		manifests := bytes.SplitSeq(manifestData, []byte("\n---\n"))
 
-		for _, manifest := range manifests {
+		for manifest := range manifests {
 			obj, gvk, err := RuntimeFromBytes(params.CrtlruntimeClient, manifest)
 			if err != nil {
 				return err
@@ -167,9 +167,9 @@ func DeleteRuntimeObjectsFromYAMLFiles(params RuntimeYamlParams) error {
 		if err != nil {
 			return err
 		}
-		manifests := bytes.Split(manifestData, []byte("\n---\n"))
+		manifests := bytes.SplitSeq(manifestData, []byte("\n---\n"))
 
-		for _, manifest := range manifests {
+		for manifest := range manifests {
 			obj, gvk, err := RuntimeFromBytes(params.CrtlruntimeClient, manifest)
 			if err != nil {
 				return err

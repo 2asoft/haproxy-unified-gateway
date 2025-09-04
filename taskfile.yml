@@ -102,7 +102,11 @@ tasks:
     vars:
       VERSION:
         sh: yq eval '.gofumpt.version' taskfile-tools.yml
+      BA_VERSION:
+        sh: yq eval '.betteralign.version' taskfile-tools.yml
     cmds:
+      #- go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...
+      - /{{.TMP}}/betteralign/{{.BA_VERSION}}/betteralign -apply ./... || true
       - /{{.TMP}}/gofumpt/{{.VERSION}}/gofumpt -l -w .
 
   licenses:

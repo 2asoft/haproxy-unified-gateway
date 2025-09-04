@@ -14,6 +14,8 @@
 package conditions
 
 import (
+	"maps"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -30,9 +32,7 @@ type Condition struct {
 type Conditions map[ConditionType]Condition
 
 func (c Conditions) MergeOverrideConditions(b Conditions) {
-	for k, v := range b {
-		c[k] = v
-	}
+	maps.Copy(c, b)
 }
 
 func (c Conditions) Equal(b Conditions) bool {

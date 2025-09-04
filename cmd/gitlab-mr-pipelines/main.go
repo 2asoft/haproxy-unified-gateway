@@ -27,7 +27,7 @@ import (
 //go:embed ascii.txt
 var hello string
 
-//nolint:forbidigo
+//revive:disable:unhandled-error
 func main() {
 	fmt.Println(hello)
 	// Check if we are in a merge request context
@@ -80,10 +80,12 @@ func main() {
 	}
 }
 
+//revive:enable:unhandled-error
+
 type pipelineInfo struct {
+	Status    string `json:"status"`
 	ID        int    `json:"id"`
 	ProjectID int    `json:"project_id"`
-	Status    string `json:"status"`
 }
 
 func getOldMergeRequestPipelines(apiURL, projectID, mrIID, token string) ([]pipelineInfo, error) {
