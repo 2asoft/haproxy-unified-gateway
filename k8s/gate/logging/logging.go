@@ -217,7 +217,7 @@ func (*CategoryFilterHandler) ReconcileLogSettings(aLevel slog.Level, categories
 }
 
 func LogLevelString2SlogLevel(level string) slog.Level {
-	switch level {
+	switch level { //revive:disable:identical-switch-branches
 	case "Info":
 		return slog.LevelInfo
 	case "Warn":

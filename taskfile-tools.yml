@@ -2,10 +2,10 @@ yq:
   version: v4.45.1
   install: github.com/mikefarah/yq/v4
 betteralign:
-  version: v0.7.1
+  version: v0.7.3
   install: github.com/dkorunic/betteralign/cmd/betteralign
 revive:
-  version: v1.10.0
+  version: v1.12.0
   install: github.com/mgechev/revive
 staticcheck:
   version: v0.6.1
@@ -14,13 +14,13 @@ go-licenses:
   version: v1.6.0
   install: github.com/google/go-licenses
 check-commit:
-  version: v5.1.1
+  version: v5.2.0
   install: github.com/haproxytech/check-commit/v5
 govulncheck:
   version: v1.1.4
   install: golang.org/x/vuln/cmd/govulncheck
 gofumpt:
-  version: v0.8.0
+  version: v0.9.0
   install: mvdan.cc/gofumpt
 kind:
   version: v0.29.0

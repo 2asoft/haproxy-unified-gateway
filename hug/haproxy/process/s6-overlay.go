@@ -51,7 +51,7 @@ func (c *s6Control) Service(action string) (string, error) {
 	}
 	var cmd *exec.Cmd
 
-	switch action {
+	switch action { //revive:disable:identical-switch-branches
 	case "start":
 		// no need to start it is up already (s6)
 		return "", nil

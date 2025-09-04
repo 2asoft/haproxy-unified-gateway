@@ -32,6 +32,12 @@ enableAllRules = true
 [rule.redundant-import-alias]
   disabled = true
 
+[rule.package-directory-mismatch]
+  disabled = true
+
+[rule.enforce-switch-style]
+  disabled = true
+
 [rule.struct-tag] # tag inline unrecognized
   disabled = true
 
