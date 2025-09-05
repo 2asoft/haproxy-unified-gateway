@@ -30,13 +30,11 @@ type ControllerStore struct {
 	InstalledGwAPIVersions *InstalledVersions
 	Logger                 *slog.Logger
 	ExtractGVK             utils.ExtractGVK
-	CertificateUpdates     *CertificateUpdates
+	CertUpdates            *CertUpdates
 	CrtListUpdates         *CrtListUpdates
-	Certificates           map[string]certificate.CertificateData // cert file name
-	CrtLists               map[string]certificate.CrtListData     // crt-list file name
 }
 
-type CertificateUpdates struct {
+type CertUpdates struct {
 	Created map[string]certificate.CertificateData
 	Updated map[string]certificate.CertificateData
 	Deleted map[string]certificate.CertificateData
@@ -49,21 +47,21 @@ func (b *ControllerStore) CleanInstalledVersionsUpdates() {
 }
 
 func (b *ControllerStore) addCreatedCertificate(certData certificate.CertificateData) {
-	b.CertificateUpdates.Created[certData.MapKey()] = certData
+	b.CertUpdates.Created[certData.MapKey()] = certData
 }
 
 func (b *ControllerStore) addUpdatedCertificate(certData certificate.CertificateData) {
-	b.CertificateUpdates.Updated[certData.MapKey()] = certData
+	b.CertUpdates.Updated[certData.MapKey()] = certData
 }
 
 func (b *ControllerStore) addDeletedCertificate(certData certificate.CertificateData) {
-	b.CertificateUpdates.Deleted[certData.MapKey()] = certData
+	b.CertUpdates.Deleted[certData.MapKey()] = certData
 }
 
 func (b *ControllerStore) ResetCertificateUpdates() {
-	b.CertificateUpdates.Created = make(map[string]certificate.CertificateData)
-	b.CertificateUpdates.Updated = make(map[string]certificate.CertificateData)
-	b.CertificateUpdates.Deleted = make(map[string]certificate.CertificateData)
+	b.CertUpdates.Created = make(map[string]certificate.CertificateData)
+	b.CertUpdates.Updated = make(map[string]certificate.CertificateData)
+	b.CertUpdates.Deleted = make(map[string]certificate.CertificateData)
 }
 
 type CrtListUpdates struct {

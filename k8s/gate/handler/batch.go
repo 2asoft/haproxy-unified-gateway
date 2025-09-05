@@ -103,7 +103,7 @@ func NewEventHandlerImpl(
 		InstalledGwAPIVersions: &tree.InstalledVersions{
 			Versions: make(map[string]int),
 		},
-		CertificateUpdates: &tree.CertificateUpdates{
+		CertUpdates: &tree.CertUpdates{
 			Created: make(map[string]certificate.CertificateData),
 			Updated: make(map[string]certificate.CertificateData),
 			Deleted: make(map[string]certificate.CertificateData),
@@ -164,7 +164,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		)
 	}
 	haproxyConfDiffs := h.haproxyConfBuilder.GetDiffs()
-	if !haproxyConfDiffs.IsEmpty() {
+	if !haproxyConfDiffs.IsEmpty() || haproxyConfDiffs.ReloadNeed {
 		if h.config.TransferHaproxyConfChannel != nil {
 			h.config.TransferHaproxyConfChannel <- haproxyConfDiffs
 		}

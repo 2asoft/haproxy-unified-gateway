@@ -31,8 +31,9 @@ func (c HaproxyConfDiffs) IsEmpty() bool {
 }
 
 func (c HaproxyConfDiffs) Stats() string {
-	return fmt.Sprintf("Created/Updated/Delete FE:[%d/%d/%d] BE[%d/%d/%d]",
+	return fmt.Sprintf("Created/Updated/Delete FE:[%d/%d/%d] BE[%d/%d/%d] Reload[%t]",
 		len(c.Created.Frontends), len(c.Updated.Frontends), len(c.Deleted.Frontends),
 		len(c.Created.Backends), len(c.Updated.Backends), len(c.Deleted.Backends),
+		c.ReloadNeed,
 	)
 }

@@ -94,7 +94,7 @@ func (b *CertificateBuilderImpl) computeCertificateDiffs() {
 func (b *CertificateBuilderImpl) ensureCertificatesStorage() {
 	// ---------------
 	// Write them on disk
-	certUpdates := b.ControllerStore.CertificateUpdates
+	certUpdates := b.ControllerStore.CertUpdates
 	crtListUpdates := b.ControllerStore.CrtListUpdates
 	// ------------
 	// cert
@@ -289,6 +289,7 @@ func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayLi
 		// Added/Removed/Unchanged
 		addedSecretRefsForListener := utils.SetDifference(newSecretRefKeys, previousSecretRefKeys)
 		unchangedSecretRefsForListener := utils.SetIntersection(newSecretRefKeys, previousSecretRefKeys)
+		removedSecretRefsForListener := utils.SetDifference(previousSecretRefKeys, newSecretRefKeys)
 
 		// Build the list of crt-list
 		crtlistUpdated := false
@@ -305,16 +306,6 @@ func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayLi
 			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [updated][new entries]", logging.LogAttrKey(listenerKey))
 			crtlistUpdated = true
 		}
-
-		// for secretKey := range unchangedSecretRefsForListener {
-		// 	secretKeys[secretKey] = struct{}{}
-		// }
-		// 2- Checked the unchanged secretRefs.... they might have been created or deleted
-		// Checks now the 2 lists of secrets: previousSecretKeys and updatedSecretKeys
-		// If any difference, re-write the content
-		// diff1 := utils.SetDifference(previousSecretRefKeys, unchangedSecretRefsForListener)
-		// diff2 := utils.SetDifference(unchangedSecretRefsForListener, previousSecretRefKeys)
-		// Remove non exists or deleted secrets from secrets to add
 
 		// Also check if there are any newly created Secrets
 		for secretKey := range unchangedSecretRefsForListener {
@@ -348,7 +339,11 @@ func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayLi
 			secretKeys[secretKey] = struct{}{}
 		}
 
-		// if len(diff1) != 0 || len(diff2) != 0 || crtlistUpdated {
+		// Now check removed ones
+		if len(removedSecretRefsForListener) != 0 {
+			crtlistUpdated = true
+		}
+
 		if crtlistUpdated {
 			if len(secretKeys) != 0 {
 				crtListData := b.certStorage.NewCrtListData(listenerKey, secretKeys)

@@ -64,8 +64,9 @@ func (d *directControl) Service(action string) (string, error) {
 	switch action {
 	case "start":
 		if processErr == nil {
-			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is already running")
-			return "", nil
+			d.logger.LogAttrs(context.Background(), slog.LevelInfo, "haproxy is already running")
+			return d.Service("reload")
+			// return "", nil
 		}
 		cmd = exec.Command(d.Params.HaproxyBinary, "-W", "-S", masterSocketArg, "-f", d.Params.MainCfgFile)
 		if d.useAuxFile {

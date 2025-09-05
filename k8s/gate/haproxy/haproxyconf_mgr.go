@@ -16,8 +16,10 @@ package haproxy
 import (
 	"context"
 	"log/slog"
+	"sync"
 
 	"github.com/haproxytech/client-native/v6/runtime"
+	"github.com/haproxytech/kubernetes-controller/hug/reload"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
@@ -45,6 +47,7 @@ type HaproxyConfMgrImpl struct {
 	// frontendsContainedInFirstSync that are present at startup, used to cleanup after the first sync
 	// the frontends that are not anymore in the cluster
 	frontendsContainedInFirstSync map[string]struct{}
+	mu                            *sync.Mutex
 	configuration                 Configuration
 	params                        HaproxyConfMgrParams
 	// If this is the initial sync, we will add to the diffs Deleted all items that are not upserted
@@ -67,6 +70,7 @@ func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore
 		frontendsOwnedbyGateway:       NewFrontendsOwnedbyGateway(),
 		metadataManager:               metadata.NewManager(params.extractGVK, params.LinkID),
 		runtimeClient:                 runtimeClient,
+		mu:                            &sync.Mutex{},
 	}
 
 	return &impl
@@ -86,6 +90,15 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
 		logger.LogAttrs(context.Background(), slog.LevelError, "Failed to build Gateways",
 			logging.LogAttrError(err))
 	}
+
+	// -----------
+	// Certificates
+	if err := b.processCertificates(); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing certificates",
+			logging.LogAttrError(err))
+	}
+	b.configuration.diffs.ReloadNeed = reload.Instance().NeedReload()
+
 	// Perform the needed cleanup after the first sync
 	// Remove frontends that were present at startup but not anymore in the cluster
 	b.cleanupAfterFirstSync()
