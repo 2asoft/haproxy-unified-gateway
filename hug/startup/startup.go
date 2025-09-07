@@ -32,11 +32,12 @@ type ownerMetaData interface {
 // Frontends/Backends
 // that have the unified gateway metadata
 // (the objects that the gateway manages)
-func StructuredFromFile(cfgFile, transactionDir string) (structured.Structured, error) {
+func StructuredFromFile(cfgFile, transactionDir, haproxyBin string) (structured.Structured, error) {
 	confClient, err := configuration.New(context.Background(),
 		cfgoptions.ConfigurationFile(cfgFile),
 		cfgoptions.TransactionsDir(transactionDir),
 		cfgoptions.UseMd5Hash,
+		cfgoptions.HAProxyBin(haproxyBin),
 	)
 	if err != nil {
 		return structured.Structured{}, err
