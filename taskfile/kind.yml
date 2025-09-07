@@ -26,14 +26,16 @@ tasks:
     deps:
       - task: check-go-tool
         vars:
-          PACKAGE: kind
+          TOOL: KIND
     desc: 'create a KinD cluster with controller'
     status:
       - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
+    vars:
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
     dir: 'ci/kind' # this file is imported so its fine
     cmds:
-      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind delete cluster --name {{.CLUSTER_NAME}}
-      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml
+      - /{{.kind}} delete cluster --name {{.CLUSTER_NAME}}
+      - /{{.kind}} create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml --image kindest/node:{{.K8S_VERSION}}
 
   kind-controller-build:
     desc: ''
@@ -80,9 +82,11 @@ tasks:
     deps:
       - task: check-go-tool
         vars:
-          PACKAGE: kind
+          TOOL: KIND
+    vars:
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
     cmds:
-      - "/{{.TMP}}/kind/{{.KIND_VERSION}}/kind delete cluster --name {{.CLUSTER_NAME}}"
+      - "/{{.kind}} delete cluster --name {{.CLUSTER_NAME}}"
 
   kind-create:
     desc: 'create a KinD cluster with IC and one example app'
@@ -90,7 +94,13 @@ tasks:
     vars:
       # can be set to 'kind-build-controller-image-build-in-docker' if you want to build in the docker image
       CONTROLLER_BUILD_TASK: 'kind-build-controller-image-dev'
+      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
     deps:
+      - task: check-go-tool
+        vars:
+          TOOL: KIND
+      - task: check-kubectl
     cmds:
       - task: delimiter
       - task: kind-create-cluster
@@ -98,50 +108,54 @@ tasks:
       - task: '{{ .CONTROLLER_BUILD_TASK }}'
       - task: kind-build-echo-image
       - task: delimiter
-      - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
-      - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/http-echo:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.kind}} load docker-image haproxytech/http-echo:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
       - echo "Create HAProxy namespace ..."
-      - kubectl apply -f {{.CONFIG_DIR}}/controller/namespace.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/namespace.yaml
       - task: delimiter
       - echo "Install custom resource definitions ..."
       - echo "Install Gateway API CRDs"
-      - kubectl apply -f {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
+      - /{{.kubectl}} apply -f {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
       - echo "Install Gateway API Controller CRDs"
-      - kubectl apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_haproxygatectrlcfgs.yaml
-      - kubectl apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_haproxygates.yaml
-      #- kubectl apply -f {{.CONFIG_DIR}}/crd/rbac.yaml
-      #- kubectl apply -f {{.CONFIG_DIR}}/crd/job-crd.yaml
-      #- kubectl wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-controller
+      - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_haproxygatectrlcfgs.yaml
+      - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_haproxygates.yaml
+      #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/rbac.yaml
+      #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/job-crd.yaml
+      #- /{{.kubectl}} wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-controller
       - task: delimiter
       - echo "deploying Controller ..."
-      - kubectl apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
-      - kubectl apply -f {{.CONFIG_DIR}}/controller/controllerconf.yaml
-      - kubectl apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controllerconf.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controller.yaml
       - task: delimiter
       - echo "deploying echo service ..."
-      - kubectl apply -f {{.CONFIG_DIR}}/echo/echo.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/echo/echo.yaml
       - docker pull haproxytech/haproxy-alpine:3.1
-      - /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
-      #- /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
+      - /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      #- /{{.kind}} load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
       - task: delimiter
-      - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
+      - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
 
   kind-redeploy-controller:
     deps:
       - task: check-go-tool
         vars:
-          PACKAGE: kind
+          TOOL: KIND
+      - task: check-kubectl
     desc: 'redeploy a KinD cluster with IC'
     silent: true
+    vars:
+      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
     cmds:
       - task: kind-build-controller-image-dev
       - task: delimiter
-      - cmd: /{{.TMP}}/kind/{{.KIND_VERSION}}/kind load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
       - echo "deploying Controller ..."
-      - kubectl apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
-      - kubectl apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controller.yaml
       - task: delimiter
-      - kubectl delete pods -l run=haproxy-controller -n haproxy-controller
-      - kubectl wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
+      - /{{.kubectl}} delete pods -l run=haproxy-controller -n haproxy-controller
+      - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller

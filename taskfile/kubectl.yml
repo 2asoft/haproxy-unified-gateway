@@ -24,9 +24,21 @@ tasks:
       - "/{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version | grep -q '{{.KUBECTL_VERSION}}'"
     cmds:
       - mkdir -p /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}
-      - cmd: curl -Lo /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/amd64/kubectl"
+      - cmd: curl -sLo /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/amd64/kubectl"
         platforms: [linux/amd64, darwin/amd64]
-      - cmd: curl -Lo /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/arm64/kubectl"
+      - cmd: curl -sLo /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/arm64/kubectl"
         platforms: [linux/arm64, darwin/arm64]
       - cmd: chmod +x /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl
-      - cmd: /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version
+      - cmd: /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version --client=true
+
+  check-kubectl:
+    desc: 'install kubectl'
+    silent: true
+    internal: false
+    vars:
+      CURRENT_VERSION:
+        sh: /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version --client=true | grep Client | awk '$1 == "Client" {print $3}'
+    status:
+      - "{{ if eq .CURRENT_VERSION .KUBECTL_VERSION }}true{{ else }}false{{ end }}"
+    cmds:
+      - task: kubectl-install

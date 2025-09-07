@@ -8,6 +8,9 @@ includes:
   vars:
     taskfile: taskfile/.vars.yml
     flatten: true
+  tools:
+    taskfile: taskfile/.tools.yml
+    flatten: true
   kind:
     taskfile: taskfile/kind.yml
     flatten: true
@@ -47,6 +50,10 @@ tasks:
 
   test:
     desc: 'run Go tests'
+    deps:
+      - task: check-go-tool
+        vars:
+          TOOL: GOTESTSUM
     vars:
       TOOL: envtest
       POD_IP: "1.2.3.4"
@@ -60,7 +67,8 @@ tasks:
         POD_IP={{.POD_IP}}
         POD_NAME={{.POD_NAME}}
         POD_NAMESPACE={{.POD_NAMESPACE}}
-        POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS go test -p 1 -v -count=1 ./...
+        POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS
+        /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --hide-summary=output --format-icons=hivis --format=testdox --format-hide-empty-pkg -- ./...
 
   tidy:
     internal: true
@@ -71,43 +79,25 @@ tasks:
   lint:
     desc: 'run Go linters'
     deps:
-      - task: check-go-tool
+      - task: check-go-tools
         vars:
-          PACKAGE: betteralign
-      - task: check-go-tool
-        vars:
-          PACKAGE: revive
-      - task: check-go-tool
-        vars:
-          PACKAGE: staticcheck
-    vars:
-      BA_VERSION:
-        sh: yq eval '.betteralign.version' taskfile-tools.yml
-      RV_VERSION:
-        sh: yq eval '.revive.version' taskfile-tools.yml
-      SC_VERSION:
-        sh: yq eval '.staticcheck.version' taskfile-tools.yml
+          TOOLS: [BETTERALIGN, REVIVE, STATICCHECK]
     cmds:
-      - /{{.TMP}}/revive/{{.RV_VERSION}}/revive -config revive.toml -formatter friendly -set_exit_status ./...
-      - /{{.TMP}}/staticcheck/{{.SC_VERSION}}/staticcheck ./...
-      - /{{.TMP}}/betteralign/{{.BA_VERSION}}/betteralign ./...
+      - /{{.TMP}}/revive/{{.REVIVE_VERSION}}/revive -config revive.toml -formatter friendly -set_exit_status ./...
+      - /{{.TMP}}/staticcheck/{{.STATICCHECK_VERSION}}/staticcheck ./...
+      - /{{.TMP}}/betteralign/{{.BETTERALIGN_VERSION}}/betteralign ./...
 
   format:
     internal: true
     desc: 'formats the code'
     deps:
-      - task: check-go-tool
+      - task: check-go-tools
         vars:
-          PACKAGE: 'gofumpt'
-    vars:
-      VERSION:
-        sh: yq eval '.gofumpt.version' taskfile-tools.yml
-      BA_VERSION:
-        sh: yq eval '.betteralign.version' taskfile-tools.yml
+          TOOLS: [BETTERALIGN, GOFUMPT]
     cmds:
       #- go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...
-      - /{{.TMP}}/betteralign/{{.BA_VERSION}}/betteralign -apply ./... || true
-      - /{{.TMP}}/gofumpt/{{.VERSION}}/gofumpt -l -w .
+      - /{{.TMP}}/betteralign/{{.BETTERALIGN_VERSION}}/betteralign -apply ./... || true
+      - /{{.TMP}}/gofumpt/{{.GOFUMPT_VERSION}}/gofumpt -l -w .
 
   licenses:
     internal: true
@@ -116,40 +106,31 @@ tasks:
     deps:
       - task: check-go-tool
         vars:
-          PACKAGE: 'go-licenses'
-    vars:
-      VERSION:
-        sh: yq eval '.go-licenses.version' ./../../taskfile-tools.yml
+          TOOL: GO_LICENSES
     cmds:
       - |
           PROJECT="$(go list -m)"
           ALLOWED_LICENSES="$(<../../.allowed_license_types)"
-          /{{.TMP}}/go-licenses/{{.VERSION}}/go-licenses report --ignore "$PROJECT" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys" --ignore "golang.org/x/sys/unix"  .
-          /{{.TMP}}/go-licenses/{{.VERSION}}/go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/modern-go/reflect2" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys/unix"  .
+          /{{.TMP}}/go-licenses/{{.GO_LICENSES_VERSION}}/go-licenses report --ignore "$PROJECT" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys" --ignore "golang.org/x/sys/unix"  .
+          /{{.TMP}}/go-licenses/{{.GO_LICENSES_VERSION}}/go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/modern-go/reflect2" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys/unix"  .
 
   check-commit:
     #internal: true
     deps:
       - task: check-go-tool
         vars:
-          PACKAGE: 'check-commit'
-    vars:
-      VERSION:
-        sh: yq eval '.check-commit.version' taskfile-tools.yml
+          TOOL: CHECK_COMMIT
     cmds:
-      - /{{.TMP}}/check-commit/{{.VERSION}}/check-commit
+      - /{{.TMP}}/check-commit/{{.CHECK_COMMIT_VERSION}}/check-commit
 
   govulncheck:
     internal: true
     deps:
       - task: check-go-tool
         vars:
-          PACKAGE: 'govulncheck'
-    vars:
-      VERSION:
-        sh: yq eval '.govulncheck.version' taskfile-tools.yml
+          TOOL: GOVULNCHECK
     cmds:
-      - /{{.TMP}}/govulncheck/{{.VERSION}}/govulncheck -show verbose ./...
+      - /{{.TMP}}/govulncheck/{{.GOVULNCHECK_VERSION}}/govulncheck -show verbose ./...
 
   legal:
     desc: 'check legal'
