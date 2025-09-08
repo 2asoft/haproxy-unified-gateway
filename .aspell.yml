@@ -9,6 +9,8 @@ allowed:
   - config
   - crd
   - crt
+  - crtlistfiles
+  - crtlists
   - env
   - entreprise
   - entrypoint

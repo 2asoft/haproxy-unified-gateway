@@ -31,7 +31,7 @@ const (
 	DefaultsSectionName           = "haproxytech"
 	DefaultWaitForRuntimeTimeout  = 10 * time.Second
 	DefaultCertsDirName           = "certs"
-	DefaultCertFilesDirName       = "certlistfiles"
+	DefaultCertFilesDirName       = "certlists"
 	DefaultMapsDirName            = "maps"
 	DefaultErrFilesDirName        = "errorfiles"
 	DefaultPattenrDirName         = "patterns"
