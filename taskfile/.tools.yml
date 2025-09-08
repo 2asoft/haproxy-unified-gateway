@@ -45,5 +45,5 @@ vars:
   GOTESTSUM_URL: gotest.tools/gotestsum
 
   YQ_INSTALLED_V:
-   sh: /{{.TMP}}/yq/{{.YQ_VERSION}}/yq --version || echo ""
+    sh: /{{.TMP}}/yq/{{.YQ_VERSION}}/yq --version || echo ""
   YQ_INSTALLED: "{{ if contains .YQ_VERSION .YQ_INSTALLED_V }}true{{ else }}false{{ end }}"
