@@ -7,3 +7,4 @@ cmd/controller/controller
 .test/*
 .envrc
 __debug_bin*
+./controller
