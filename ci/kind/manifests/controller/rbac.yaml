@@ -144,7 +144,7 @@ rules:
   - apiGroups:
     - gate.v3.haproxy.org
     resources:
-      - haproxygates
+      - huggates
       - hugconfs
     verbs:
       - get

@@ -6,5 +6,5 @@ spec:
   controllerName: gate.haproxy.org/unified-controller
   parametersRef:
     group: gate.v3.haproxy.org
-    kind: HaproxyGate
-    name: haproxygate
+    kind: HugGate
+    name: huggate

@@ -23,34 +23,34 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-type ControllerConfBuilderImpl struct {
+type HugConfBuilderImpl struct {
 	ControllerStore
 	logCategoryFilterHandler *logging.CategoryFilterHandler
-	controllerConfNsName     types.NamespacedName
+	hugConfNsName            types.NamespacedName
 }
 
-type ControllerConfBuilderParams struct {
+type HugConfBuilderParams struct {
 	ControllerStore
 	LogCategoryFilterHandler *logging.CategoryFilterHandler
-	ControllerConfNsName     types.NamespacedName
+	HugConfNsName            types.NamespacedName
 }
 
-func NewControllerConfBuilder(params ControllerConfBuilderParams) *ControllerConfBuilderImpl {
-	return &ControllerConfBuilderImpl{
+func NewHugConfBuilder(params HugConfBuilderParams) *HugConfBuilderImpl {
+	return &HugConfBuilderImpl{
 		ControllerStore:          params.ControllerStore,
 		logCategoryFilterHandler: params.LogCategoryFilterHandler,
-		controllerConfNsName:     params.ControllerConfNsName,
+		hugConfNsName:            params.HugConfNsName,
 	}
 }
 
-func (b *ControllerConfBuilderImpl) Build() {
-	controllerConfUpdates := b.ClusterStore.Updates.ControllerConfs
-	if len(controllerConfUpdates) == 0 {
+func (b *HugConfBuilderImpl) Build() {
+	hugConfUpdates := b.ClusterStore.Updates.HugConfs
+	if len(hugConfUpdates) == 0 {
 		// no controller confs, nothing to do
 		return
 	}
 
-	confUpdate, ok := controllerConfUpdates[b.controllerConfNsName]
+	confUpdate, ok := hugConfUpdates[b.hugConfNsName]
 	if !ok {
 		// Update for controller conf not found, nothing to do
 		return
@@ -75,11 +75,11 @@ func (b *ControllerConfBuilderImpl) Build() {
 		}
 	case store.StatusUpserted:
 		// Case UPSERTED
-		newConf := b.ClusterStore.ControllerConfs[b.controllerConfNsName]
+		newConf := b.ClusterStore.ControllerConfs[b.hugConfNsName]
 		if newConf == nil {
 			b.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Controller configuration not found",
-				logging.LogAttrNsName(b.controllerConfNsName),
+				logging.LogAttrNsName(b.hugConfNsName),
 			)
 			return
 		}
@@ -101,5 +101,5 @@ func (b *ControllerConfBuilderImpl) Build() {
 	}
 }
 
-func (*ControllerConfBuilderImpl) BuildStatus() {
+func (*HugConfBuilderImpl) BuildStatus() {
 }

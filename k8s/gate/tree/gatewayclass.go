@@ -35,8 +35,8 @@ type GatewayClass struct {
 	TreeStatus TreeUpdate[GatewayClass]
 	// K8sResource is the source resource.
 	K8sResource *gatewayv1.GatewayClass
-	// HaproxyGate is the linked HaproxyGate from ParamsRef
-	HaproxyGate *v3.HaproxyGate
+	// HugGate is the linked HugGate from ParamsRef
+	HugGate *v3.HugGate
 	// Conditions include Conditions for the GatewayClass.
 	Conditions conditions.Conditions
 	// CheckParamsRef shows whether the GatewayClass is valid as for ParamsRef
@@ -80,7 +80,7 @@ func (g *GatewayClass) SetAsDeleted(logger *slog.Logger) {
 
 func (g *GatewayClass) ResetChecks() {
 	g.Conditions = conditions.NewGatewayClassAcceptedOK()
-	g.HaproxyGate = nil
+	g.HugGate = nil
 	g.CheckParamsRef = CheckResult{}
 	g.Valid = false
 }
@@ -115,14 +115,14 @@ func (g *GatewayClass) checkParametersRef(controllerStore ControllerStore) {
 	switch g.TreeStatus.Status {
 	case store.StatusUpserted:
 		paramRef := g.K8sResource.Spec.ParametersRef
-		checker := HaproxyGateParamsRefChecker{
-			ParamRef:          paramRef,
-			StoreHaproxyGates: controllerStore.ClusterStore.HaproxyGates,
+		checker := HugGateParamsRefChecker{
+			ParamRef:      paramRef,
+			StoreHugGates: controllerStore.ClusterStore.HugGates,
 		}
-		var haproxyGate *v3.HaproxyGate
-		g.CheckParamsRef, haproxyGate = checker.CheckGatewayClass()
+		var hugGate *v3.HugGate
+		g.CheckParamsRef, hugGate = checker.CheckGatewayClass()
 		if g.CheckParamsRef.Valid {
-			g.HaproxyGate = haproxyGate
+			g.HugGate = hugGate
 		}
 	case store.StatusDeleted:
 		// nothing to do

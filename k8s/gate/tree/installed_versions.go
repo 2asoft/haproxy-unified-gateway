@@ -32,7 +32,7 @@ type SupportedVersions []string
 
 var (
 	SupportedGatewayAPIBundleVersion = SupportedVersions{"v1.2", "v1.3"}
-	SupportedParametersRefKind       = gatewayv1.Kind("HaproxyGate")
+	SupportedParametersRefKind       = gatewayv1.Kind("HugGate")
 	SupportedParametersRefGroup      = gatewayv1.Group("gate.v3.haproxy.org")
 )
 

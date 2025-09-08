@@ -63,7 +63,7 @@ func TestReferencedBy_Add(t *testing.T) {
 	gvkGatewayClass := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "GatewayClass"}
 	gvkGateway := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "Gateway"}
 
-	owned1 := &mockObject{name: "owned-gate-1", namespace: "default", gvk: gvkGatewayClass} // A HaproxyGate CR
+	owned1 := &mockObject{name: "owned-gate-1", namespace: "default", gvk: gvkGatewayClass} // A HugGate CR
 	owned1Key := client.ObjectKeyFromObject(owned1)
 
 	ownerGWC1 := &mockObject{name: "gwc-1", namespace: "", gvk: gvkGatewayClass}
@@ -140,7 +140,7 @@ func TestReferencedBy_Remove(t *testing.T) {
 	gvkGatewayClass := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "GatewayClass"}
 	gvkGateway := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "Gateway"}
 
-	owned1 := &mockObject{name: "owned-gate-1", namespace: "default", gvk: gvkGatewayClass} // A HaproxyGate CR
+	owned1 := &mockObject{name: "owned-gate-1", namespace: "default", gvk: gvkGatewayClass} // A HugGate CR
 	owned1Key := client.ObjectKeyFromObject(owned1)
 
 	ownerGWC1 := &mockObject{name: "gwc-1", namespace: "", gvk: gvkGatewayClass}

@@ -33,9 +33,9 @@ type Gateway struct {
 	// K8sResource is the source resource.
 	K8sResource *gatewayv1.Gateway
 	// Conditions include Conditions for the Gateway.
-	// HaproxyGate is a merge between the ParamsRef from GatewayClass and the one from Gateway
+	// HugGate is a merge between the ParamsRef from GatewayClass and the one from Gateway
 	// If it is invalid at GatewayClass level, it is ignored and overriden by the one at Gateway level.
-	HaproxyGate *v3.HaproxyGate
+	HugGate *v3.HugGate
 	// Final Conditions
 	Conditions conditions.Conditions
 	// Listeners include the listeners of the Gateway.
@@ -91,7 +91,7 @@ func (g *Gateway) SetAsDeleted(logger *slog.Logger) {
 
 func (g *Gateway) resetChecks() {
 	g.Conditions = conditions.NewGatewayAcceptedOK()
-	g.HaproxyGate = nil
+	g.HugGate = nil
 	g.CheckParamsRef = CheckResult{}
 	g.CheckValidGatewayClass = CheckResult{}
 	g.Valid = false
@@ -164,32 +164,32 @@ func (g *Gateway) checkParametersRef(controllerStore ControllerStore) {
 		Name:      gwParamRef.Name,
 		Namespace: (*gatewayv1.Namespace)(&g.K8sResource.Namespace),
 	}
-	checker := HaproxyGateParamsRefChecker{
-		ParamRef:          paramRef,
-		StoreHaproxyGates: controllerStore.ClusterStore.HaproxyGates,
+	checker := HugGateParamsRefChecker{
+		ParamRef:      paramRef,
+		StoreHugGates: controllerStore.ClusterStore.HugGates,
 	}
-	var haproxyGate *v3.HaproxyGate
-	g.CheckParamsRef, haproxyGate = checker.CheckGatewayClass()
+	var hugGate *v3.HugGate
+	g.CheckParamsRef, hugGate = checker.CheckGatewayClass()
 	if g.CheckParamsRef.Valid {
 		// Check if the GatewayClass has a valid ParamsRef and if so, merge them
 		gwcKey := types.NamespacedName{Name: string(g.K8sResource.Spec.GatewayClassName)}
 		treeGwc, ok := controllerStore.GateTree.GatewayClasses[gwcKey]
 
 		if ok && treeGwc.Valid {
-			gwcGate := treeGwc.HaproxyGate
+			gwcGate := treeGwc.HugGate
 			if gwcGate != nil {
-				mergedHaproxyGate := &v3.HaproxyGate{}
-				err := mergo.Merge(mergedHaproxyGate, haproxyGate)
+				mergedHugGate := &v3.HugGate{}
+				err := mergo.Merge(mergedHugGate, hugGate)
 				if err != nil {
 					controllerStore.Logger.LogAttrs(context.Background(), slog.LevelError, "error merging haproxy gate",
 						logging.LogAttrError(err))
 				} else {
-					g.HaproxyGate = mergedHaproxyGate
+					g.HugGate = mergedHugGate
 				}
 			}
 		} else {
 			// No merge needed
-			g.HaproxyGate = haproxyGate
+			g.HugGate = hugGate
 		}
 	}
 }

@@ -1,4 +1,4 @@
-- message: 'invalid parametersRef: spec.parametersRef: Not found: "haproxygate"'
+- message: 'invalid parametersRef: spec.parametersRef: Not found: "huggate"'
   reason: InvalidParameters
   status: "False"
   type: Accepted

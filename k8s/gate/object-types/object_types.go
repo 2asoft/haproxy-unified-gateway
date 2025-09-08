@@ -26,7 +26,7 @@ var (
 	ObjectTypeHTTPRoute    = &gatewayv1.HTTPRoute{}
 	ObjectTypeService      = &apiv1.Service{}
 	ObjectTypeSecret       = &apiv1.Secret{}
-	ObjectTypeHaproxyGate  = &v3.HaproxyGate{}
+	ObjectTypeHugGate      = &v3.HugGate{}
 )
 
 var (

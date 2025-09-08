@@ -1,9 +1,9 @@
-  - message: 'invalid parametersRef: spec.parametersRef: Not found: "haproxygate2"'
+  - message: 'invalid parametersRef: spec.parametersRef: Not found: "huggate2"'
     observedGeneration: 1
     reason: InvalidParameters
     status: "False"
     type: Accepted
-  - message: 'invalid parametersRef: spec.parametersRef: Not found: "haproxygate2"'
+  - message: 'invalid parametersRef: spec.parametersRef: Not found: "huggate2"'
     observedGeneration: 1
     reason: InvalidParameters
     status: "False"

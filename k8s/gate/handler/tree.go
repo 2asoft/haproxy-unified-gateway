@@ -112,13 +112,13 @@ func (b *GateTreeBuilder) startBuild() {
 func (b *GateTreeBuilder) buildControllerConfCRDUpdates() {
 	// --------------
 	// controllerConf CRD
-	controllerConfBuilderParams := tree.ControllerConfBuilderParams{
+	controllerConfBuilderParams := tree.HugConfBuilderParams{
 		ControllerStore:          b.ControllerStore,
 		LogCategoryFilterHandler: b.cfg.LogCategoryFilterHandler,
-		ControllerConfNsName:     b.cfg.ControllerConfNsName,
+		HugConfNsName:            b.cfg.ControllerConfNsName,
 	}
-	controllerConfBuilder := tree.NewControllerConfBuilder(controllerConfBuilderParams)
-	controllerConfBuilder.Build()
+	hugConfBuilder := tree.NewHugConfBuilder(controllerConfBuilderParams)
+	hugConfBuilder.Build()
 }
 
 func (b *GateTreeBuilder) buildInstalledVersionsUpdates() {

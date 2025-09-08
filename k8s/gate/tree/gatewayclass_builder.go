@@ -47,28 +47,28 @@ func (b *GatewayClassBuilderImpl) ComputeTreeUpdates() {
 	b.addIndirectClusterStoreUpdates()
 	// After this step, the clusterStore.Updates contains all impacted GatewayClass
 	// Including the one impacted by:
-	// - HaproxyGate updates
+	// - HugGate updates
 	// - installedVersions updates
 	b.computeGateTreeUpdates()
 }
 
 func (b *GatewayClassBuilderImpl) addIndirectClusterStoreUpdates() {
-	// Indirect from HaproxyGate
-	b.addIndirectGatewayClassesFromHaproxyGates()
+	// Indirect from HugGate
+	b.addIndirectGatewayClassesFromHugGates()
 	// Indirect from InstalledVersions
 	b.addIndirectGatewayClassesFromInstalledVersions()
 }
 
-func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHaproxyGates() {
-	for _, haproxyGateUpdate := range b.ClusterStore.Updates.HaproxyGates {
-		b.addIndirectGatewayClassesFromHaproxyGate(haproxyGateUpdate)
+func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHugGates() {
+	for _, hugGateUpdate := range b.ClusterStore.Updates.HugGates {
+		b.addIndirectGatewayClassesFromHugGate(hugGateUpdate)
 	}
 }
 
-func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHaproxyGate(haproxyGateUpdate store.Update[*v3.HaproxyGate]) {
+func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHugGate(hugGateUpdate store.Update[*v3.HugGate]) {
 	addIndirectFromReferenced(
-		haproxyGateUpdate,
-		b.ReferencedObjects.ReferencedHaproxyGates,
+		hugGateUpdate,
+		b.ReferencedObjects.ReferencedHugGates,
 		b.ClusterStore.GatewayClasses,
 		b.ClusterStore.Updates.GatewayClasses,
 		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGatewayClass),

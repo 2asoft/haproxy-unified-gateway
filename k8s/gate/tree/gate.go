@@ -33,15 +33,15 @@ func NewGateBuilder(params ControllerStore) *GateBuilderImpl {
 	return builder
 }
 
-type HaproxyGateParamsRefChecker struct {
-	ParamRef          *gatewayv1.ParametersReference
-	StoreHaproxyGates map[types.NamespacedName]*v3.HaproxyGate
+type HugGateParamsRefChecker struct {
+	ParamRef      *gatewayv1.ParametersReference
+	StoreHugGates map[types.NamespacedName]*v3.HugGate
 }
 
-func (c *HaproxyGateParamsRefChecker) CheckGatewayClass() (CheckResult, *v3.HaproxyGate) {
+func (c *HugGateParamsRefChecker) CheckGatewayClass() (CheckResult, *v3.HugGate) {
 	conds := conditions.Conditions{}
 	var gateFound bool
-	var haproxygate *v3.HaproxyGate
+	var huggate *v3.HugGate
 
 	if c.ParamRef != nil {
 		// Checks that Kind and Group are as expected
@@ -84,7 +84,7 @@ func (c *HaproxyGateParamsRefChecker) CheckGatewayClass() (CheckResult, *v3.Hapr
 				Valid:      false,
 			}, nil
 		}
-		haproxygate, gateFound = c.StoreHaproxyGates[types.NamespacedName{
+		huggate, gateFound = c.StoreHugGates[types.NamespacedName{
 			Name:      c.ParamRef.Name,
 			Namespace: string(*c.ParamRef.Namespace),
 		}]
@@ -102,13 +102,13 @@ func (c *HaproxyGateParamsRefChecker) CheckGatewayClass() (CheckResult, *v3.Hapr
 	return CheckResult{
 		Conditions: conditions.NewGatewayClassAcceptedOK(),
 		Valid:      true,
-	}, haproxygate
+	}, huggate
 }
 
-func (c *HaproxyGateParamsRefChecker) CheckGateway() (CheckResult, *v3.HaproxyGate) {
+func (c *HugGateParamsRefChecker) CheckGateway() (CheckResult, *v3.HugGate) {
 	conds := conditions.Conditions{}
 	var gateFound bool
-	var haproxygate *v3.HaproxyGate
+	var huggate *v3.HugGate
 
 	if c.ParamRef != nil {
 		// Checks that Kind and Group are as expected
@@ -151,7 +151,7 @@ func (c *HaproxyGateParamsRefChecker) CheckGateway() (CheckResult, *v3.HaproxyGa
 				Valid:      false,
 			}, nil
 		}
-		haproxygate, gateFound = c.StoreHaproxyGates[types.NamespacedName{
+		huggate, gateFound = c.StoreHugGates[types.NamespacedName{
 			Name:      c.ParamRef.Name,
 			Namespace: string(*c.ParamRef.Namespace),
 		}]
@@ -169,7 +169,7 @@ func (c *HaproxyGateParamsRefChecker) CheckGateway() (CheckResult, *v3.HaproxyGa
 	return CheckResult{
 		Conditions: conditions.NewGatewayAcceptedOK(),
 		Valid:      true,
-	}, haproxygate
+	}, huggate
 }
 
 func (*GateBuilderImpl) BuildStatus() {

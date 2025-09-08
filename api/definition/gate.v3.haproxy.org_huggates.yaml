@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: haproxygates.gate.v3.haproxy.org
+  name: huggates.gate.v3.haproxy.org
 spec:
   group: gate.v3.haproxy.org
   names:
-    kind: HaproxyGate
-    listKind: HaproxyGateList
-    plural: haproxygates
-    singular: haproxygate
+    kind: HugGate
+    listKind: HugGateList
+    plural: huggates
+    singular: huggate
   scope: Namespaced
   versions:
   - name: v3
     schema:
       openAPIV3Schema:
-        description: HaproxyGate is a specification for a HaproxyGate resource
+        description: HugGate is a specification for a HugGate resource
         properties:
           apiVersion:
             description: |-

@@ -163,7 +163,7 @@ func Add(
 		Secrets:         make(map[types.NamespacedName]*apiv1.Secret),
 		ConfigMaps:      make(map[types.NamespacedName]*apiv1.ConfigMap),
 		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
-		HaproxyGates:    make(map[types.NamespacedName]*v3.HaproxyGate),
+		HugGates:        make(map[types.NamespacedName]*v3.HugGate),
 		ControllerConfs: make(map[types.NamespacedName]*v3.HugConf),
 		Updates:         store.NewClusterUpdates(),
 	}
@@ -349,8 +349,8 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 			},
 		},
 		{
-			name:       "HaproxyGate",
-			objectType: objtypes.ObjectTypeHaproxyGate,
+			name:       "HugGate",
+			objectType: objtypes.ObjectTypeHugGate,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(

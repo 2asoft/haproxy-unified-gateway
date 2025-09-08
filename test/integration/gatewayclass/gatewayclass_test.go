@@ -158,7 +158,7 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_Dynamic_Gate() {
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
 
 	// Remove gate
-	gate := s.removeGate("haproxygate")
+	gate := s.removeGate("huggate")
 
 	// Expected Conditions
 	expectationsPath = path.Join(fixturePath, "expectations")
@@ -176,8 +176,8 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_Dynamic_Gate() {
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwcName, expectedConditions)
 }
 
-func (s *GatewayClassTestSuite) removeGate(name string) *v3.HaproxyGate {
-	var gate v3.HaproxyGate
+func (s *GatewayClassTestSuite) removeGate(name string) *v3.HugGate {
+	var gate v3.HugGate
 	err := s.Test().Client.Get(s.Test().Ctx, client.ObjectKey{Name: name, Namespace: s.Test().Namespace}, &gate)
 	s.Require().NoError(err)
 
@@ -187,7 +187,7 @@ func (s *GatewayClassTestSuite) removeGate(name string) *v3.HaproxyGate {
 	return &gate
 }
 
-func (s *GatewayClassTestSuite) createGate(gate *v3.HaproxyGate) {
+func (s *GatewayClassTestSuite) createGate(gate *v3.HugGate) {
 	gate.ResourceVersion = ""
 	err := s.Test().Client.Create(s.Test().Ctx, gate)
 	s.Require().NoError(err)

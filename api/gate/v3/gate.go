@@ -23,8 +23,8 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// HaproxyGate is a specification for a HaproxyGate resource
-type HaproxyGate struct {
+// HugGate is a specification for a HugGate resource
+type HugGate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              GateSpec `json:"spec"`
@@ -36,10 +36,10 @@ type GateSpec struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// HaproxyGateList is a list of HaproxyGate resources
-type HaproxyGateList struct {
+// HugGateList is a list of HugGate resources
+type HugGateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []HaproxyGate `json:"items"`
+	Items []HugGate `json:"items"`
 }

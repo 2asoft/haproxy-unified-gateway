@@ -40,35 +40,35 @@ type Update[T client.Object] struct {
 	Status    Status
 	// Indirect is set to true when the update is not direct from a K8s object but
 	// from a linked K8s object udpate
-	// For example a GatewayClass referencing a HaproxyGate and the HaproxyGate is updated
+	// For example a GatewayClass referencing a HugGate and the HugGate is updated
 	Indirect bool
 }
 
 // ClusterUpdated contains the udpates that happened to cluster objects during a sync cycle
 type ClusterUpdates struct {
-	GatewayClasses  map[types.NamespacedName]Update[*gatewayv1.GatewayClass]
-	Gateways        map[types.NamespacedName]Update[*gatewayv1.Gateway]
-	HTTPRoutes      map[types.NamespacedName]Update[*gatewayv1.HTTPRoute]
-	Services        map[types.NamespacedName]Update[*v1.Service]
-	Namespaces      map[types.NamespacedName]Update[*v1.Namespace]
-	Secrets         map[types.NamespacedName]Update[*v1.Secret]
-	ConfigMaps      map[types.NamespacedName]Update[*v1.ConfigMap]
-	GatewayAPICRDs  map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]
-	HaproxyGates    map[types.NamespacedName]Update[*v3.HaproxyGate]
-	ControllerConfs map[types.NamespacedName]Update[*v3.HugConf]
+	GatewayClasses map[types.NamespacedName]Update[*gatewayv1.GatewayClass]
+	Gateways       map[types.NamespacedName]Update[*gatewayv1.Gateway]
+	HTTPRoutes     map[types.NamespacedName]Update[*gatewayv1.HTTPRoute]
+	Services       map[types.NamespacedName]Update[*v1.Service]
+	Namespaces     map[types.NamespacedName]Update[*v1.Namespace]
+	Secrets        map[types.NamespacedName]Update[*v1.Secret]
+	ConfigMaps     map[types.NamespacedName]Update[*v1.ConfigMap]
+	GatewayAPICRDs map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]
+	HugGates       map[types.NamespacedName]Update[*v3.HugGate]
+	HugConfs       map[types.NamespacedName]Update[*v3.HugConf]
 }
 
 func NewClusterUpdates() ClusterUpdates {
 	return ClusterUpdates{
-		GatewayClasses:  make(map[types.NamespacedName]Update[*gatewayv1.GatewayClass]),
-		Gateways:        make(map[types.NamespacedName]Update[*gatewayv1.Gateway]),
-		HTTPRoutes:      make(map[types.NamespacedName]Update[*gatewayv1.HTTPRoute]),
-		Services:        make(map[types.NamespacedName]Update[*v1.Service]),
-		Namespaces:      make(map[types.NamespacedName]Update[*v1.Namespace]),
-		Secrets:         make(map[types.NamespacedName]Update[*v1.Secret]),
-		ConfigMaps:      make(map[types.NamespacedName]Update[*v1.ConfigMap]),
-		GatewayAPICRDs:  make(map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]),
-		HaproxyGates:    make(map[types.NamespacedName]Update[*v3.HaproxyGate]),
-		ControllerConfs: make(map[types.NamespacedName]Update[*v3.HugConf]),
+		GatewayClasses: make(map[types.NamespacedName]Update[*gatewayv1.GatewayClass]),
+		Gateways:       make(map[types.NamespacedName]Update[*gatewayv1.Gateway]),
+		HTTPRoutes:     make(map[types.NamespacedName]Update[*gatewayv1.HTTPRoute]),
+		Services:       make(map[types.NamespacedName]Update[*v1.Service]),
+		Namespaces:     make(map[types.NamespacedName]Update[*v1.Namespace]),
+		Secrets:        make(map[types.NamespacedName]Update[*v1.Secret]),
+		ConfigMaps:     make(map[types.NamespacedName]Update[*v1.ConfigMap]),
+		GatewayAPICRDs: make(map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]),
+		HugGates:       make(map[types.NamespacedName]Update[*v3.HugGate]),
+		HugConfs:       make(map[types.NamespacedName]Update[*v3.HugConf]),
 	}
 }

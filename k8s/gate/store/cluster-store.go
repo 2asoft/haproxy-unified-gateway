@@ -37,7 +37,7 @@ type ClusterStore struct {
 	Secrets         map[types.NamespacedName]*v1.Secret
 	ConfigMaps      map[types.NamespacedName]*v1.ConfigMap
 	GatewayAPICRDs  map[types.NamespacedName]*metav1.PartialObjectMetadata
-	HaproxyGates    map[types.NamespacedName]*v3.HaproxyGate
+	HugGates        map[types.NamespacedName]*v3.HugGate
 	ControllerConfs map[types.NamespacedName]*v3.HugConf
 	Updates         ClusterUpdates
 }
@@ -76,8 +76,8 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&v1.Secret{}):                       newObjectStoreImpl(clusterStore.Secrets, clusterStore.Updates.Secrets, logger),
 				extractGVK(&v1.ConfigMap{}):                    newObjectStoreImpl(clusterStore.ConfigMaps, clusterStore.Updates.ConfigMaps, logger),
 				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, clusterStore.Updates.GatewayAPICRDs, logger),
-				extractGVK(&v3.HaproxyGate{}):                  newObjectStoreImpl(clusterStore.HaproxyGates, clusterStore.Updates.HaproxyGates, logger),
-				extractGVK(&v3.HugConf{}):                      newObjectStoreImpl(clusterStore.ControllerConfs, clusterStore.Updates.ControllerConfs, logger),
+				extractGVK(&v3.HugGate{}):                      newObjectStoreImpl(clusterStore.HugGates, clusterStore.Updates.HugGates, logger),
+				extractGVK(&v3.HugConf{}):                      newObjectStoreImpl(clusterStore.ControllerConfs, clusterStore.Updates.HugConfs, logger),
 			},
 		},
 		extractGVK: extractGVK,

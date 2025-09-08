@@ -43,8 +43,8 @@ type GateTree struct {
 }
 
 type ReferencedObjects struct {
-	// ReferencedHaproxyGates includes the Gates that are references by GatewayClasses and Gateways
-	ReferencedHaproxyGates references.ReferencedBy
+	// ReferencedHugGates includes the Gates that are references by GatewayClasses and Gateways
+	ReferencedHugGates references.ReferencedBy
 	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
 	ReferencedGatewayClasses references.ReferencedBy
 	//  ReferencedSecrets includes the GatewayClasses that are references by Gateways Listeners
@@ -72,7 +72,7 @@ func NewGateTree() *GateTree {
 
 func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 	return &ReferencedObjects{
-		ReferencedHaproxyGates:    references.NewReferencedBy("haproxygate", extractGVK),
+		ReferencedHugGates:        references.NewReferencedBy("huggate", extractGVK),
 		ReferencedGatewayClasses:  references.NewReferencedBy("gatewayclass", extractGVK),
 		ReferencedSecrets:         references.NewReferencedBy("secret", extractGVK),
 		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),

@@ -6,8 +6,8 @@ spec:
   controllerName: gate.haproxy.org/unified-controller
   parametersRef:
     group: gate.v3.haproxy.org
-    kind: HaproxyGate
-    name: haproxygate
+    kind: HugGate
+    name: huggate
     namespace: test
 ---
 apiVersion: gateway.networking.k8s.io/v1
@@ -18,6 +18,6 @@ spec:
   controllerName: gate.haproxy.org/unified-controller
   parametersRef:
     group: gate.v3.haproxy.org
-    kind: HaproxyGate
-    name: haproxygate
+    kind: HugGate
+    name: huggate
     namespace: test

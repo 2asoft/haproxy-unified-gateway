@@ -24,7 +24,7 @@ allowed:
   - golang
   - golangci
   - haproxycfg
-  - haproxygate
+  - huggate
   - hugconf
   - init
   - json

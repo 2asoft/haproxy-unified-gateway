@@ -31,20 +31,20 @@ func NewReferenceManager(controllerStore ControllerStore) *ReferenceManager {
 func (rm *ReferenceManager) UpdateRefences() {
 	rm.cleanReferencedObjects()
 
-	needsHaproGatesReferencesRebuild := rm.needsReferencedHaproxyGatesRebuild()
+	needsHugGatesReferencesRebuild := rm.needsReferencedHugGatesRebuild()
 	needsGatewayClassesReferencesRebuild := rm.needsReferencedGatewayClassesRebuild()
 	needsSecretsReferencesRebuild := rm.needsReferencedSecretsRebuild()
 
-	if !needsHaproGatesReferencesRebuild && !needsGatewayClassesReferencesRebuild && !needsSecretsReferencesRebuild {
+	if !needsHugGatesReferencesRebuild && !needsGatewayClassesReferencesRebuild && !needsSecretsReferencesRebuild {
 		return
 	}
 
-	// HAProxyGates refs
-	if needsHaproGatesReferencesRebuild {
+	// HugGates refs
+	if needsHugGatesReferencesRebuild {
 		for _, gwc := range rm.ClusterStore.GatewayClasses {
 			paramsRefKey, hasParamsRef := getGatewayClassParamsRefKey(gwc)
 			if hasParamsRef {
-				rm.ReferencedObjects.ReferencedHaproxyGates.AddReferencedBy(rm.Logger, paramsRefKey, gwc)
+				rm.ReferencedObjects.ReferencedHugGates.AddReferencedBy(rm.Logger, paramsRefKey, gwc)
 			}
 		}
 	}
@@ -55,19 +55,19 @@ func (rm *ReferenceManager) UpdateRefences() {
 		if needsGatewayClassesReferencesRebuild {
 			rm.ReferencedObjects.ReferencedGatewayClasses.AddReferencedBy(rm.Logger, gwcKey, gw)
 		}
-		if needsHaproGatesReferencesRebuild {
-			// Direct HaproxyGates Ref
+		if needsHugGatesReferencesRebuild {
+			// Direct HugGates Ref
 			paramsRefKey, hasParamsRef := getGatewayParamsRefKey(gw)
 			if hasParamsRef {
-				rm.ReferencedObjects.ReferencedHaproxyGates.AddReferencedBy(rm.Logger, paramsRefKey, gw)
+				rm.ReferencedObjects.ReferencedHugGates.AddReferencedBy(rm.Logger, paramsRefKey, gw)
 			}
 
-			// Now find the GatewayClass and their HaproxyGates
+			// Now find the GatewayClass and their HugGates
 			gwc, gwcOK := rm.ClusterStore.GatewayClasses[gwcKey]
 			if gwcOK {
 				paramsRefKey, hasParamsRef := getGatewayClassParamsRefKey(gwc)
 				if hasParamsRef {
-					rm.ReferencedObjects.ReferencedHaproxyGates.AddReferencedBy(rm.Logger, paramsRefKey, gw)
+					rm.ReferencedObjects.ReferencedHugGates.AddReferencedBy(rm.Logger, paramsRefKey, gw)
 				}
 			}
 		}
@@ -94,7 +94,7 @@ func (rm *ReferenceManager) UpdateRefences() {
 	}
 }
 
-func (rm *ReferenceManager) needsReferencedHaproxyGatesRebuild() bool {
+func (rm *ReferenceManager) needsReferencedHugGatesRebuild() bool {
 	if len(rm.ClusterStore.Updates.GatewayClasses) > 0 || len(rm.ClusterStore.Updates.Gateways) > 0 {
 		return true
 	}
@@ -113,8 +113,8 @@ func (rm *ReferenceManager) cleanReferencedObjects() {
 	if rm.needsReferencedGatewayClassesRebuild() {
 		rm.ReferencedObjects.ReferencedGatewayClasses.CleanOwners()
 	}
-	if rm.needsReferencedHaproxyGatesRebuild() {
-		rm.ReferencedObjects.ReferencedHaproxyGates.CleanOwners()
+	if rm.needsReferencedHugGatesRebuild() {
+		rm.ReferencedObjects.ReferencedHugGates.CleanOwners()
 	}
 	rm.ReferencedObjects.PreviousReferencedSecrets = rm.ReferencedObjects.ReferencedSecrets.DeepCopy()
 	if rm.needsReferencedSecretsRebuild() {
