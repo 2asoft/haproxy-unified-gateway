@@ -24,4 +24,4 @@ fi
 echo "Memory limit for HAProxy: ${MEMLIMIT}MiB"
 
 # if master socket is changed, that needs to be aligned in pkg/haproxy/process/interface.go
-exec /usr/local/sbin/haproxy -W -db -m "${MEMLIMIT}" -S /var/run/haproxy-master.sock,level,admin -f /usr/local/unified-controller/haproxy.cfg -f /usr/local/unified-controller/aux
+exec /usr/local/sbin/haproxy -W -db -m "${MEMLIMIT}" -S /var/run/haproxy-master.sock,level,admin -f /usr/local/hug/haproxy.cfg -f /usr/local/hug/aux

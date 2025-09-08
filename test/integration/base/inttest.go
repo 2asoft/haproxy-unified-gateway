@@ -143,7 +143,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 
 	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
 	// (through the spec.controllerName)
-	controllerName := "gate.haproxy.org/unified-controller"
+	controllerName := "gate.haproxy.org/hug"
 
 	logLevels := map[v3.Category]slog.Level{
 		logging.LogCategoryK8s:           slog.LevelWarn,

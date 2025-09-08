@@ -12,5 +12,5 @@ spec:
       #   level: "Debug"
       - category: "k8s"
         level: "Info"
-      - category: "batch"
-        level: "Info"
+      # - category: "batch"
+      #   level: "Info"

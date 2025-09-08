@@ -8,3 +8,5 @@ cmd/controller/controller
 .envrc
 __debug_bin*
 controller
+test/integration/*/certlists
+test/integration/*/certs

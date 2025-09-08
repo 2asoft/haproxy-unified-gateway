@@ -3,4 +3,4 @@ kind: GatewayClass
 metadata:
   name: haproxy
 spec:
-  controllerName: gate.haproxy.org/unified-controller
+  controllerName: gate.haproxy.org/hug

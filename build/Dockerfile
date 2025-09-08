@@ -41,9 +41,9 @@ ENV S6_GROUP=haproxy
 
 COPY /fs /
 
-RUN mkdir -p /usr/local/unified-controller/aux && \
-    chgrp -R haproxy /usr/local/unified-controller && \
-    chmod -R ug+rwx /usr/local/unified-controller
+RUN mkdir -p /usr/local/hug/aux && \
+    chgrp -R haproxy /usr/local/hug && \
+    chmod -R ug+rwx /usr/local/hug
 
 RUN apk --no-cache add socat openssl util-linux htop tzdata curl libcap && \
     rm -f /usr/local/bin/dataplaneapi /usr/bin/dataplaneapi /etc/haproxy/dataplaneapi.yml && \

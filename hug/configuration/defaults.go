@@ -20,18 +20,18 @@ import (
 func externalDefaults() External {
 	return External{
 		HaproxyBinary: "/usr/local/sbin/haproxy",
-		CfgDir:        "/tmp/unified-controller/etc",
-		AuxDir:        "/tmp/unified-controller/etc/aux",
-		RuntimeDir:    "/tmp/unified-controller/run",
-		StateDir:      "/tmp/unified-controller/state/",
+		CfgDir:        "/tmp/hug/etc",
+		AuxDir:        "/tmp/hug/etc/aux",
+		RuntimeDir:    "/tmp/hug/run",
+		StateDir:      "/tmp/hug/state/",
 	}
 }
 
 func HaproxyDefaults() haproxy.HaproxyDirs {
 	return haproxy.HaproxyDirs{
 		HaproxyBinary: "/usr/local/sbin/haproxy",
-		CfgDir:        "/usr/local/unified-controller",
-		AuxDir:        "/usr/local/unified-controller/aux",
+		CfgDir:        "/usr/local/hug",
+		AuxDir:        "/usr/local/hug/aux",
 		RuntimeDir:    "/var/run",
 		StateDir:      "/var/state/haproxy",
 	}

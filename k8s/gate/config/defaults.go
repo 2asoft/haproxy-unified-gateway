@@ -22,8 +22,8 @@ import (
 
 const (
 	// defaultControllerName is the default name of the controller.
-	defaultControllerName         = "gate.haproxy.org/unified-controller"
-	defaultLeaderElectionLockName = "unified-controller-leader-election-lock"
+	defaultControllerName         = "gate.haproxy.org/hug"
+	defaultLeaderElectionLockName = "hug-leader-election-lock"
 	defaultSyncPeriod             = 5 * time.Second
 	defaultFrontendNameTemplate   = "{{ .LINK_ID }}_{{ .GATEWAY_NAMESPACE}}_{{ .GATEWAY_NAME }}_{{ .LISTENER_NAME }}"
 	defaultBackendNameTemplate    = ""
