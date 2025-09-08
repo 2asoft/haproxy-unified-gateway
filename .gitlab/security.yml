@@ -1,5 +1,6 @@
 license:
   stage: security
+  needs: ["diff", "tidy"]
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"
@@ -14,6 +15,7 @@ license:
     - task licenses
 govulncheck:
   stage: security
+  needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"

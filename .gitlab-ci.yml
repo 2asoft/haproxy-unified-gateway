@@ -2,9 +2,9 @@ stages:
   - bots
   - diff
   - lint
-  - unit-tests
   - security
   - build
+  - unit-tests
 variables:
   KIND: v0.27.0
   DOCKER_HOST: tcp://docker:2375
