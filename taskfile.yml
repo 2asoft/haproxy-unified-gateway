@@ -62,12 +62,12 @@ tasks:
     cmds:
       #- task: download-gateway-crds
       - |
-        KUBEBUILDER_ASSETS=/{{.TMP}}/{{.TOOL}}
-        ENVTEST_VERSION={{.ENVTEST_VERSION}}
-        POD_IP={{.POD_IP}}
-        POD_NAME={{.POD_NAME}}
-        POD_NAMESPACE={{.POD_NAMESPACE}}
-        POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS
+        KUBEBUILDER_ASSETS=/{{.TMP}}/{{.TOOL}} \
+        ENVTEST_VERSION={{.ENVTEST_VERSION}} \
+        POD_IP={{.POD_IP}} \
+        POD_NAME={{.POD_NAME}} \
+        POD_NAMESPACE={{.POD_NAMESPACE}} \
+        POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS \
         /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --hide-summary=output --format-icons=hivis --format=testdox --format-hide-empty-pkg -- ./...
 
   tidy:
