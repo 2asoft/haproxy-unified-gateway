@@ -25,6 +25,7 @@ allowed:
   - golangci
   - haproxycfg
   - haproxygate
+  - hugconf
   - init
   - json
   - kubebuilder

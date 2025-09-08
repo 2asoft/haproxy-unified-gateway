@@ -160,7 +160,7 @@ func setupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 	kubeconfig := ""
 
 	// Optional : default values provided in controller.New()
-	// To adjust more precisely the log levels, use the CRD: HaproxyGateCtrlCfg
+	// To adjust more precisely the log levels, use the CRD: HugConf
 	// along with opt.ControllerConfCRD to specify which CRD to watcg
 	logLevelIfCategoryEmpty := slog.LevelInfo
 	logCategoryLevels := map[v3.Category]slog.Level{

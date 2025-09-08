@@ -62,9 +62,9 @@ const (
 	controllerNs = "haproxy-controller"
 )
 
-var controllerCfgNsName = types.NamespacedName{
+var hugConfNsName = types.NamespacedName{
 	Namespace: "test",
-	Name:      "haproxyctrlconf",
+	Name:      "hugconf",
 }
 
 type IntTest struct {
@@ -160,7 +160,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 
 	opts := []func(c *config.Configuration) error{
 		//	opt.KubeConfig(kubeconfig),
-		opt.ControllerConfCRD(controllerCfgNsName),
+		opt.ControllerConfCRD(hugConfNsName),
 		opt.SyncPeriod(syncPeriod),
 		opt.ControllerName(controllerName),
 		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logLevels),

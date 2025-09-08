@@ -23,8 +23,8 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 
-// HaproxyGateCtrlCfg is a specification for a the controller related configuration
-type HaproxyGateCtrlCfg struct {
+// HugConf is a specification for a the controller related configuration
+type HugConf struct {
 	metav1.TypeMeta   `json:",inline"`
 	Spec              ControllerConfSpec `json:"spec"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -55,10 +55,10 @@ type ControllerConfSpec struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// HaproxyGateCtrlCfgList is a list of HaproxyGateCtrlrConf resources
-type HaproxyGateCtrlCfgList struct {
+// HugConfList is a list of HugConf resources
+type HugConfList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []HaproxyGateCtrlCfg `json:"items"`
+	Items []HugConf `json:"items"`
 }

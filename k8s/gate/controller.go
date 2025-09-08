@@ -164,7 +164,7 @@ func Add(
 		ConfigMaps:      make(map[types.NamespacedName]*apiv1.ConfigMap),
 		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
 		HaproxyGates:    make(map[types.NamespacedName]*v3.HaproxyGate),
-		ControllerConfs: make(map[types.NamespacedName]*v3.HaproxyGateCtrlCfg),
+		ControllerConfs: make(map[types.NamespacedName]*v3.HugConf),
 		Updates:         store.NewClusterUpdates(),
 	}
 
@@ -181,7 +181,7 @@ func Add(
 		BaseLogger:                 cfg.Logger,
 		LogCategoryFilterHandler:   cfg.LogHandler,
 		ExtractGVK:                 extractGVK,
-		ControllerConfNsName:       cfg.ControllerConfCRD,
+		ControllerConfNsName:       cfg.HugConfCRD,
 		TransferHaproxyConfChannel: cfg.TransferHaproxyConfChannel,
 		K8sClient:                  mgr.GetClient(),
 		K8sReader:                  mgr.GetAPIReader(),
@@ -362,14 +362,14 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "ControllerConf",
-			objectType: &v3.HaproxyGateCtrlCfg{},
+			objectType: &v3.HugConf{},
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.Namespaces),
 						predicate.ControllerConfPredicate{
-							ControllerConfName: cfg.ControllerConfCRD,
+							ControllerConfName: cfg.HugConfCRD,
 						},
 					),
 				),

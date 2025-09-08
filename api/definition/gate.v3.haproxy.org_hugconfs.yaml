@@ -4,21 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: haproxygatectrlcfgs.gate.v3.haproxy.org
+  name: hugconfs.gate.v3.haproxy.org
 spec:
   group: gate.v3.haproxy.org
   names:
-    kind: HaproxyGateCtrlCfg
-    listKind: HaproxyGateCtrlCfgList
-    plural: haproxygatectrlcfgs
-    singular: haproxygatectrlcfg
+    kind: HugConf
+    listKind: HugConfList
+    plural: hugconfs
+    singular: hugconf
   scope: Namespaced
   versions:
   - name: v3
     schema:
       openAPIV3Schema:
-        description: HaproxyGateCtrlCfg is a specification for a the controller related
-          configuration
+        description: HugConf is a specification for a the controller related configuration
         properties:
           apiVersion:
             description: |-

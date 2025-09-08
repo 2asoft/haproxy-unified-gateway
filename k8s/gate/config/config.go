@@ -52,8 +52,8 @@ type Configuration struct {
 	TransferHaproxyConfChannel chan diffs.HaproxyConfDiffs
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
-	//  Namespace and name of the controller conf CRD:  HaproxyGateCtrlCfg
-	ControllerConfCRD types.NamespacedName
+	//  Namespace and name of the controller conf CRD:  HugConf
+	HugConfCRD types.NamespacedName
 	// LogHandlerType defines the type of log Handler we want: json or text
 	// Default will be json
 	LogHandlerType logging.LogHandlerType

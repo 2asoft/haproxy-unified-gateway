@@ -1,7 +1,7 @@
 apiVersion: gate.v3.haproxy.org/v3
-kind: HaproxyGateCtrlCfg
+kind: HugConf
 metadata:
-  name: haproxyctrlconf
+  name: hugconf
 spec:
   logging:
     defaultLevel: "Debug"

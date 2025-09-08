@@ -26,7 +26,7 @@ spec:
             requests:
               memory: 2048Mi
           args:
-            - --haproxyctrlconf-crd=haproxy-controller/haproxyctrlconf
+            - --hugconf-crd=haproxy-controller/hugconf
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false

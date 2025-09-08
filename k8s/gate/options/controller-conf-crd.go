@@ -20,7 +20,7 @@ import (
 
 func ControllerConfCRD(controllerConf types.NamespacedName) func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {
-		o.ControllerConfCRD = controllerConf
+		o.HugConfCRD = controllerConf
 		return nil
 	}
 }

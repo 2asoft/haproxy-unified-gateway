@@ -55,7 +55,7 @@ type ClusterUpdates struct {
 	ConfigMaps      map[types.NamespacedName]Update[*v1.ConfigMap]
 	GatewayAPICRDs  map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]
 	HaproxyGates    map[types.NamespacedName]Update[*v3.HaproxyGate]
-	ControllerConfs map[types.NamespacedName]Update[*v3.HaproxyGateCtrlCfg]
+	ControllerConfs map[types.NamespacedName]Update[*v3.HugConf]
 }
 
 func NewClusterUpdates() ClusterUpdates {
@@ -69,6 +69,6 @@ func NewClusterUpdates() ClusterUpdates {
 		ConfigMaps:      make(map[types.NamespacedName]Update[*v1.ConfigMap]),
 		GatewayAPICRDs:  make(map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]),
 		HaproxyGates:    make(map[types.NamespacedName]Update[*v3.HaproxyGate]),
-		ControllerConfs: make(map[types.NamespacedName]Update[*v3.HaproxyGateCtrlCfg]),
+		ControllerConfs: make(map[types.NamespacedName]Update[*v3.HugConf]),
 	}
 }

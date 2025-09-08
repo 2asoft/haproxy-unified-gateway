@@ -31,7 +31,7 @@ import (
 //revive:disable:line-length-limit
 type HUGConfig struct {
 	haproxy.HaproxyDirs
-	ControllerConfCRD NamespaceNameValue `ff:"          long: haproxyctrlconf-crd,     usage: 'namespace/name of the haproxyctrlconf CRD'"`
+	ControllerConfCRD NamespaceNameValue `ff:"          long: hugconf-crd,     usage: 'namespace/name of the HugConf CRD'"`
 	ControllerName    string             `ff:"          long: controller-name,         usage: 'spec.controllerName' GatewayClass selector'"`
 	IPV4BindAddr      string             `ff:"          long: ipv4-bind-address,       usage: 'IPv4 address to bind to'"`
 	IPV6BindAddr      string             `ff:"          long: ipv6-bind-address,	   usage: 'IPv6 address to bind to'"`
