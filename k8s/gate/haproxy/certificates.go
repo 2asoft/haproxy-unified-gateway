@@ -90,7 +90,7 @@ func (b *HaproxyConfMgrImpl) executeRuntimeCertCommands() error {
 		}
 	}
 	// 4 - Finally cert delete
-	for _, cert := range certUpdates.Updated {
+	for _, cert := range certUpdates.Deleted {
 		if err := b.runtimeDeleteCert(cert); err != nil {
 			reload.Instance().SetReload("runtime cert delete failed")
 			return err
