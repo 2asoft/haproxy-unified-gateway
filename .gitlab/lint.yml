@@ -3,6 +3,7 @@ tidy:
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"
   image:
     name: $CI_REGISTRY_GO/golang:$GO_VERSION
     entrypoint: [""]
@@ -16,6 +17,7 @@ format:
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"
   image:
     name: $CI_REGISTRY_GO/golang:$GO_VERSION
     entrypoint: [""]
@@ -31,6 +33,7 @@ lint:
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"
   image:
     name: $CI_REGISTRY_GO/golang:$GO_VERSION
     entrypoint: [""]
@@ -43,6 +46,7 @@ commit-policy:
   needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"
   image:
     name: $CI_REGISTRY_GO/commit-check:5.1.1
     entrypoint: [""]
