@@ -17,8 +17,10 @@ package base
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -41,6 +43,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/kubectl/pkg/scheme"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -119,6 +124,9 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	// 	Enabled: false,
 	// 	Secure:  false,
 	// }
+	kubeconfigPath, err := WriteKubeconfig(cfg)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+	t.Logf("kubeconfig path: %s", kubeconfigPath)
 
 	mgr, err := ctrlruntime.NewManager(cfg, ctrlruntime.Options{
 		Scheme:  scheme.Scheme,
@@ -228,4 +236,44 @@ func (test *IntTest) cleanupNamespace(ns string) error {
 		},
 	}, true)
 	return err
+}
+
+// WriteKubeconfig writes the given rest.Config to a kubeconfig file.
+// It returns the path to the file and an error if it fails.
+func WriteKubeconfig(cfg *rest.Config) (string, error) {
+	// Create a clientcmdapi.Config object from the rest.Config
+	clusters := make(map[string]*api.Cluster)
+	clusters["envtest-cluster"] = &api.Cluster{
+		Server:                   cfg.Host,
+		CertificateAuthorityData: cfg.CAData,
+	}
+
+	authInfos := make(map[string]*api.AuthInfo)
+	authInfos["envtest-user"] = &api.AuthInfo{
+		ClientCertificateData: cfg.CertData,
+		ClientKeyData:         cfg.KeyData,
+	}
+
+	contexts := make(map[string]*api.Context)
+	contexts["envtest-context"] = &api.Context{
+		Cluster:   "envtest-cluster",
+		AuthInfo:  "envtest-user",
+		Namespace: "default", // or whatever namespace you're testing in
+	}
+
+	kubeconfig := &api.Config{
+		Kind:           "Config",
+		APIVersion:     "v1",
+		Clusters:       clusters,
+		AuthInfos:      authInfos,
+		Contexts:       contexts,
+		CurrentContext: "envtest-context",
+	}
+
+	// Create a temporary file to write the kubeconfig to
+	kubeconfigPath := filepath.Join(os.TempDir(), "kubeconfig")
+	if err := clientcmd.WriteToFile(*kubeconfig, kubeconfigPath); err != nil {
+		return "", fmt.Errorf("failed to write kubeconfig file: %w", err)
+	}
+	return kubeconfigPath, nil
 }

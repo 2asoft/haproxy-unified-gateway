@@ -42,6 +42,7 @@ allowed:
   - namespaces
   - parallelize
   - passthrough
+  - readme
   - reconciler
   - releaser
   - repo
