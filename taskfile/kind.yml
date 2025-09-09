@@ -126,14 +126,12 @@ tasks:
       - task: delimiter
       - echo "deploying Controller ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controllerconf.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/hugconf.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controller.yaml
       - task: delimiter
       - echo "deploying echo service ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/echo/echo.yaml
-      - docker pull haproxytech/haproxy-alpine:3.1
       - /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
-      #- /{{.kind}} load docker-image haproxytech/haproxy --name={{.CLUSTER_NAME}}
       - task: delimiter
       - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
 
