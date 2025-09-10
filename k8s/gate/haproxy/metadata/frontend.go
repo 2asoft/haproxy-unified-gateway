@@ -23,20 +23,24 @@ import (
 type FrontendMetaData map[string]map[string]K8sObjectInfo // map[kind] -> map[objectKey]K8sObjectInfo
 
 func (mm *ManagerImpl) FrontendMetaData(treeGw *tree.Gateway) MetaData {
-	frontendMetadata := make(FrontendMetaData)
-
 	k8sResource := treeGw.GetK8sResource()
 	gvk := mm.extractGVK(k8sResource)
+	objKey := client.ObjectKeyFromObject(k8sResource)
+
+	md := FrontendMetadata(objKey, gvk.Kind, k8sResource.GetGeneration(), mm.linkID)
+	return md
+}
+
+func FrontendMetadata(objKey client.ObjectKey, kind string, generation int64, linkID string) MetaData {
+	frontendMetadata := make(FrontendMetaData)
 
 	gatewayMetadata := make(map[string]K8sObjectInfo)
-	objKey := client.ObjectKeyFromObject(k8sResource)
 	objInfo := K8sObjectInfo{
-		Generation: k8sResource.GetGeneration(),
-		LinkID:     mm.linkID,
+		Generation: generation,
+		LinkID:     linkID,
 	}
 	gatewayMetadata[objKey.String()] = objInfo
-
-	frontendMetadata[gvk.Kind] = gatewayMetadata
+	frontendMetadata[kind] = gatewayMetadata
 
 	md := make(MetaData)
 	// Gateway metatdata marshall/unmarshal

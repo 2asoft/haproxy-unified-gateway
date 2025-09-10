@@ -47,8 +47,8 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_MissingNamespace() {
 	fixtureDir := "nsMissing"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.CreateFixtures(fixturePath)
-	defer s.CleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -64,8 +64,8 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_InvalidRef() {
 	fixtureDir := "invalidRef"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.CreateFixtures(fixturePath)
-	defer s.CleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -81,8 +81,8 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_ValidRef() {
 	fixtureDir := "validRef"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.CreateFixtures(fixturePath)
-	defer s.CleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -97,8 +97,8 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_Dynamic_InstalledVersions() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "dynamic-installedversions"
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.CreateFixtures(fixturePath)
-	defer s.CleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	currentVersion := s.setGatewayClassCRToUnsupportedVersion("v1.1")
 
@@ -146,8 +146,8 @@ func (s *GatewayClassTestSuite) Test_GatewayClass_Dynamic_Gate() {
 	fixtureDir := "dynamic-gate"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.CreateFixtures(fixturePath)
-	defer s.CleanupFixtures(fixturePath)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")

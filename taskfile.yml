@@ -59,6 +59,7 @@ tasks:
       POD_IP: "1.2.3.4"
       POD_NAME: "hug-7469984948-qgnfw"
       POD_NAMESPACE: "hug"
+      HAPROXY_BIN: '{{or (env "HAPROXY_BIN") "/usr/local/sbin/haproxy"}}'
     cmds:
       #- task: download-gateway-crds
       - |
@@ -67,8 +68,9 @@ tasks:
         POD_IP={{.POD_IP}} \
         POD_NAME={{.POD_NAME}} \
         POD_NAMESPACE={{.POD_NAMESPACE}} \
-        POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS \
-        /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --hide-summary=output --format-icons=hivis --format=testdox --format-hide-empty-pkg -- ./...
+        HAPROXY_BIN={{.HAPROXY_BIN}} \
+        POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS HAPROXY_BIN=$HAPROXY_BIN \
+        /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --format-icons=hivis --format=testdox --format-hide-empty-pkg -- ./...
 
   tidy:
     internal: true

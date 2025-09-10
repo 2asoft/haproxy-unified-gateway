@@ -16,11 +16,13 @@ package configuration
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -30,6 +32,7 @@ import (
 
 //revive:disable:line-length-limit
 type HUGConfig struct {
+	LogSettings map[v3.Category]slog.Level
 	haproxy.HaproxyDirs
 	ControllerConfCRD NamespaceNameValue `ff:"          long: hugconf-crd,     usage: 'namespace/name of the HugConf CRD'"`
 	ControllerName    string             `ff:"          long: controller-name,         usage: 'spec.controllerName' GatewayClass selector'"`
@@ -42,12 +45,13 @@ type HUGConfig struct {
 	SyncPeriod            time.Duration        `ff:"          long: sync-period, default: 0,         usage: 'sets the period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
 	StartupSyncPeriod     time.Duration        `ff:"          long: startup-sync-period, default: 0, usage: 'sets the startup period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
 	CacheResyncPeriod     time.Duration        `ff:"          long: cache-resync-period, default: 0, usage: 'sets the controller-runtime manager cache SyncPeriod. If not set, defaults to controller-runtime defaults (10 hours)'"`
-	Help                  bool                 `ff:"          long: help,                            usage: 'help'"`
-	Test                  bool                 `ff:"short:t,                                         usage: 'simulate running HAProxy'"`
-	LeaderElectionEnabled bool                 `ff:"          long: leader-election-enabled,         usage: 'enable leader election'"`
-	UseWiths6Overlay      bool                 `ff:"          long:with-s6-overlay,                  usage: 'use s6 overlay to start/stpop/reload HAProxy'"`
-	DisableIPv4           bool                 `ff:"          long: disable-ipv4,                    usage: 'disable IPv4 support'"`
-	DisableIPv6           bool                 `ff:"          long: disable-ipv6,			         usage: 'disable IPv6 support'"`
+	DefaultLogLevel       slog.Level
+	Help                  bool `ff:"          long: help,                            usage: 'help'"`
+	Test                  bool `ff:"short:t,                                         usage: 'simulate running HAProxy'"`
+	LeaderElectionEnabled bool `ff:"          long: leader-election-enabled,         usage: 'enable leader election'"`
+	UseWiths6Overlay      bool `ff:"          long:with-s6-overlay,                  usage: 'use s6 overlay to start/stpop/reload HAProxy'"`
+	DisableIPv4           bool `ff:"          long: disable-ipv4,                    usage: 'disable IPv4 support'"`
+	DisableIPv6           bool `ff:"          long: disable-ipv6,			         usage: 'disable IPv6 support'"`
 }
 
 //revive:enable:line-length-limit
@@ -122,62 +126,10 @@ func Get() (HUGConfig, error) {
 		os.Exit(0) //revive:disable:deep-exit
 	}
 	// --------------
-	// Apply defaults
+	// Init and apply defaults
 	// --------------
-	configuration.HaproxyDirs = HaproxyDefaults()
-	if configuration.ControllerPort == 0 {
-		configuration.ControllerPort = defaultControllerPort
-	}
-	if configuration.LogType == "" {
-		configuration.LogType = string(logging.LogHandlerTypeJSON)
-	}
-
-	// values for external
-	err = configuration.initExternal(external)
-	if err != nil {
+	if err = configuration.Init(external); err != nil {
 		return HUGConfig{}, err
-	}
-
-	for _, dir := range []string{
-		configuration.HaproxyDirs.CfgDir, configuration.HaproxyDirs.RuntimeDir,
-		configuration.HaproxyDirs.StateDir, configuration.HaproxyDirs.AuxDir,
-	} {
-		if dir == "" {
-			return HUGConfig{}, fmt.Errorf("failed to init controller config: missing config directories [%s]", dir)
-		}
-	}
-
-	// Binary and main files
-	configuration.MainCfgFile = filepath.Join(configuration.HaproxyDirs.CfgDir, "haproxy.cfg")
-	configuration.PIDFile = filepath.Join(configuration.HaproxyDirs.RuntimeDir, "haproxy.pid")
-	configuration.RuntimeSocket = filepath.Join(configuration.HaproxyDirs.RuntimeDir, "haproxy-runtime-api.sock")
-	configuration.MasterSocket = filepath.Join(configuration.HaproxyDirs.RuntimeDir, "haproxy-master.sock")
-	if configuration.Test {
-		configuration.HaproxyDirs.HaproxyBinary = "echo"
-		configuration.RuntimeSocket = ""
-		configuration.MasterSocket = ""
-	} else if _, err = os.Stat(configuration.HaproxyDirs.HaproxyBinary); err != nil {
-		return HUGConfig{}, err
-	}
-
-	// Directories
-	configuration.CertsDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultCertsDirName)
-	configuration.CertListDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultCertFilesDirName)
-	configuration.MapsDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultMapsDirName)
-	configuration.PatternDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultPattenrDirName)
-	configuration.ErrFileDir = filepath.Join(configuration.HaproxyDirs.CfgDir, config.DefaultErrFilesDirName)
-	for _, d := range []string{
-		configuration.CertsDir,
-		configuration.CertListDir,
-		configuration.MapsDir,
-		configuration.ErrFileDir,
-		configuration.HaproxyDirs.StateDir,
-		configuration.PatternDir,
-	} {
-		err = os.MkdirAll(d, 0o755)
-		if err != nil {
-			return HUGConfig{}, err
-		}
 	}
 
 	return configuration, nil
@@ -215,6 +167,95 @@ func (c *HUGConfig) initExternal(external External) error {
 		c.HaproxyDirs.StateDir, c.HaproxyDirs.AuxDir,
 	} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *HUGConfig) Init(external External) error {
+	// --------------
+	// Apply defaults
+	// --------------
+	c.HaproxyDirs = HaproxyDefaults()
+	if c.ControllerPort == 0 {
+		c.ControllerPort = defaultControllerPort
+	}
+	if c.LogType == "" {
+		c.LogType = string(logging.LogHandlerTypeJSON)
+	}
+
+	// values for external
+	err := c.initExternal(external)
+	if err != nil {
+		return err
+	}
+
+	for _, dir := range []string{
+		c.HaproxyDirs.CfgDir, c.HaproxyDirs.RuntimeDir,
+		c.HaproxyDirs.StateDir, c.HaproxyDirs.AuxDir,
+	} {
+		if dir == "" {
+			return fmt.Errorf("failed to init controller config: missing config directories [%s]", dir)
+		}
+	}
+
+	// Log levels
+	if len(c.LogSettings) == 0 {
+		c.LogSettings = map[v3.Category]slog.Level{
+			logging.LogCategoryK8s:          slog.LevelInfo,
+			logging.LogCategoryGate:         slog.LevelDebug,
+			logging.LogCategoryStatus:       slog.LevelInfo,
+			logging.LogCategoryBatch:        slog.LevelInfo,
+			logging.LogCategoryApp:          slog.LevelInfo,
+			logging.LogCategoryCertsStorage: slog.LevelInfo,
+		}
+	}
+
+	// Binary and main files
+	c.MainCfgFile = filepath.Join(c.HaproxyDirs.CfgDir, "haproxy.cfg")
+	c.PIDFile = filepath.Join(c.HaproxyDirs.RuntimeDir, "haproxy.pid")
+	c.RuntimeSocket = filepath.Join(c.HaproxyDirs.RuntimeDir, "haproxy-runtime-api.sock")
+	c.MasterSocket = filepath.Join(c.HaproxyDirs.RuntimeDir, "haproxy-master.sock")
+	if c.Test {
+		c.HaproxyDirs.HaproxyBinary = "echo"
+		c.RuntimeSocket = ""
+		c.MasterSocket = ""
+	} else if _, err = os.Stat(c.HaproxyDirs.HaproxyBinary); err != nil {
+		return err
+	}
+
+	// Create haproxy.cfg if not exists
+	_, err = os.Stat(c.MainCfgFile)
+	if os.IsNotExist(err) {
+		// Create an empty file. The second argument is the file permissions.
+		// 0644 means the owner can read and write, and others can read.
+		file, createErr := os.Create(c.MainCfgFile)
+		if createErr != nil {
+			return createErr
+		}
+		defer file.Close() // Ensure the file is closed when the function exits.
+	} else if err != nil {
+		// Handle other potential errors, like permission denied.
+		return err
+	}
+
+	// Directories
+	c.CertsDir = filepath.Join(c.HaproxyDirs.CfgDir, config.DefaultCertsDirName)
+	c.CertListDir = filepath.Join(c.HaproxyDirs.CfgDir, config.DefaultCertFilesDirName)
+	c.MapsDir = filepath.Join(c.HaproxyDirs.CfgDir, config.DefaultMapsDirName)
+	c.PatternDir = filepath.Join(c.HaproxyDirs.CfgDir, config.DefaultPattenrDirName)
+	c.ErrFileDir = filepath.Join(c.HaproxyDirs.CfgDir, config.DefaultErrFilesDirName)
+	for _, d := range []string{
+		c.CertsDir,
+		c.CertListDir,
+		c.MapsDir,
+		c.ErrFileDir,
+		c.HaproxyDirs.StateDir,
+		c.PatternDir,
+	} {
+		err = os.MkdirAll(d, 0o755)
+		if err != nil {
 			return err
 		}
 	}

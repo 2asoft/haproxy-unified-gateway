@@ -1,0 +1,19 @@
+default_backend: be_tmp_test
+from: haproxytech
+metadata:
+  k8s-unified-ctl:
+    Gateway:
+      e2e-tests-gateway/gateway:
+        Generation: 1
+        LinkID: link1
+mode: http
+name: link1_e2e-tests-gateway_gateway_http
+binds:
+  v4:
+    name: v4
+    address: 0.0.0.0
+    port: 8080
+  v6:
+    name: v6
+    address: '::'
+    port: 8080

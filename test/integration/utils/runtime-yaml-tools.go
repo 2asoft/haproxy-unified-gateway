@@ -36,6 +36,7 @@ type RuntimeYamlParams struct {
 	CrtlruntimeClient ctrlruntimeclient.Client
 	Dir               string
 	Namespace         string
+	ManifestNames     []string
 	WaitForResult     bool // Flag to wait for object to be created/deleted
 }
 
@@ -54,11 +55,22 @@ func CreateRuntimeObjectsFromYAMLFiles(params RuntimeYamlParams) error {
 	if err != nil {
 		return err
 	}
+	mnames := map[string]struct{}{}
+	for _, manisfest := range params.ManifestNames {
+		mnames[manisfest] = struct{}{}
+	}
 
 	for _, filePath := range files {
 		if filePath.IsDir() {
 			continue // Skip directories
 		}
+		// if ManifestNames is not empty, then consider only those ones
+		if len(mnames) > 0 {
+			if _, ok := mnames[filePath.Name()]; !ok {
+				continue
+			}
+		}
+
 		fullPath := filepath.Join(params.Dir, filePath.Name())
 		logger.Info("Processing file", "path", filePath)
 
@@ -156,10 +168,22 @@ func DeleteRuntimeObjectsFromYAMLFiles(params RuntimeYamlParams) error {
 		return err
 	}
 
+	mnames := map[string]struct{}{}
+	for _, manisfest := range params.ManifestNames {
+		mnames[manisfest] = struct{}{}
+	}
+
 	for _, filePath := range files {
 		if filePath.IsDir() {
 			continue // Skip directories
 		}
+		// if ManifestNames is not empty, then consider only those ones
+		if len(mnames) > 0 {
+			if _, ok := mnames[filePath.Name()]; !ok {
+				continue
+			}
+		}
+
 		fullPath := filepath.Join(params.Dir, filePath.Name())
 		logger.Info("Processing file", "path", filePath)
 

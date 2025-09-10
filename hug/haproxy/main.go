@@ -20,7 +20,6 @@ import (
 	"sync"
 
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/client-native/v6/runtime"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/process"
@@ -34,6 +33,7 @@ import (
 type AppManager interface {
 	Stop()
 	Run()
+	HaproxyClient() api.HAProxyClient
 }
 
 type AppManagerImpl struct {
@@ -49,28 +49,16 @@ type AppManagerImpl struct {
 var _ AppManager = &AppManagerImpl{}
 
 func NewAppManager(ctx context.Context, wg *sync.WaitGroup,
-	cfgCh chan diffs.HaproxyConfDiffs, runtimeClientCh chan runtime.Runtime,
+	cfgCh chan diffs.HaproxyConfDiffs,
+	// runtimeClientCh chan runtime.Runtime,
+	haproxyClient api.HAProxyClient,
+	p process.Process,
 	param params.Params,
 	logger *slog.Logger,
 ) (AppManager, error) {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogCategoryApp))
 
-	haproxyClient, err := api.New(mylogger, param.CfgDir, param.MainCfgFile, param.HaproxyBinary, param.RuntimeSocket)
-	if err != nil {
-		err = fmt.Errorf("failed to initialize haproxy API client: %w", err)
-		return nil, err
-	}
-
-	p := process.New(param, haproxyClient, logger)
-	p.SetAPI(haproxyClient)
-
 	reload.Instance().SetLogger(logger)
-
-	// Send the runtime client to the library
-	if runtimeClientCh != nil {
-		runtimeClientCh <- haproxyClient.RuntimeClient()
-		close(runtimeClientCh)
-	}
 
 	return &AppManagerImpl{
 		client:       haproxyClient,
@@ -81,6 +69,10 @@ func NewAppManager(ctx context.Context, wg *sync.WaitGroup,
 		params:       param,
 		haproxyCfgCh: cfgCh,
 	}, nil
+}
+
+func (h *AppManagerImpl) HaproxyClient() api.HAProxyClient {
+	return h.client
 }
 
 func (h *AppManagerImpl) Stop() {

@@ -16,25 +16,31 @@
 package base
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
-	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
 	"testing"
-	"time"
 
-	"github.com/go-logr/logr"
-
-	"github.com/haproxytech/client-native/v6/models"
+	"github.com/haproxytech/client-native/v6/runtime"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	"github.com/haproxytech/kubernetes-controller/cmd/start"
+	haproxymgr "github.com/haproxytech/kubernetes-controller/hug/haproxy"
+	hapapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
+	haproxyparams "github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
+	"github.com/haproxytech/kubernetes-controller/hug/haproxy/process"
 	gate "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 
+	"github.com/go-logr/logr"
 	"github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,6 +59,9 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
+
+//go:embed haproxy.cfg
+var initialHaproxyCfg string
 
 func init() {
 	utilruntime.Must(v3.AddToScheme(scheme.Scheme))
@@ -73,11 +82,13 @@ var hugConfNsName = types.NamespacedName{
 }
 
 type IntTest struct {
-	Ctx       context.Context
-	Client    ctrlruntimeclient.Client
-	TestEnv   *envtest.Environment
-	cancel    context.CancelFunc
-	Namespace string
+	Ctx           context.Context
+	Client        ctrlruntimeclient.Client
+	RuntimeClient runtime.Runtime
+	HaproxyClient hapapi.HAProxyClient
+	TestEnv       *envtest.Environment
+	cancel        context.CancelFunc
+	Namespace     string
 }
 
 func NewIntTest(t *testing.T) (test IntTest, err error) {
@@ -128,6 +139,17 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 	t.Logf("kubeconfig path: %s", kubeconfigPath)
 
+	// Controller HUGConfig
+	hugConfig := hugConfig(test)
+
+	// Cleanup inital haproxy.cfg
+	// and start with what is in /fs
+	err = writeInitalHaproxyCfg(hugConfig.HaproxyDirs.MainCfgFile, initialHaproxyCfg)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+
+	// Setup Gate lib configuration from HUG binary configuration
+	opts := start.SetupGateConfig(hugConfig)
+
 	mgr, err := ctrlruntime.NewManager(cfg, ctrlruntime.Options{
 		Scheme:  scheme.Scheme,
 		Metrics: metricsserver.Options{BindAddress: "0"},
@@ -146,50 +168,54 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	err = test.createNamespace(controllerNs)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
-	// Values to get from flags
-	// to implement:  flags
-
-	// if gatewayClass =is empty, we will support all GatewayClasses that reference this controller
-	// (through the spec.controllerName)
-	controllerName := "gate.haproxy.org/hug"
-
-	logLevels := map[v3.Category]slog.Level{
-		logging.LogCategoryK8s:           slog.LevelWarn,
-		logging.LogCategoryGate:          slog.LevelDebug,
-		logging.LogCategoryApp:           slog.LevelDebug,
-		logging.LogCategoryHaproxyCfgMgr: slog.LevelDebug,
-		logging.LogCategoryBatch:         slog.LevelInfo,
-		logging.LogCategoryStatus:        slog.LevelDebug,
-		logging.LogCategoryReloadMgr:     slog.LevelInfo,
-		logging.LogCategoryCertsStorage:  slog.LevelDebug,
-	}
-
-	syncPeriod := 1 * time.Second
-
-	opts := []func(c *config.Configuration) error{
-		//	opt.KubeConfig(kubeconfig),
-		opt.ControllerConfCRD(hugConfNsName),
-		opt.SyncPeriod(syncPeriod),
-		opt.ControllerName(controllerName),
-		opt.Logging(logging.LogHandlerTypeText, logging.DefaultLevel, logLevels),
-		opt.InitialStructured(structured.Structured{
-			Backends:  make(map[string]*models.Backend),
-			Frontends: make(map[string]*models.Frontend),
-		}),
-		opt.DefaultsSectionName(config.DefaultsSectionName),
-		opt.Namespaces([]string{test.Namespace}),
-		opt.LinkID("linkid"),
-	}
-	gatecontrollercfg := config.Configuration{}
-	gatecontrollercfg.ApplyDefaults()
+	gateconfig := config.Configuration{}
+	gateconfig.ApplyDefaults()
 
 	for _, o := range opts {
-		_ = o(&gatecontrollercfg)
+		_ = o(&gateconfig)
 	}
-	logrLoggerFromSlog := logr.FromSlogHandler(gatecontrollercfg.LogHandler)
+	logrLoggerFromSlog := logr.FromSlogHandler(gateconfig.LogHandler)
 	ctrlruntime.SetLogger(logrLoggerFromSlog)
 
-	err = gate.Add(test.Ctx, gatecontrollercfg, nil, mgr)
+	// find and kill any running haproxy
+	test.killAnyRunningHaproxy(t, gateconfig.HaproxyParams.HaproxyBinary)
+	// // ----------------
+	// // Start Haproxy App manager
+	var wg sync.WaitGroup
+
+	haproxyClient, err := hapapi.New(gateconfig.Logger, gateconfig.HaproxyParams.CfgDir,
+		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket)
+	if err != nil {
+		err = fmt.Errorf("failed to initialize haproxy API client: %w", err)
+		panic(err)
+	}
+	params := haproxyparams.Params{
+		Test:             hugConfig.Test,
+		UseWiths6Overlay: hugConfig.UseWiths6Overlay,
+		HaproxyDirs:      hugConfig.HaproxyDirs,
+	}
+	p := process.New(params, haproxyClient, gateconfig.Logger)
+	p.SetAPI(haproxyClient)
+
+	// // ----------------
+	// // Start Haproxy App manager
+	haproxyAppManager, err := haproxymgr.NewAppManager(test.Ctx, &wg,
+		gateconfig.TransferHaproxyConfChannel,
+		// runtimeClientCh,
+		haproxyClient, p,
+		params,
+		gateconfig.Logger)
+	if err != nil {
+		panic(err)
+	}
+
+	// haproxyAppManager, runtimeClient := start.NewAppManager(test.Ctx, &wg, gatecontrollercfg, hugConfig)
+	test.RuntimeClient = haproxyClient.RuntimeClient()
+
+	haproxyAppManager.Run()
+	test.HaproxyClient = haproxyAppManager.HaproxyClient()
+
+	err = gate.Add(test.Ctx, gateconfig, haproxyClient, mgr)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {
@@ -217,6 +243,25 @@ func (test *IntTest) StopTestEnv(t *testing.T) {
 	// Tearing down the test environment.
 	if err := test.TestEnv.Stop(); err != nil {
 		t.Fatalf("failed to stop testEnv: %s", err)
+	}
+}
+
+func (test *IntTest) killAnyRunningHaproxy(t *testing.T, haproxyBinary string) {
+	g := gomega.NewWithT(t)
+	if !utils.WaitFor(test.Ctx, interval, timeout, func() bool {
+		pid, err := findPID(haproxyBinary, "tmp/hug")
+		if err == nil {
+			p, errF := os.FindProcess(pid)
+			g.Expect(errF).ToNot(gomega.HaveOccurred())
+
+			errS := p.Signal(syscall.SIGKILL)
+			g.Expect(errS).ToNot(gomega.HaveOccurred())
+			return false
+		} else {
+			return true
+		}
+	}) {
+		t.Fatal("could not stop haproxy")
 	}
 }
 
@@ -276,4 +321,54 @@ func WriteKubeconfig(cfg *rest.Config) (string, error) {
 		return "", fmt.Errorf("failed to write kubeconfig file: %w", err)
 	}
 	return kubeconfigPath, nil
+}
+
+// writeInitalHaproxyCfg writes a string to a file at the specified path.
+func writeInitalHaproxyCfg(dstFile, content string) error {
+	// Use os.WriteFile which is a convenience function
+	// to write a byte slice to a file. It handles opening, writing, and closing.
+	// We convert the string to a byte slice.
+	err := os.WriteFile(dstFile, []byte(content), 0o644)
+	if err != nil {
+		return fmt.Errorf("could not write string to file: %w", err)
+	}
+	return nil
+}
+
+// findPID finds the PID of a process that matches the given filters.
+func findPID(processName, filterArg string) (int, error) {
+	// Use pgrep with the -a flag to list the full command line of processes.
+	cmd := exec.Command("pgrep", "-af", processName)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	if err := cmd.Run(); err != nil {
+		// pgrep returns an error if no process is found, which is a normal case.
+		// We'll return a more specific message if the command itself fails.
+		if _, ok := err.(*exec.ExitError); ok {
+			return 0, fmt.Errorf("no process found matching '%s'", processName)
+		}
+		return 0, fmt.Errorf("failed to run pgrep: %w", err)
+	}
+
+	// Split the output into lines to process each process entry.
+	lines := strings.Split(out.String(), "\n")
+
+	// Iterate over each line and apply the additional filter.
+	for _, line := range lines {
+		if strings.Contains(line, filterArg) {
+			// Found a matching line. Now, extract the PID (the first word).
+			fields := strings.Fields(line)
+			if len(fields) > 0 {
+				pid, err := strconv.Atoi(fields[0])
+				if err != nil {
+					return 0, fmt.Errorf("failed to parse PID from line '%s': %w", line, err)
+				}
+				// Return the first matching PID found.
+				return pid, nil
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("no process found matching both '%s' and '%s'", processName, filterArg)
 }

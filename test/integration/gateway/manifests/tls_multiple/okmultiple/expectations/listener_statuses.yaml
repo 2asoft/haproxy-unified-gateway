@@ -1,0 +1,42 @@
+- attachedRoutes: 0
+  conditions:
+  - message: Listener is accepted
+    observedGeneration: 1
+    reason: Accepted
+    status: "True"
+    type: Accepted
+  - message: Listener references have been resolved
+    observedGeneration: 1
+    reason: ResolvedRefs
+    status: "True"
+    type: ResolvedRefs
+  - message: Listener is pending Haproxy programmation
+    observedGeneration: 1
+    reason: Pending
+    status: Unknown
+    type: Programmed
+  name: http
+  supportedKinds:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+- attachedRoutes: 0
+  conditions:
+  - message: Listener is accepted
+    observedGeneration: 1
+    reason: Accepted
+    status: "True"
+    type: Accepted
+  - message: Listener references have been resolved
+    observedGeneration: 1
+    reason: ResolvedRefs
+    status: "True"
+    type: ResolvedRefs
+  - message: Listener is pending Haproxy programmation
+    observedGeneration: 1
+    reason: Pending
+    status: Unknown
+    type: Programmed
+  name: https
+  supportedKinds:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute

@@ -22,8 +22,8 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
-	"github.com/haproxytech/client-native/v6/runtime"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	hapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	constant "github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/handler"
@@ -50,8 +50,8 @@ import (
 )
 
 type Controller struct {
-	// RuntimeClient is set if Configuration.UpdateHaproxyThroughRuntime is true
-	RuntimeClient runtime.Runtime
+	// HAProxyClient is set if Configuration.UpdateHaproxyThroughRuntime is true
+	HaproxyClient hapi.HAProxyClient
 	Configuration config.Configuration
 }
 
@@ -124,7 +124,7 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("cannot build runtime manager: %w", err)
 	}
 
-	if err := Add(ctx, c.Configuration, c.RuntimeClient, mgr); err != nil {
+	if err := Add(ctx, c.Configuration, c.HaproxyClient, mgr); err != nil {
 		return err
 	}
 
@@ -138,7 +138,7 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 func Add(
 	ctx context.Context,
 	cfg config.Configuration,
-	runtimeClient runtime.Runtime,
+	haproxyClient hapi.HAProxyClient,
 	mgr manager.Manager,
 ) error {
 	// Check if the controller configuration is valid
@@ -199,7 +199,7 @@ func Add(
 		gateTreeConfig,
 		haproxyCfgMgrParams,
 		cfg.InitialStructuredHaproxyConf,
-		runtimeClient,
+		haproxyClient,
 	)
 
 	loopCfg := handler.EventLoopConfig{

@@ -23,6 +23,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+
 	"github.com/lmittmann/tint"
 	"k8s.io/apimachinery/pkg/types"
 )

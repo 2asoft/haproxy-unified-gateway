@@ -18,7 +18,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/haproxytech/client-native/v6/runtime"
+	"github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	"github.com/haproxytech/kubernetes-controller/hug/reload"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
@@ -41,8 +41,8 @@ type HaproxyConfMgrImpl struct {
 	// This is usefull to cleanup the frontends removed from a Gateway (some listeners removed)
 	frontendsOwnedbyGateway FrontendsOwnedbyGateway // map[gwKey] -> map[frontendName]struct{}
 	metadataManager         metadata.Manager
-	// RuntimeClient is set if HaproxyConfMgrParams.UpdateHaproxyThroughRuntime is true
-	runtimeClient runtime.Runtime
+	// haproxyClient is set if HaproxyConfMgrParams.UpdateHaproxyThroughRuntime is true
+	haproxyClient api.HAProxyClient
 	logger        *slog.Logger
 	// frontendsContainedInFirstSync that are present at startup, used to cleanup after the first sync
 	// the frontends that are not anymore in the cluster
@@ -55,7 +55,7 @@ type HaproxyConfMgrImpl struct {
 }
 
 func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured structured.Structured,
-	params HaproxyConfMgrParams, runtimeClient runtime.Runtime,
+	params HaproxyConfMgrParams, haproxyClient api.HAProxyClient,
 ) HaproxyConfMgr {
 	firstSync := true
 	impl := HaproxyConfMgrImpl{
@@ -69,7 +69,7 @@ func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore
 		frontendsContainedInFirstSync: make(map[string]struct{}),
 		frontendsOwnedbyGateway:       NewFrontendsOwnedbyGateway(),
 		metadataManager:               metadata.NewManager(params.extractGVK, params.LinkID),
-		runtimeClient:                 runtimeClient,
+		haproxyClient:                 haproxyClient,
 		mu:                            &sync.Mutex{},
 	}
 

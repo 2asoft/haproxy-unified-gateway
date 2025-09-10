@@ -1,0 +1,64 @@
+//
+// Copyright 2025 HAProxy Technologies LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package base
+
+import (
+	"log/slog"
+	"os"
+	"path"
+	"time"
+
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	hugconfig "github.com/haproxytech/kubernetes-controller/hug/configuration"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+)
+
+func hugConfig(test *IntTest) hugconfig.HUGConfig {
+	cfgDir := os.Getenv("HAPROXY_CFG_DIR")
+	if cfgDir == "" {
+		tmpDir := os.TempDir()
+		cfgDir = path.Join(tmpDir, "hug")
+	}
+
+	haproxyBinDir := os.Getenv("HAPROXY_BIN")
+	external := hugconfig.External{
+		External:      true,
+		CfgDir:        cfgDir,
+		HaproxyBinary: haproxyBinDir,
+	}
+
+	hconfig := hugconfig.HUGConfig{
+		SyncPeriod:        time.Second,
+		StartupSyncPeriod: 2 * time.Second,
+		ControllerConfCRD: hugconfig.NamespaceNameValue{Name: hugConfNsName.Name, Namespace: hugConfNsName.Namespace},
+		ControllerName:    "gate.haproxy.org/hug",
+		Namespaces:        []string{test.Namespace, "other"},
+		LogType:           string(logging.LogHandlerTypeText),
+		DefaultLogLevel:   slog.LevelDebug,
+		LogSettings: map[v3.Category]slog.Level{
+			logging.LogCategoryK8s:           slog.LevelInfo,
+			logging.LogCategoryGate:          slog.LevelDebug,
+			logging.LogCategoryStatus:        slog.LevelDebug,
+			logging.LogCategoryBatch:         slog.LevelInfo,
+			logging.LogCategoryApp:           slog.LevelDebug,
+			logging.LogCategoryCertsStorage:  slog.LevelDebug,
+			logging.LogCategoryHaproxyCfgMgr: slog.LevelDebug,
+		},
+	}
+
+	_ = hconfig.Init(external)
+	return hconfig
+}

@@ -18,9 +18,13 @@ spec:
     port: 8443
     tls:
       certificateRefs:
+      ### namespace: not defined, the one where the Gateway is deployed
       - kind: Secret
         group: ""
         name: offload
+      - kind: Secret
+        group: ""
+        name: offload2
     allowedRoutes:
       kinds:
       - group: gateway.networking.k8s.io

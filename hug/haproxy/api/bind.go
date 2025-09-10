@@ -13,8 +13,12 @@
 package api
 
 import (
+	"context"
+	"log/slog"
+
 	parser "github.com/haproxytech/client-native/v6/config-parser"
 	"github.com/haproxytech/client-native/v6/models"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
 func (c *clientNative) BindsGet(parentType parser.Section, name string) (models.Binds, error) {
@@ -66,5 +70,26 @@ func (c *clientNative) BindDeleteAll(parentType parser.Section, name string) err
 			return errDelete
 		}
 	}
+	return nil
+}
+
+func (c *clientNative) BindReplaceAll(parentType parser.Section, name string, binds map[string]models.Bind) error {
+	err := c.BindDeleteAll(parentType, name)
+	if err != nil {
+		return err
+	}
+
+	for _, bind := range binds {
+		if err := c.BindCreate(parser.Frontends, name, bind); err != nil {
+			c.logger.LogAttrs(context.Background(), slog.LevelError, "failed to create bind",
+				logging.LogAttrError(err),
+				slog.String("bind", bind.Name),
+				slog.String("frontend", name),
+			)
+			// Best effort
+			continue
+		}
+	}
+
 	return nil
 }

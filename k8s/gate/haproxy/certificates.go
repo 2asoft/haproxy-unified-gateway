@@ -107,9 +107,10 @@ func (b *HaproxyConfMgrImpl) runtimeCreateCert(cert certificate.CertificateData)
 	defer b.mu.Unlock()
 
 	var err error
+	runtimeClient := b.haproxyClient.RuntimeClient()
 
 	certName := cert.Path.FullPath()
-	err = b.runtimeClient.NewCertEntry(certName)
+	err = runtimeClient.NewCertEntry(certName)
 	// If already exists
 	if err != nil {
 		// if !strings.Contains(err.Error(), "already exists") {
@@ -117,16 +118,16 @@ func (b *HaproxyConfMgrImpl) runtimeCreateCert(cert certificate.CertificateData)
 	}
 	b.logger.LogAttrs(context.Background(), slog.LevelDebug, "ok: `new ssl cert`", slog.String("cert", certName))
 
-	err = b.runtimeClient.SetCertEntry(certName, string(cert.Data))
+	err = runtimeClient.SetCertEntry(certName, string(cert.Data))
 	if err != nil {
 		return err
 	}
 	b.logger.LogAttrs(context.Background(), slog.LevelDebug, "ok: `set ssl cert`", slog.String("cert", certName))
 
-	err = b.runtimeClient.CommitCertEntry(certName)
+	err = runtimeClient.CommitCertEntry(certName)
 	if err != nil {
 		// Abort transaction
-		errAbort := b.runtimeClient.AbortCertEntry(certName)
+		errAbort := runtimeClient.AbortCertEntry(certName)
 		// If error, just log it
 		// a Reload will follow, transaction will be gone no matter what
 		if errAbort != nil {
@@ -146,19 +147,20 @@ func (b *HaproxyConfMgrImpl) runtimeUpdateCert(cert certificate.CertificateData)
 	defer b.mu.Unlock()
 
 	var err error
+	runtimeClient := b.haproxyClient.RuntimeClient()
 
 	certName := cert.Path.FullPath()
 
-	err = b.runtimeClient.SetCertEntry(certName, string(cert.Data))
+	err = runtimeClient.SetCertEntry(certName, string(cert.Data))
 	if err != nil {
 		return err
 	}
 	b.logger.LogAttrs(context.Background(), slog.LevelDebug, "ok: `set ssl cert`", slog.String("cert", certName))
 
-	err = b.runtimeClient.CommitCertEntry(certName)
+	err = runtimeClient.CommitCertEntry(certName)
 	if err != nil {
 		// Abort transaction
-		errAbort := b.runtimeClient.AbortCertEntry(certName)
+		errAbort := runtimeClient.AbortCertEntry(certName)
 		// If error, just log it
 		// a Reload will follow, transaction will be gone no matter what
 		if errAbort != nil {
@@ -178,10 +180,11 @@ func (b *HaproxyConfMgrImpl) runtimeDeleteCert(cert certificate.CertificateData)
 	defer b.mu.Unlock()
 
 	var err error
+	runtimeClient := b.haproxyClient.RuntimeClient()
 
 	certName := cert.Path.FullPath()
 
-	err = b.runtimeClient.DeleteCertEntry(certName)
+	err = runtimeClient.DeleteCertEntry(certName)
 	if err != nil {
 		return err
 	}
@@ -195,9 +198,10 @@ func (b *HaproxyConfMgrImpl) runtimeUpdateCrtList(crtList certificate.CrtListDat
 	defer b.mu.Unlock()
 
 	var err error
+	runtimeClient := b.haproxyClient.RuntimeClient()
 
 	// First read the content of the existing crt-list
-	crtListEntries, err := b.runtimeClient.ShowCrtListEntries(crtList.Path.FullPath())
+	crtListEntries, err := runtimeClient.ShowCrtListEntries(crtList.Path.FullPath())
 	if err != nil {
 		return err
 	}
@@ -216,7 +220,7 @@ func (b *HaproxyConfMgrImpl) runtimeUpdateCrtList(crtList certificate.CrtListDat
 	deletedCerts := utils.SetDifference(currentCerts, newContent)
 
 	for cert := range addedCerts {
-		err = b.runtimeClient.AddCrtListEntry(crtList.Path.FullPath(), models.SslCrtListEntry{
+		err = runtimeClient.AddCrtListEntry(crtList.Path.FullPath(), models.SslCrtListEntry{
 			File: cert,
 		})
 		if err != nil {
@@ -226,7 +230,7 @@ func (b *HaproxyConfMgrImpl) runtimeUpdateCrtList(crtList certificate.CrtListDat
 			slog.String("crt-list", crtList.Path.FullPath()), slog.String("cert", cert))
 	}
 	for cert := range deletedCerts {
-		err = b.runtimeClient.DeleteCrtListEntry(crtList.Path.FullPath(), cert, nil)
+		err = runtimeClient.DeleteCrtListEntry(crtList.Path.FullPath(), cert, nil)
 		if err != nil {
 			return err
 		}

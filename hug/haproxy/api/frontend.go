@@ -43,20 +43,8 @@ func (c *clientNative) FrontendCreate(frontend models.Frontend) error {
 	reload.Instance().SetReload("Frontend upserted %s", frontend.Name)
 
 	// Binds
-	if errDel := c.BindDeleteAll(parser.Frontends, frontend.Name); errDel != nil {
-		return errDel
-	}
-	for _, bind := range frontend.Binds {
-		if err := c.BindCreate(parser.Frontends, frontend.Name, bind); err != nil {
-			c.logger.LogAttrs(context.Background(), slog.LevelError, "failed to create bind",
-				logging.LogAttrError(err),
-				slog.String("bind", bind.Name),
-				slog.String("frontend", frontend.Name),
-			)
-			continue
-		}
-	}
-	return nil
+	err = c.BindReplaceAll(parser.Frontends, frontend.Name, frontend.Binds)
+	return err
 }
 
 func (c *clientNative) FrontendDelete(frontendName string) error {
@@ -75,6 +63,22 @@ func (c *clientNative) FrontendsGet() (models.Frontends, error) {
 	}
 	// TODO: complete with children
 	_, frontends, err := configuration.GetFrontends(c.activeTransaction)
+
+	// Binds
+	for _, frontend := range frontends {
+		_, binds, err := configuration.GetBinds(string(parser.Frontends), frontend.Name, c.activeTransaction)
+		if err != nil {
+			return nil, err
+		}
+		if len(binds) != 0 {
+			frontend.Binds = make(map[string]models.Bind)
+		}
+		for _, bind := range binds {
+			if bind != nil {
+				frontend.Binds[bind.Name] = *bind
+			}
+		}
+	}
 	return frontends, err
 }
 

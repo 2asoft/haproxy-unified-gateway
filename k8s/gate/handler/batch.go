@@ -18,7 +18,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/haproxytech/client-native/v6/runtime"
+	hapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
@@ -81,7 +81,7 @@ func NewEventHandlerImpl(
 	gateTreeConfig GateTreeConfig,
 	haproxyCfgManagerParams haproxy.HaproxyConfMgrParams,
 	initialStructuredConf structured.Structured,
-	runtimeClient runtime.Runtime,
+	haproxyClient hapi.HAProxyClient,
 ) EventHandler {
 	clusterStoreUpdater := store.NewClusterStoreUpdaterImpl(
 		clusterStore,
@@ -118,7 +118,7 @@ func NewEventHandlerImpl(
 	treeBuilder := NewGateTreeBuilder(controllerStore, gateTreeConfig)
 
 	haproxyConfMgr := haproxy.NewHaproxyConfMgr(gateTreeConfig.BaseLogger, controllerStore, initialStructuredConf,
-		haproxyCfgManagerParams, runtimeClient)
+		haproxyCfgManagerParams, haproxyClient)
 
 	handler := &eventHandlerImpl{
 		treeBuilder:         treeBuilder,
