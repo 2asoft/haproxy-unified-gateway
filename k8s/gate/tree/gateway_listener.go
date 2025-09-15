@@ -267,3 +267,9 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 	l.Valid = shouldProgramm
 	l.Conditions.SetGeneration(treeGw.K8sResource.GetGeneration())
 }
+
+func (l *Listener) resetChecks() {
+	l.CheckRouteGroupKind = CheckResult{}
+	l.CheckProtocol = CheckResult{}
+	l.CheckSecret = CheckResult{}
+}

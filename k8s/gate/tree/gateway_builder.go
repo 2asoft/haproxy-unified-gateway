@@ -209,6 +209,7 @@ func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
 
 	// Performs all needed checks
 	for _, listener := range treeGw.Listeners {
+		listener.resetChecks()
 		switch listener.K8sResource.Protocol {
 		// This switch will be completed with all needed checks per protocol
 		case gatewayv1.HTTPProtocolType:
