@@ -152,7 +152,19 @@ func (b *HaproxyConfMgrImpl) onUnmanagedGateway(gwKey k8stypes.NamespacedName, g
 func (b *HaproxyConfMgrImpl) upsertFrontends(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
 	for _, listener := range gw.Listeners {
 		if !listener.Valid {
-			return b.deleteFrontendForListener(gwKey, listener.K8sResource)
+			if errDel := b.deleteFrontendForListener(gwKey, listener.K8sResource); errDel != nil {
+				feName, errName := b.getFrontendName(gwKey, listener.K8sResource)
+				if errName != nil {
+					b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
+						slog.String("frontendNameTemplate", b.params.FrontendNameTemplate),
+						logging.LogAttrKey(gwKey))
+				}
+				b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to delete frontend",
+					logging.LogAttrFrontendName(feName),
+					logging.LogAttrError(errDel))
+			}
+			// Proceed with next listeners
+			continue
 		}
 
 		newFe, err := b.newFrontend(gwKey, gw, listener)
