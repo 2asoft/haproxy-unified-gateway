@@ -114,3 +114,23 @@ func NewListenerAcceptedOK() Conditions {
 		},
 	}
 }
+
+// ---------------------------------------------------------
+// ListenerConditionConflicted
+
+func NewListenerConflicted(msg string) Conditions {
+	return Conditions{
+		ConditionType(gatewayv1.ListenerConditionConflicted): {
+			Type:    ConditionType(gatewayv1.ListenerConditionConflicted),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(gatewayv1.ListenerReasonProtocolConflict),
+			Message: msg,
+		},
+		ConditionType(gatewayv1.ListenerConditionAccepted): {
+			Type:    ConditionType(gatewayv1.ListenerConditionAccepted),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(gatewayv1.ListenerReasonInvalid),
+			Message: "Listener is invalid (see ConditionType Conflicted)",
+		},
+	}
+}

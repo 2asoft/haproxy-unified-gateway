@@ -1,0 +1,10 @@
+- message: Some listeners are Conflicting
+  observedGeneration: 1
+  reason: ListenersNotValid
+  status: "True"
+  type: Accepted
+- message: Gateway is programmed
+  observedGeneration: 1
+  reason: Programmed
+  status: "True"
+  type: Programmed

@@ -357,19 +357,3 @@ func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayLi
 		}
 	}
 }
-
-// func (b *CertificateBuilderImpl) isListenerValid(listenerKey client.ObjectKey) bool {
-// 	gatewayKey, listenerName, err := ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey)
-// 	if err != nil {
-// 		return false
-// 	}
-// 	treeGw := b.GateTree.Gateways[gatewayKey]
-// 	if treeGw == nil {
-// 		return false
-// 	}
-// 	listener, ok := treeGw.Listeners[listenerName]
-// 	if !ok {
-// 		return false
-// 	}
-// 	return listener.Valid
-// }

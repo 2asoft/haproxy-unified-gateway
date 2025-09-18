@@ -19,6 +19,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type ControllerStore struct {
@@ -86,4 +87,10 @@ func (b *ControllerStore) ResetCrtListUpdates() {
 	b.CrtListUpdates.Created = make(map[string]certificate.CrtListData)
 	b.CrtListUpdates.Updated = make(map[string]certificate.CrtListData)
 	b.CrtListUpdates.Deleted = make(map[string]certificate.CrtListData)
+}
+
+func (b *ControllerStore) CheckGatewayClassExists(gwcName string) bool {
+	gwcKey := types.NamespacedName{Name: gwcName}
+	_, ok := b.GateTree.GatewayClasses[gwcKey]
+	return ok
 }

@@ -28,7 +28,15 @@ var _ Builder = &GatewayBuilderImpl{}
 
 type GatewayBuilderImpl struct {
 	ControllerStore
-	certStorage storage.CertificateStorage
+	certStorage                       storage.CertificateStorage
+	portsWithOneListener              map[gatewayv1.PortNumber]struct{}
+	portsWithMutipleListeners         map[gatewayv1.PortNumber][]gatewaylistener
+	previousPortsWithMutipleListeners map[gatewayv1.PortNumber][]gatewaylistener
+}
+
+type gatewaylistener struct {
+	listenerKey client.ObjectKey
+	gatewayKey  client.ObjectKey
 }
 
 type GatewayBuilderParams struct {
@@ -48,12 +56,15 @@ func NewGatewayBuilder(params GatewayBuilderParams) Builder {
 // --------------------
 
 func (b *GatewayBuilderImpl) ComputeTreeUpdates() {
+	b.resetListenerConflicts()
 	b.addIndirectClusterStoreUpdates()
+
 	// After this step, the clusterStore.Updates contains all impacted Gateways
 	// Including the one impacted by:
 	// - HugGate updates
 	// - GatewayClass updates
 	b.computeGateTreeUpdates()
+	// Here we check for Listener conflicts
 }
 
 func (b *GatewayBuilderImpl) addIndirectClusterStoreUpdates() {
@@ -117,8 +128,35 @@ func (b *GatewayBuilderImpl) addIndirectGatewaysFromSecret(secretUpdate store.Up
 }
 
 func (b *GatewayBuilderImpl) computeGateTreeUpdates() {
+	// Compute the upserted/delete Tree Gateways
 	for gwKey, gwUpdate := range b.ClusterStore.Updates.Gateways {
 		b.computeTreeGatewayUpdate(gwKey, gwUpdate)
+	}
+
+	// Check for conflicts
+	// Add all Gateways that have a conflict in the list of updated Gateways
+	// in order to recompute the checks and status (both Gateway and listeners)
+	b.checkListenerConflicts()
+
+	for _, treeGw := range b.ControllerStore.GateTree.Gateways {
+		if treeGw.TreeStatus.Status != store.StatusUpserted {
+			continue
+		}
+
+		if treeGw.isManaged() {
+			// Process Listeners
+			b.buildListeners(treeGw)
+
+			// Compute status only if managed Gateway
+			// If not managed, then we should not update the status
+			// treeGw.BuildManagementConditions()
+			// Build Listener conditions
+			for _, listener := range treeGw.Listeners {
+				listener.BuildConditions(treeGw)
+			}
+			treeGw.checkListenerConflicts(b.portsWithOneListener)
+			treeGw.BuildConditions()
+		}
 	}
 }
 
@@ -140,30 +178,9 @@ func (b *GatewayBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, gw
 		} else {
 			treeGw = NewGateway(gwUpdate.NewObject)
 		}
-		// If the GatewayClass is not in the store, it means that the GatewayClass is not managed by our controller
-		if ok := treeGw.checkGatewayClassExistsInControllerStore(b.ControllerStore); !ok {
-			return
-		}
 
 		// Do we keep it in Managed or Unmanaged???
-		treeGw.processChecks(b.ControllerStore)
-
-		if treeGw.isManaged() {
-			treeGw.SetAsManaged(b.Logger, b.ControllerStore)
-		} else {
-			treeGw.SetAsUnmanaged(b.Logger, b.ControllerStore)
-		}
-
-		// Process Listeners
-		b.buildListeners(treeGw)
-
-		// Compute status only if managed Gateway
-		// If not managed, then we should not update the status
-		treeGw.BuildConditions()
-		// Build Listener conditions
-		for _, listener := range treeGw.Listeners {
-			listener.BuildConditions(treeGw)
-		}
+		b.processManagementChecks(treeGw)
 
 	case store.StatusDeleted:
 		if treeGw != nil {
@@ -171,6 +188,23 @@ func (b *GatewayBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, gw
 		}
 		// else nothing to do
 		// It did not exists, it's deleted, noop
+	}
+}
+
+func (b *GatewayBuilderImpl) processManagementChecks(treeGw *Gateway) {
+	// If the GatewayClass is not in the store, it means that the GatewayClass is not managed by our controller
+	if ok := b.ControllerStore.CheckGatewayClassExists(string(treeGw.K8sResource.Spec.GatewayClassName)); !ok {
+		return
+	}
+
+	treeGw.checkParametersRef(b.ControllerStore)
+	treeGw.checkGatewayClassIsValid(b.ControllerStore)
+	treeGw.Valid = treeGw.CheckParamsRef.Valid && treeGw.CheckValidGatewayClass.Valid
+
+	if treeGw.isManaged() {
+		treeGw.SetAsManaged(b.Logger, b.ControllerStore)
+	} else {
+		treeGw.SetAsUnmanaged(b.Logger, b.ControllerStore)
 	}
 }
 
@@ -215,13 +249,93 @@ func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
 		case gatewayv1.HTTPProtocolType:
 			listener.checkRouteGroupKind(treeGw, gateSupportedRouteKindsByProtocol)
 			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
-
+			listener.checkConflict(treeGw, b.portsWithMutipleListeners)
 		case gatewayv1.HTTPSProtocolType:
 			listener.checkRouteGroupKind(treeGw, gateSupportedRouteKindsByProtocol)
 			listener.checkCertificateRefs(treeGw, b.GateTree.Secrets)
 			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
+			listener.checkConflict(treeGw, b.portsWithMutipleListeners)
 		default:
 			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
+			listener.checkConflict(treeGw, b.portsWithMutipleListeners)
 		}
 	}
+}
+
+func (b *GatewayBuilderImpl) resetListenerConflicts() {
+	b.previousPortsWithMutipleListeners = b.portsWithMutipleListeners
+	b.portsWithOneListener = make(map[gatewayv1.PortNumber]struct{})
+	b.portsWithMutipleListeners = make(map[gatewayv1.PortNumber][]gatewaylistener)
+}
+
+// -----------------------------------------------
+
+// checkListenerConflicts checks the conflicts between all Gateway listeners
+// We accept only 1 Gateway Listener per port
+// For now, as there are only a few number of Gateways, we do this check on all Gateway/ all listeners
+func (b *GatewayBuilderImpl) checkListenerConflicts() {
+	oldGwWithPortConflicts := b.previousGatewaysWithPortConflicts()
+	listenersByPort := make(map[gatewayv1.PortNumber][]gatewaylistener)
+
+	for _, treeGw := range b.GateTree.Gateways {
+		if treeGw.K8sResource == nil {
+			// ... deleted
+			continue
+		}
+		for _, listener := range treeGw.K8sResource.Spec.Listeners {
+			if _, ok := listenersByPort[listener.Port]; !ok {
+				listenersByPort[listener.Port] = []gatewaylistener{}
+			}
+			gl := gatewaylistener{
+				listenerKey: ListenerKey(treeGw.K8sResource, listener),
+				gatewayKey:  client.ObjectKeyFromObject(treeGw.K8sResource),
+			}
+
+			listenersByPort[listener.Port] = append(listenersByPort[listener.Port], gl)
+		}
+	}
+
+	for port, gls := range listenersByPort {
+		if len(gls) > 1 {
+			b.portsWithMutipleListeners[port] = gls
+			continue
+		}
+		b.portsWithOneListener[port] = struct{}{}
+	}
+	newGwWithPortConflict := b.gatewaysWithPortConflicts()
+	oldAndNewGwWithPortConflicts := map[client.ObjectKey]struct{}{}
+	for gwKey := range newGwWithPortConflict {
+		oldAndNewGwWithPortConflicts[gwKey] = struct{}{}
+	}
+	for gwKey := range oldGwWithPortConflicts {
+		oldAndNewGwWithPortConflicts[gwKey] = struct{}{}
+	}
+	for gwKey := range oldAndNewGwWithPortConflicts {
+		treeGw := b.ControllerStore.GateTree.Gateways[gwKey]
+		// Set the treeGw as UPSERTED
+		if treeGw.TreeStatus.Status != store.StatusUpserted && treeGw.TreeStatus.Status != store.StatusDeleted {
+			treeGw.SetAsUpserted(b.Logger, treeGw.K8sResource)
+			b.processManagementChecks(treeGw)
+		}
+	}
+}
+
+// gatewaysWithPortConflicts returns a map of Gateway keys which have a conflict
+func (b *GatewayBuilderImpl) gatewaysWithPortConflicts() map[client.ObjectKey]struct{} {
+	return gatewaysWithPortConflicts(b.portsWithMutipleListeners)
+}
+
+// previousGatewaysWithPortConflicts returns a map of Gateway keys which have a conflict
+func (b *GatewayBuilderImpl) previousGatewaysWithPortConflicts() map[client.ObjectKey]struct{} {
+	return gatewaysWithPortConflicts(b.previousPortsWithMutipleListeners)
+}
+
+func gatewaysWithPortConflicts(portsWithMultipleListeners map[gatewayv1.PortNumber][]gatewaylistener) map[client.ObjectKey]struct{} {
+	gwKeys := map[client.ObjectKey]struct{}{}
+	for _, gls := range portsWithMultipleListeners {
+		for _, gl := range gls {
+			gwKeys[gl.gatewayKey] = struct{}{}
+		}
+	}
+	return gwKeys
 }

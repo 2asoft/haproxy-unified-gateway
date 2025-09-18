@@ -75,3 +75,71 @@ func (s *GatewayTestSuite) Test_Gateway_validRef() {
 	gwName := "gateway"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 }
+
+func (s *GatewayTestSuite) Test_Gateway_conflict_at_least_1_listener_ok() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "conflict"
+	subFixtureDir := "at_least_1_valid"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir, subFixtureDir)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions: Gateway
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions-gateway.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses-gateway.yaml")
+	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
+
+	gwName := "gateway"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// Expected Conditions: Gateway2
+	expectedCondPath = path.Join(expectationsPath, "conditions-gateway.yaml")
+	expectedConditions = s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses-gateway2.yaml")
+	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
+
+	gwName = "gateway2"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// haproxy.cfg Frontends
+	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
+	expectedFrontends := []string{"link1_e2e-tests-gateway_gateway_http-8081", "link1_e2e-tests-gateway_gateway2_http-9090"}
+	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
+}
+
+func (s *GatewayTestSuite) Test_Gateway_conflict_0_listener_ok() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "conflict"
+	subFixtureDir := "0_valid"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir, subFixtureDir)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions: Gateway
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions-gateway.yaml")
+	expectedConditions := s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses-gateway.yaml")
+	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
+
+	gwName := "gateway"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// Expected Conditions: Gateway2
+	expectedCondPath = path.Join(expectationsPath, "conditions-gateway.yaml")
+	expectedConditions = s.YamlToConditions(expectedCondPath)
+	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses-gateway2.yaml")
+	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
+
+	gwName = "gateway2"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// haproxy.cfg Frontends
+	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
+	expectedFrontends := []string{}
+	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
+}

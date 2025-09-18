@@ -16,9 +16,7 @@ package tree
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
@@ -104,49 +102,6 @@ func GetCertificateRefNamespacedName(certRef gatewayv1.SecretObjectReference, gw
 		Namespace: namespace,
 		Name:      string(certRef.Name),
 	}
-}
-
-// ListenerKey returns the Certificate owner key appending the listener name to it
-// For Gateway ns/gateway, if the Listener name is "https", will return
-// ns/gateway_https
-// = Listener Key
-func ListenerKey(gw *gatewayv1.Gateway, listener gatewayv1.Listener) client.ObjectKey {
-	return client.ObjectKey{
-		Namespace: gw.Namespace,
-		Name: fmt.Sprintf("%s_%s",
-			gw.Name,
-			listener.Name,
-		),
-	}
-}
-
-// ConvertListenerKeyToGatewayKey converts a listener key back to a gateway key.
-// It assumes the listener key is in the format "gateway-name_listener-name", built by the previous ListenerKey function.
-// For a listener key with namespace "ns" and name "my-gateway_https",
-// it returns a gateway key with namespace "ns" and name "my-gateway".
-func ConvertListenerKeyToGatewayKey(listenerKey client.ObjectKey) client.ObjectKey {
-	gatewayKey, _, err := ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey)
-	if err != nil {
-		return listenerKey
-	}
-	return gatewayKey
-}
-
-// ConvertListenerKeyToGatewayKeyAndListenerName converts a listener key back to a gateway key and listener name.
-// It assumes the listener key is in the format "gateway-name_listener-name", built by the ListenerKey function.
-// For a listener key with namespace "ns" and name "my-gateway_https",
-// it returns a gateway key with namespace "ns" and name "my-gateway", the listener name "https", and no error.
-// If the format is invalid, it returns an error.
-func ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey client.ObjectKey) (client.ObjectKey, string, error) {
-	parts := strings.Split(listenerKey.Name, "_")
-	if len(parts) != 2 {
-		return client.ObjectKey{}, "", fmt.Errorf("invalid listener key format: %s", listenerKey.Name)
-	}
-	gatewayKey := client.ObjectKey{
-		Namespace: listenerKey.Namespace,
-		Name:      parts[0],
-	}
-	return gatewayKey, parts[1], nil
 }
 
 // isSecretGroupKindSupported checks if the provided certificate reference has a supported Group and Kind.

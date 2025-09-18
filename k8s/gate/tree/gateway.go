@@ -22,6 +22,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,9 +43,11 @@ type Gateway struct {
 	Listeners map[string]*Listener // map[listenerName]
 	// TreeStatus
 	TreeStatus TreeUpdate[Gateway]
-	// ConditionType Accepted checks
+	// Management Checks
 	CheckParamsRef         CheckResult
 	CheckValidGatewayClass CheckResult
+	// Additional checks
+	CheckConflict CheckResult
 	// Valid shows whether the Gateway is valid.
 	Valid bool
 }
@@ -77,7 +80,7 @@ func (g *Gateway) SetAsUpserted(logger *slog.Logger, newK8sResource *gatewayv1.G
 	g.TreeStatus.Status = store.StatusUpserted
 	g.TreeStatus.OldTreeResource = g.DeepCopy()
 	g.K8sResource = newK8sResource
-	g.resetChecks()
+	g.reset()
 }
 
 func (g *Gateway) SetAsDeleted(logger *slog.Logger) {
@@ -86,19 +89,17 @@ func (g *Gateway) SetAsDeleted(logger *slog.Logger) {
 	g.TreeStatus.Status = store.StatusDeleted
 	g.TreeStatus.OldTreeResource = g.DeepCopy()
 	g.K8sResource = nil
-	g.resetChecks()
+	g.reset()
 }
 
-func (g *Gateway) resetChecks() {
-	g.Conditions = conditions.NewGatewayAcceptedOK()
+func (g *Gateway) reset() {
+	g.Conditions = make(conditions.Conditions)
 	g.HugGate = nil
 	g.CheckParamsRef = CheckResult{}
 	g.CheckValidGatewayClass = CheckResult{}
+	g.CheckConflict = CheckResult{}
 	g.Valid = false
-	// Reset listener checks
-	for _, listener := range g.Listeners {
-		listener.CheckRouteGroupKind = CheckResult{}
-	}
+	g.Listeners = make(map[string]*Listener)
 }
 
 func (g *Gateway) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
@@ -140,12 +141,6 @@ func (g *Gateway) DeepCopy() *Gateway {
 	// Restore TreeStatus
 	g.TreeStatus = treeStatus
 	return &copied
-}
-
-func (g *Gateway) processChecks(controllerStore ControllerStore) {
-	g.checkParametersRef(controllerStore)
-	g.checkGatewayClassIsValid(controllerStore)
-	g.Valid = g.CheckParamsRef.Valid && g.CheckValidGatewayClass.Valid
 }
 
 func (g *Gateway) checkParametersRef(controllerStore ControllerStore) {
@@ -211,10 +206,42 @@ func (g *Gateway) checkGatewayClassIsValid(controllerStore ControllerStore) {
 	}
 }
 
-func (g *Gateway) checkGatewayClassExistsInControllerStore(controllerStore ControllerStore) bool {
-	gwcKey := types.NamespacedName{Name: string(g.K8sResource.Spec.GatewayClassName)}
-	_, ok := controllerStore.GateTree.GatewayClasses[gwcKey]
-	return ok
+func (g *Gateway) checkListenerConflicts(portWithoutConflict map[gatewayv1.PortNumber]struct{}) {
+	// Iterate over each listener port
+	// see if at least one of them does not have conflict
+	gw := g.K8sResource
+	found1PortWithoutConflict := false
+	for _, listener := range gw.Spec.Listeners {
+		if _, ok := portWithoutConflict[listener.Port]; ok {
+			found1PortWithoutConflict = true
+			break
+		}
+	}
+
+	someListenersrAreConflicted := false
+	for _, l := range g.Listeners {
+		_, exists := l.Conditions.GetCondition(conditions.ConditionType(gatewayv1.ListenerConditionConflicted))
+		if exists {
+			someListenersrAreConflicted = true
+			break
+		}
+	}
+	if someListenersrAreConflicted {
+		if !found1PortWithoutConflict {
+			g.CheckConflict = CheckResult{
+				Valid:      false,
+				Conditions: conditions.NewGatewayAcceptedListenerNotValidAllInvalid(),
+			}
+		} else {
+			g.CheckConflict = CheckResult{
+				Valid:      true,
+				Conditions: conditions.NewGatewayAcceptedListenerNotValidAtLeast1Valid(),
+			}
+		}
+	} else {
+		g.CheckConflict.Valid = true
+	}
+	g.Valid = g.Valid && g.CheckConflict.Valid
 }
 
 func getGatewayParamsRefKey(gw *gatewayv1.Gateway) (types.NamespacedName, bool) {
@@ -235,6 +262,8 @@ func (g *Gateway) BuildConditions() {
 	if !g.isManaged() {
 		return
 	}
+	g.Conditions = make(conditions.Conditions)
+
 	if !g.CheckValidGatewayClass.Valid {
 		g.Conditions.MergeOverrideConditions(g.CheckValidGatewayClass.Conditions)
 		g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
@@ -248,6 +277,22 @@ func (g *Gateway) BuildConditions() {
 		g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
 		return
 	}
+
+	_, exists := g.CheckConflict.Conditions.GetCondition(conditions.ConditionType(gatewayv1.GatewayConditionAccepted))
+	if exists {
+		if !g.CheckConflict.Valid {
+			// All listeners are conflicted
+			g.Conditions.MergeOverrideConditions(g.CheckConflict.Conditions)
+			g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
+			return
+		}
+		// Some listeners are conflicted, but at leats 1 is valid
+		g.Conditions.MergeOverrideConditions(g.CheckConflict.Conditions)
+		g.Conditions.MergeOverrideConditions(conditions.NewGatewayProgrammedOK())
+		g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
+		return
+	}
+
 	g.Conditions.MergeOverrideConditions(conditions.NewGatewayAcceptedOK())
 	g.Conditions.MergeOverrideConditions(conditions.NewGatewayProgrammedOK())
 

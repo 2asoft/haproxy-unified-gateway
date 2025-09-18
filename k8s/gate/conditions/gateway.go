@@ -69,6 +69,28 @@ func NewGatewayAcceptedInvalidParameters(err *field.Error) Conditions {
 	}
 }
 
+func NewGatewayAcceptedListenerNotValidAtLeast1Valid() Conditions {
+	return Conditions{
+		ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(gatewayv1.GatewayReasonListenersNotValid),
+			Message: "Some listeners are Conflicting",
+		},
+	}
+}
+
+func NewGatewayAcceptedListenerNotValidAllInvalid() Conditions {
+	return Conditions{
+		ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(gatewayv1.GatewayReasonListenersNotValid),
+			Message: "GatewayClass is not accepted - All listeners are conflicting",
+		},
+	}
+}
+
 // ---------------------------------------------------------
 // GatewayConditionProgrammed
 

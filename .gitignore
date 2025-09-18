@@ -10,3 +10,4 @@ __debug_bin*
 controller
 test/integration/*/certlists
 test/integration/*/certs
+test/integration/*/patterns

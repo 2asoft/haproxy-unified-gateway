@@ -17,6 +17,8 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+	"sort"
+	"strings"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
@@ -25,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -37,6 +40,7 @@ type Listener struct {
 	CheckRouteGroupKind CheckResult
 	CheckProtocol       CheckResult
 	CheckSecret         CheckResult
+	CheckConflict       CheckResult
 	// AllowedRouteKinds is the list of allowed route kinds for this listener.
 	AllowedRouteKinds []gatewayv1.RouteGroupKind
 	// Valid
@@ -229,6 +233,32 @@ func (l *Listener) checkCertificateRefs(treeGw *Gateway, gateSecrets map[types.N
 	}
 }
 
+func (l *Listener) checkConflict(treeGw *Gateway, multipleListenersPerPort map[gatewayv1.PortNumber][]gatewaylistener) {
+	if !treeGw.Valid {
+		l.CheckConflict = CheckResult{}
+		return
+	}
+	listener := l.K8sResource
+	if gls, ok := multipleListenersPerPort[listener.Port]; ok {
+		// There are multiple listeners on this port
+		// Should be rejected. It's not allowed to pick one of the listeners
+		// All listeners should be rejects.
+		// The Gateway by itself should be accepted only if there is at least 1 valid Listener remaining
+		// after rejecting all invalid listeners
+		conflictingKeys := make([]string, 0, len(gls))
+		for _, gl := range gls {
+			conflictingKeys = append(conflictingKeys, gl.listenerKey.String())
+		}
+		sort.Strings(conflictingKeys)
+		msg := fmt.Sprintf("Conflicting listeners: %s", strings.Join(conflictingKeys, ", "))
+		cond := conditions.NewListenerConflicted(msg)
+		l.CheckConflict = CheckResult{
+			Valid:      false,
+			Conditions: cond,
+		}
+	}
+}
+
 func (*Listener) isSupportedCertKindGroup(certRef gatewayv1.SecretObjectReference) bool {
 	supportedKind := certRef.Kind == nil || *certRef.Kind == "Secret"
 	supportedGroup := certRef.Group == nil || *certRef.Group == ""
@@ -236,10 +266,11 @@ func (*Listener) isSupportedCertKindGroup(certRef gatewayv1.SecretObjectReferenc
 }
 
 func (l *Listener) BuildConditions(treeGw *Gateway) {
+	l.Conditions = make(conditions.Conditions)
 	l.Conditions.MergeOverrideConditions(l.CheckRouteGroupKind.Conditions)
 	l.Conditions.MergeOverrideConditions(l.CheckProtocol.Conditions)
 	l.Conditions.MergeOverrideConditions(l.CheckSecret.Conditions)
-
+	l.Conditions.MergeOverrideConditions(l.CheckConflict.Conditions)
 	// Should we process with Haproxy programmation
 	shouldProgramm := true
 
@@ -260,6 +291,13 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 		l.Conditions.MergeOverrideConditions(conditions.NewListenerProgrammedInvalid())
 		shouldProgramm = false
 	}
+
+	_, exists = l.Conditions.GetCondition(conditions.ConditionType(gatewayv1.ListenerConditionConflicted))
+	if exists {
+		l.Conditions.MergeOverrideConditions(conditions.NewListenerProgrammedInvalid())
+		shouldProgramm = false
+	}
+
 	if shouldProgramm {
 		l.Conditions.MergeOverrideConditions(conditions.NewListenerProgrammedPending())
 	}
@@ -272,4 +310,48 @@ func (l *Listener) resetChecks() {
 	l.CheckRouteGroupKind = CheckResult{}
 	l.CheckProtocol = CheckResult{}
 	l.CheckSecret = CheckResult{}
+	l.CheckConflict = CheckResult{}
+}
+
+// ListenerKey returns the Certificate owner key appending the listener name to it
+// For Gateway ns/gateway, if the Listener name is "https", will return
+// ns/gateway_https
+// = Listener Key
+func ListenerKey(gw *gatewayv1.Gateway, listener gatewayv1.Listener) client.ObjectKey {
+	return client.ObjectKey{
+		Namespace: gw.Namespace,
+		Name: fmt.Sprintf("%s_%s",
+			gw.Name,
+			listener.Name,
+		),
+	}
+}
+
+// ConvertListenerKeyToGatewayKey converts a listener key back to a gateway key.
+// It assumes the listener key is in the format "gateway-name_listener-name", built by the previous ListenerKey function.
+// For a listener key with namespace "ns" and name "my-gateway_https",
+// it returns a gateway key with namespace "ns" and name "my-gateway".
+func ConvertListenerKeyToGatewayKey(listenerKey client.ObjectKey) client.ObjectKey {
+	gatewayKey, _, err := ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey)
+	if err != nil {
+		return listenerKey
+	}
+	return gatewayKey
+}
+
+// ConvertListenerKeyToGatewayKeyAndListenerName converts a listener key back to a gateway key and listener name.
+// It assumes the listener key is in the format "gateway-name_listener-name", built by the ListenerKey function.
+// For a listener key with namespace "ns" and name "my-gateway_https",
+// it returns a gateway key with namespace "ns" and name "my-gateway", the listener name "https", and no error.
+// If the format is invalid, it returns an error.
+func ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey client.ObjectKey) (client.ObjectKey, string, error) {
+	parts := strings.Split(listenerKey.Name, "_")
+	if len(parts) != 2 {
+		return client.ObjectKey{}, "", fmt.Errorf("invalid listener key format: %s", listenerKey.Name)
+	}
+	gatewayKey := client.ObjectKey{
+		Namespace: listenerKey.Namespace,
+		Name:      parts[0],
+	}
+	return gatewayKey, parts[1], nil
 }

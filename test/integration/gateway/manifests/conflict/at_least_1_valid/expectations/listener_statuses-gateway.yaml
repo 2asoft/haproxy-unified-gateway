@@ -1,0 +1,47 @@
+  - attachedRoutes: 0
+    conditions:
+    - message: 'Conflicting listeners: e2e-tests-gateway/gateway2_http-8080, e2e-tests-gateway/gateway_http-8080'
+      observedGeneration: 1
+      reason: ProtocolConflict
+      status: "True"
+      type: Conflicted
+    - message: Listener is invalid (see ConditionType Conflicted)
+      observedGeneration: 1
+      reason: Invalid
+      status: "False"
+      type: Accepted
+    - message: Listener references have been resolved
+      observedGeneration: 1
+      reason: ResolvedRefs
+      status: "True"
+      type: ResolvedRefs
+    - message: Listener is invalid
+      observedGeneration: 1
+      reason: Invalid
+      status: "False"
+      type: Programmed
+    name: http-8080
+    supportedKinds:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+  - attachedRoutes: 0
+    conditions:
+    - message: Listener is accepted
+      observedGeneration: 1
+      reason: Accepted
+      status: "True"
+      type: Accepted
+    - message: Listener references have been resolved
+      observedGeneration: 1
+      reason: ResolvedRefs
+      status: "True"
+      type: ResolvedRefs
+    - message: Listener is pending Haproxy programmation
+      observedGeneration: 1
+      reason: Pending
+      status: Unknown
+      type: Programmed
+    name: http-8081
+    supportedKinds:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
