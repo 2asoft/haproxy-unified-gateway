@@ -55,7 +55,8 @@ spec:
                           - app
                           - batch
                           - reloadmgr
-                          - certsstorage
+                          - certs-storage
+                          - maps-storage
                           type: string
                         level:
                           enum:

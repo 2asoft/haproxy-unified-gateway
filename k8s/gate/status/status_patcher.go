@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 
 	"github.com/google/go-cmp/cmp"
@@ -41,7 +41,7 @@ func newGatewayClassStatusPatcher(gwc *tree.GatewayClass) StatusPatcher {
 var _ StatusPatcher = &gatewayClassStatusPatcher{}
 
 type gatewayClassStatusPatcher struct {
-	conditions conditions.Conditions
+	conditions generic.Conditions
 }
 
 func (sm *gatewayClassStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
@@ -49,7 +49,7 @@ func (sm *gatewayClassStatusPatcher) StatusEqual(obj client.Object) (bool, error
 	if !ok {
 		return false, fmt.Errorf("wrong type %T", obj)
 	}
-	conds := conditions.NewConditionsFromMetav1Conditions(gwc.Status.Conditions)
+	conds := generic.NewConditionsFromMetav1Conditions(gwc.Status.Conditions)
 	return sm.conditions.Equal(conds), nil
 }
 
@@ -91,7 +91,7 @@ func newGatewayStatusPatcher(gw *tree.Gateway) StatusPatcher {
 var _ StatusPatcher = &gatewayStatusPatcher{}
 
 type gatewayStatusPatcher struct {
-	conditions       conditions.Conditions
+	conditions       generic.Conditions
 	listenerStatuses []gatewayv1.ListenerStatus
 }
 
@@ -100,7 +100,7 @@ func (sm *gatewayStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("wrong type %T", obj)
 	}
-	gwConds := conditions.NewConditionsFromMetav1Conditions(gw.Status.Conditions)
+	gwConds := generic.NewConditionsFromMetav1Conditions(gw.Status.Conditions)
 	if !sm.conditions.Equal(gwConds) {
 		return false, nil
 	}
@@ -120,8 +120,8 @@ func ListenerStatusesEqual(a, b []gatewayv1.ListenerStatus) bool {
 			return false
 		}
 
-		aConds := conditions.NewConditionsFromMetav1Conditions(a.Conditions)
-		bConds := conditions.NewConditionsFromMetav1Conditions(b.Conditions)
+		aConds := generic.NewConditionsFromMetav1Conditions(a.Conditions)
+		bConds := generic.NewConditionsFromMetav1Conditions(b.Conditions)
 		if !aConds.Equal(bConds) {
 			return false
 		}

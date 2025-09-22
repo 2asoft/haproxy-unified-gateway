@@ -11,11 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package conditions
+package routeconditions
 
 import "sigs.k8s.io/controller-runtime/pkg/client"
 
-type ConditionAccessor[T client.Object] interface {
-	GetConditions(obj T) Conditions
-	SetConditions(obj T, conds Conditions)
+type RouteConditionAccessor[T client.Object] interface {
+	GetConditions(obj T) RouteConditions
+	SetConditions(obj T, conds RouteConditions)
 }

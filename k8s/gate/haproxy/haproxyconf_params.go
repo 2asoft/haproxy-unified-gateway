@@ -41,6 +41,7 @@ type HaproxyConfParams struct {
 	DefaultsSectionName string
 	// StoreCertificateStructureType contains the structure type of the certificates storage
 	StoreCertificateStructureType storage.StructureType
+	StoreMapsStructureType        storage.StructureType
 	// LindID: an ID for the link to the cluster
 	LinkID string
 	// TimeoutWaitForRuntime speficied the max time to wait for HUG library to the runtime.Runtime at startup

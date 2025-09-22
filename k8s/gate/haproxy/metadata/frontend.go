@@ -50,7 +50,7 @@ func FrontendMetadata(objKey client.ObjectKey, kind string, generation int64, li
 	by, _ := json.Marshal(frontendMetadata)
 	_ = json.Unmarshal(by, &o)
 
-	md[UnifiedGatewayMetatDataKey] = o
+	md[UnifiedGatewayMetaDataKey] = o
 
 	return md
 }

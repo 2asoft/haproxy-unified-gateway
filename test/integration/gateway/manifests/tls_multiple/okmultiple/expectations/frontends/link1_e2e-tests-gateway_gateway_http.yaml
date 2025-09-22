@@ -1,7 +1,7 @@
 default_backend: be_tmp_test
 from: haproxytech
 metadata:
-  k8s-unified-ctl:
+  hug:
     Gateway:
       e2e-tests-gateway/gateway:
         Generation: 1

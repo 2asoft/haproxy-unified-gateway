@@ -29,8 +29,8 @@ import (
 var _ Builder = &CertificateBuilderImpl{}
 
 type CertificateBuilderImpl struct {
-	ControllerStore
 	certStorage storage.CertificateStorage
+	ControllerStore
 	// storeCertificatesOnDisk is a flag that indicates to the gate library to store certificates on disk
 	storeCertificateOnDisk bool
 	// try to perform runtime update of haproxy using runtime socket

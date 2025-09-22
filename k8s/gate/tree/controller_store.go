@@ -33,6 +33,8 @@ type ControllerStore struct {
 	ExtractGVK             utils.ExtractGVK
 	CertUpdates            *CertUpdates
 	CrtListUpdates         *CrtListUpdates
+	// from config
+	ControllerName string
 }
 
 type CertUpdates struct {

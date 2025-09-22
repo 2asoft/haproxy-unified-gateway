@@ -177,6 +177,11 @@ func Add(
 		return err
 	}
 
+	mapsStorage, err := storage.NewMapsStorage(cfg.Logger, extractGVK, cfg.HaproxyParams.StoreMapsStructureType, cfg.HaproxyParams.MapsDir)
+	if err != nil {
+		return err
+	}
+
 	gateTreeConfig := handler.GateTreeConfig{
 		BaseLogger:                 cfg.Logger,
 		LogCategoryFilterHandler:   cfg.LogHandler,
@@ -188,6 +193,8 @@ func Add(
 		StoreCertificateOnDisk:     cfg.HaproxyParams.StoreCertificateOnDisk,
 		RuntimeUpdateHaproxy:       cfg.HaproxyParams.RuntimeUpdateHaproxy,
 		CertificateStorage:         certificateStorage,
+		MapsStorage:                mapsStorage,
+		ControllerName:             cfg.ControllerName,
 	}
 	haproxyCfgMgrParams, err := haproxy.NewHaproxyConfMgrParams(extractGVK, cfg.HaproxyParams, certificateStorage)
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
@@ -118,6 +118,10 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 
 		s.writeGatewayStatus(ctx, gw)
 	}
+
+	// HTTPRoutes
+	// TODO
+	// END HTTPRoutes
 }
 
 type StatusUpdateParams[T client.Object] struct {
@@ -125,7 +129,7 @@ type StatusUpdateParams[T client.Object] struct {
 	StatusPatcher    StatusPatcher
 	Getter           client.Client
 	StatusUpdater    client.SubResourceWriter
-	ConditionHandler conditions.ConditionAccessor[T]
+	ConditionHandler generic.ConditionAccessor[T]
 	Logger           *slog.Logger
 	extractGVK       utils.ExtractGVK
 	NsName           types.NamespacedName

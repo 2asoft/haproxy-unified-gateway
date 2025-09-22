@@ -16,6 +16,7 @@ package tree
 import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -39,7 +40,7 @@ type HugGateParamsRefChecker struct {
 }
 
 func (c *HugGateParamsRefChecker) CheckGatewayClass() (CheckResult, *v3.HugGate) {
-	conds := conditions.Conditions{}
+	conds := generic.Conditions{}
 	var gateFound bool
 	var huggate *v3.HugGate
 
@@ -106,7 +107,7 @@ func (c *HugGateParamsRefChecker) CheckGatewayClass() (CheckResult, *v3.HugGate)
 }
 
 func (c *HugGateParamsRefChecker) CheckGateway() (CheckResult, *v3.HugGate) {
-	conds := conditions.Conditions{}
+	conds := generic.Conditions{}
 	var gateFound bool
 	var huggate *v3.HugGate
 

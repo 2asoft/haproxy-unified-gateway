@@ -14,6 +14,7 @@
 package conditions
 
 import (
+	generic "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -21,10 +22,10 @@ import (
 // ---------------------------------------------------------
 // ListenerConditionResolvedRefs
 
-func NewListenerResolvedRefInvalidRouteKinds(msg string) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionResolvedRefs): {
-			Type:    ConditionType(gatewayv1.ListenerConditionResolvedRefs),
+func NewListenerResolvedRefInvalidRouteKinds(msg string) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionResolvedRefs): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionResolvedRefs),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.ListenerReasonInvalidRouteKinds),
 			Message: msg,
@@ -32,10 +33,10 @@ func NewListenerResolvedRefInvalidRouteKinds(msg string) Conditions {
 	}
 }
 
-func NewListenerResolvedRefInvalidCertificateRefs(msg string) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionResolvedRefs): {
-			Type:    ConditionType(gatewayv1.ListenerConditionResolvedRefs),
+func NewListenerResolvedRefInvalidCertificateRefs(msg string) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionResolvedRefs): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionResolvedRefs),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.ListenerReasonResolvedRefs),
 			Message: msg,
@@ -43,10 +44,10 @@ func NewListenerResolvedRefInvalidCertificateRefs(msg string) Conditions {
 	}
 }
 
-func NewListenerResolvedRefOK() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionResolvedRefs): {
-			Type:    ConditionType(gatewayv1.ListenerConditionResolvedRefs),
+func NewListenerResolvedRefOK() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionResolvedRefs): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionResolvedRefs),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.ListenerReasonResolvedRefs),
 			Message: "Listener references have been resolved",
@@ -57,10 +58,10 @@ func NewListenerResolvedRefOK() Conditions {
 // ---------------------------------------------------------
 // ListenerConditionProgrammed
 
-func NewListenerProgrammedPending() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionProgrammed): {
-			Type:    ConditionType(gatewayv1.ListenerConditionProgrammed),
+func NewListenerProgrammedPending() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionProgrammed): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionProgrammed),
 			Status:  metav1.ConditionUnknown,
 			Reason:  string(gatewayv1.ListenerReasonPending),
 			Message: "Listener is pending Haproxy programmation",
@@ -68,10 +69,10 @@ func NewListenerProgrammedPending() Conditions {
 	}
 }
 
-func NewListenerProgrammedInvalid() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionProgrammed): {
-			Type:    ConditionType(gatewayv1.ListenerConditionProgrammed),
+func NewListenerProgrammedInvalid() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionProgrammed): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionProgrammed),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.ListenerReasonInvalid),
 			Message: "Listener is invalid",
@@ -79,10 +80,10 @@ func NewListenerProgrammedInvalid() Conditions {
 	}
 }
 
-func NewListenerProgrammedOK() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionProgrammed): {
-			Type:    ConditionType(gatewayv1.ListenerConditionProgrammed),
+func NewListenerProgrammedOK() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionProgrammed): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionProgrammed),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.ListenerReasonProgrammed),
 			Message: "Listener is programmed in Haproxy",
@@ -93,10 +94,10 @@ func NewListenerProgrammedOK() Conditions {
 // ---------------------------------------------------------
 // ListenerConditionAccepted
 
-func NewListenerAcceptedUnsupportedProtocol(msg string) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionAccepted): {
-			Type:    ConditionType(gatewayv1.ListenerConditionAccepted),
+func NewListenerAcceptedUnsupportedProtocol(msg string) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.ListenerReasonUnsupportedProtocol),
 			Message: msg,
@@ -104,10 +105,10 @@ func NewListenerAcceptedUnsupportedProtocol(msg string) Conditions {
 	}
 }
 
-func NewListenerAcceptedOK() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionAccepted): {
-			Type:    ConditionType(gatewayv1.ListenerConditionAccepted),
+func NewListenerAcceptedOK() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionAccepted),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.ListenerReasonAccepted),
 			Message: "Listener is accepted",
@@ -118,16 +119,16 @@ func NewListenerAcceptedOK() Conditions {
 // ---------------------------------------------------------
 // ListenerConditionConflicted
 
-func NewListenerConflicted(msg string) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.ListenerConditionConflicted): {
-			Type:    ConditionType(gatewayv1.ListenerConditionConflicted),
+func NewListenerConflicted(msg string) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.ListenerConditionConflicted): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionConflicted),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.ListenerReasonProtocolConflict),
 			Message: msg,
 		},
-		ConditionType(gatewayv1.ListenerConditionAccepted): {
-			Type:    ConditionType(gatewayv1.ListenerConditionAccepted),
+		generic.ConditionType(gatewayv1.ListenerConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.ListenerConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.ListenerReasonInvalid),
 			Message: "Listener is invalid (see ConditionType Conflicted)",

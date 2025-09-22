@@ -1,0 +1,191 @@
+// Copyright 2025 HAProxy Technologies LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package tree
+
+import (
+	"context"
+	"log/slog"
+
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+)
+
+var _ Builder = &HTTPRouteBuilderImpl{}
+
+type HTTPRouteBuilderImpl struct {
+	mapsStorage storage.MapsStorage
+	ControllerStore
+}
+
+type HTTPRouteBuilderParams struct {
+	storage.MapsStorage
+	ControllerStore
+}
+
+func NewHTTPRouteBuilder(params HTTPRouteBuilderParams) Builder {
+	return &HTTPRouteBuilderImpl{
+		ControllerStore: params.ControllerStore,
+		mapsStorage:     params.MapsStorage,
+	}
+}
+
+// --------------------
+// GateTree Updates
+// --------------------
+
+func (b *HTTPRouteBuilderImpl) ComputeTreeUpdates() {
+	b.addIndirectClusterStoreUpdates()
+	// After this step, the clusterStore.Updates contains all impacted Gateways
+	// Including the one impacted by:
+	// - HugGate updates
+	// - GatewayClass updates
+	b.computeGateTreeUpdates()
+}
+
+func (b *HTTPRouteBuilderImpl) addIndirectClusterStoreUpdates() {
+	// Indirect from Services
+	b.addIndirectMapsFromServices()
+	// Indirect from Gateways
+	b.addIndirectMapsFromGateways()
+
+	// TODO add the same thing in gateway
+	// TODO compute the referencedByObject
+}
+
+func (b *HTTPRouteBuilderImpl) addIndirectMapsFromServices() {
+	for _, service := range b.ClusterStore.Updates.Services {
+		b.addIndirectMapsFromService(service)
+	}
+}
+
+func (b *HTTPRouteBuilderImpl) addIndirectMapsFromService(serviceUpdate store.Update[*v1.Service]) {
+	addIndirectFromReferenced(
+		serviceUpdate,
+		b.ReferencedObjects.ReferencedServices,
+		b.ClusterStore.HTTPRoutes,
+		b.ClusterStore.Updates.HTTPRoutes,
+		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),
+		nil, // no ownerKey transformation
+	)
+}
+
+func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateways() {
+	for _, gateway := range b.ClusterStore.Updates.Gateways {
+		b.addIndirectMapsFromGateway(gateway)
+	}
+}
+
+func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateway(gatewayUpdate store.Update[*gatewayv1.Gateway]) {
+	addIndirectFromReferenced(
+		gatewayUpdate,
+		b.ReferencedObjects.ReferencedGateway,
+		b.ClusterStore.HTTPRoutes,
+		b.ClusterStore.Updates.HTTPRoutes,
+		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),
+		nil,
+	)
+}
+
+func (b *HTTPRouteBuilderImpl) computeGateTreeUpdates() {
+	for gwKey, routeUpdate := range b.ClusterStore.Updates.HTTPRoutes {
+		b.computeTreeGatewayUpdate(gwKey, routeUpdate)
+	}
+}
+
+func (b *HTTPRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, routeUpdate store.Update[*gatewayv1.HTTPRoute]) {
+	// here we check if its valid, if ref object exists and all checks
+	var treeHTTPRoute *HTTPRoute
+	alreadyManagedTreeRoute, alreadyManagedTreeRouteOK := b.GateTree.HTTPRoutes[gwKey]
+	alreadyUnmanagedTreeRoute, alreadyUnmanagedTreeRouteOK := b.UnmanagedGateTree.HTTPRoutes[gwKey]
+
+	if alreadyManagedTreeRouteOK {
+		treeHTTPRoute = alreadyManagedTreeRoute
+	} else if alreadyUnmanagedTreeRouteOK {
+		treeHTTPRoute = alreadyUnmanagedTreeRoute
+	}
+
+	switch routeUpdate.Status {
+	case store.StatusUpserted:
+		if treeHTTPRoute != nil {
+			treeHTTPRoute.SetAsUpserted(b.Logger, routeUpdate.NewObject)
+		} else {
+			treeHTTPRoute = NewRoute(routeUpdate.NewObject, b.ControllerStore.ControllerName)
+		}
+
+		treeHTTPRoute.processChecks(b.ControllerStore)
+
+		if treeHTTPRoute.isManaged() {
+			b.SetAsManaged(treeHTTPRoute)
+		} else {
+			b.SetAsUnmanaged(treeHTTPRoute)
+		}
+
+		// Compute status only if managed HTTRoute
+		// If not managed, then we should not update the status
+		treeHTTPRoute.BuildConditions()
+
+	case store.StatusDeleted:
+		if treeHTTPRoute != nil {
+			treeHTTPRoute.SetAsDeleted(b.Logger)
+		}
+		// else nothing to do
+		// It did not exists, it's deleted, noop
+	}
+}
+
+func (r *HTTPRoute) isManaged() bool {
+	return r.CheckParamsRef.Valid
+}
+
+// -----------------------------------------------
+
+func (b *HTTPRouteBuilderImpl) CleanTreeUpdates() {
+	for gwKey, route := range b.GateTree.HTTPRoutes {
+		if route.TreeStatus.Status == store.StatusDeleted {
+			delete(b.GateTree.HTTPRoutes, gwKey)
+			continue
+		}
+		route.TreeStatus = TreeUpdate[HTTPRoute]{}
+	}
+	for gwKey, treeGw := range b.UnmanagedGateTree.HTTPRoutes {
+		if treeGw.TreeStatus.Status == store.StatusDeleted {
+			delete(b.GateTree.HTTPRoutes, gwKey)
+			continue
+		}
+		treeGw.TreeStatus = TreeUpdate[HTTPRoute]{}
+	}
+}
+
+func (b *HTTPRouteBuilderImpl) SetAsManaged(route *HTTPRoute) {
+	b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "HTTPRoute Managed",
+		logging.LogAttrObjectKey(route.K8sResource))
+	// Is it already in Managed
+	key := client.ObjectKeyFromObject(route.K8sResource)
+	b.ControllerStore.GateTree.HTTPRoutes[key] = route
+	delete(b.ControllerStore.UnmanagedGateTree.Gateways, key)
+}
+
+func (b *HTTPRouteBuilderImpl) SetAsUnmanaged(route *HTTPRoute) {
+	b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "HTTPRoute Unmanaged",
+		logging.LogAttrObjectKey(route.K8sResource))
+	// Is it already in Managed
+	key := client.ObjectKeyFromObject(route.K8sResource)
+	b.ControllerStore.UnmanagedGateTree.HTTPRoutes[key] = route
+	delete(b.ControllerStore.GateTree.Gateways, key)
+}

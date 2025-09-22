@@ -16,30 +16,31 @@ package conditions
 import (
 	"fmt"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-var _ ConditionAccessor[*gatewayv1.Gateway] = &GatewayConditionImpl{}
+var _ generic.ConditionAccessor[*gatewayv1.Gateway] = &GatewayConditionImpl{}
 
 type GatewayConditionImpl struct{}
 
-func (*GatewayConditionImpl) GetConditions(obj *gatewayv1.Gateway) Conditions {
-	return NewConditionsFromMetav1Conditions(obj.Status.Conditions)
+func (*GatewayConditionImpl) GetConditions(obj *gatewayv1.Gateway) generic.Conditions {
+	return generic.NewConditionsFromMetav1Conditions(obj.Status.Conditions)
 }
 
-func (*GatewayConditionImpl) SetConditions(obj *gatewayv1.Gateway, conds Conditions) {
+func (*GatewayConditionImpl) SetConditions(obj *gatewayv1.Gateway, conds generic.Conditions) {
 	obj.Status.Conditions = conds.ToMetav1Conditions()
 }
 
 // ---------------------------------------------------------
 // GatewayConditionAccepted
 
-func NewGatewayAcceptedOK() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayConditionAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
+func NewGatewayAcceptedOK() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayConditionAccepted),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.GatewayReasonAccepted),
 			Message: "Gateway is accepted",
@@ -47,10 +48,10 @@ func NewGatewayAcceptedOK() Conditions {
 	}
 }
 
-func NewGatewayAcceptedInvalidConditions(msg string) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayConditionAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
+func NewGatewayAcceptedInvalidConditions(msg string) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.GatewayReasonInvalid),
 			Message: fmt.Sprintf("GatewayClass '%s' is not accepted", msg),
@@ -58,10 +59,10 @@ func NewGatewayAcceptedInvalidConditions(msg string) Conditions {
 	}
 }
 
-func NewGatewayAcceptedInvalidParameters(err *field.Error) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayConditionAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayReasonInvalidParameters),
+func NewGatewayAcceptedInvalidParameters(err *field.Error) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayReasonInvalidParameters),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.GatewayReasonInvalidParameters),
 			Message: fmt.Sprintf("invalid parametersRef: %s", err),
@@ -69,10 +70,10 @@ func NewGatewayAcceptedInvalidParameters(err *field.Error) Conditions {
 	}
 }
 
-func NewGatewayAcceptedListenerNotValidAtLeast1Valid() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayConditionAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
+func NewGatewayAcceptedListenerNotValidAtLeast1Valid() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayConditionAccepted),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.GatewayReasonListenersNotValid),
 			Message: "Some listeners are Conflicting",
@@ -80,10 +81,10 @@ func NewGatewayAcceptedListenerNotValidAtLeast1Valid() Conditions {
 	}
 }
 
-func NewGatewayAcceptedListenerNotValidAllInvalid() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayConditionAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayConditionAccepted),
+func NewGatewayAcceptedListenerNotValidAllInvalid() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayConditionAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.GatewayReasonListenersNotValid),
 			Message: "GatewayClass is not accepted - All listeners are conflicting",
@@ -94,10 +95,10 @@ func NewGatewayAcceptedListenerNotValidAllInvalid() Conditions {
 // ---------------------------------------------------------
 // GatewayConditionProgrammed
 
-func NewGatewayProgrammedOK() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayConditionProgrammed): {
-			Type:    ConditionType(gatewayv1.GatewayConditionProgrammed),
+func NewGatewayProgrammedOK() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayConditionProgrammed): {
+			Type:    generic.ConditionType(gatewayv1.GatewayConditionProgrammed),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.GatewayConditionProgrammed),
 			Message: "Gateway is programmed",
@@ -105,10 +106,10 @@ func NewGatewayProgrammedOK() Conditions {
 	}
 }
 
-func NewGatewayProgrammedInvalidParameters(msg string) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayConditionProgrammed): {
-			Type:    ConditionType(gatewayv1.GatewayConditionProgrammed),
+func NewGatewayProgrammedInvalidParameters(msg string) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayConditionProgrammed): {
+			Type:    generic.ConditionType(gatewayv1.GatewayConditionProgrammed),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.GatewayReasonInvalidParameters),
 			Message: msg,

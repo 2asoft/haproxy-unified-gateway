@@ -15,12 +15,14 @@ package tree
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sort"
 	"strings"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
@@ -32,10 +34,12 @@ import (
 )
 
 type Listener struct {
+	// owner is the gateway that this listener is connected to
+	owner client.ObjectKey
 	// K8sResource is the source resource.
 	K8sResource gatewayv1.Listener
 	// Final Conditions
-	Conditions conditions.Conditions
+	Conditions generic.Conditions
 	// Checks results
 	CheckRouteGroupKind CheckResult
 	CheckProtocol       CheckResult
@@ -45,6 +49,20 @@ type Listener struct {
 	AllowedRouteKinds []gatewayv1.RouteGroupKind
 	// Valid
 	Valid bool
+}
+
+// DeepCopy creates a deep copy of the Listener.
+func (l *Listener) DeepCopy() *Listener {
+	if l == nil {
+		return nil
+	}
+
+	var copied Listener
+	// We can ignore the error here, as we are controlling the input
+	data, _ := json.Marshal(l)
+	_ = json.Unmarshal(data, &copied)
+
+	return &copied
 }
 
 type RouteGroupKind struct {
@@ -266,7 +284,7 @@ func (*Listener) isSupportedCertKindGroup(certRef gatewayv1.SecretObjectReferenc
 }
 
 func (l *Listener) BuildConditions(treeGw *Gateway) {
-	l.Conditions = make(conditions.Conditions)
+	l.Conditions = make(generic.Conditions)
 	l.Conditions.MergeOverrideConditions(l.CheckRouteGroupKind.Conditions)
 	l.Conditions.MergeOverrideConditions(l.CheckProtocol.Conditions)
 	l.Conditions.MergeOverrideConditions(l.CheckSecret.Conditions)
@@ -274,7 +292,7 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 	// Should we process with Haproxy programmation
 	shouldProgramm := true
 
-	_, exists := l.Conditions.GetCondition(conditions.ConditionType(gatewayv1.ListenerConditionAccepted))
+	_, exists := l.Conditions.GetCondition(generic.ConditionType(gatewayv1.ListenerConditionAccepted))
 	if !exists {
 		// Accepted = OK
 		l.Conditions.MergeOverrideConditions(conditions.NewListenerAcceptedOK())
@@ -283,7 +301,7 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 		shouldProgramm = false
 	}
 
-	_, exists = l.Conditions.GetCondition(conditions.ConditionType(gatewayv1.ListenerConditionResolvedRefs))
+	_, exists = l.Conditions.GetCondition(generic.ConditionType(gatewayv1.ListenerConditionResolvedRefs))
 	if !exists {
 		// ResolvedRefs = OK
 		l.Conditions.MergeOverrideConditions(conditions.NewListenerResolvedRefOK())
@@ -292,7 +310,7 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 		shouldProgramm = false
 	}
 
-	_, exists = l.Conditions.GetCondition(conditions.ConditionType(gatewayv1.ListenerConditionConflicted))
+	_, exists = l.Conditions.GetCondition(generic.ConditionType(gatewayv1.ListenerConditionConflicted))
 	if exists {
 		l.Conditions.MergeOverrideConditions(conditions.NewListenerProgrammedInvalid())
 		shouldProgramm = false

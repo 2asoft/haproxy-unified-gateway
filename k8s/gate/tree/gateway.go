@@ -20,6 +20,7 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 
@@ -35,10 +36,10 @@ type Gateway struct {
 	K8sResource *gatewayv1.Gateway
 	// Conditions include Conditions for the Gateway.
 	// HugGate is a merge between the ParamsRef from GatewayClass and the one from Gateway
-	// If it is invalid at GatewayClass level, it is ignored and overriden by the one at Gateway level.
+	// If it is invalid at GatewayClass level, it is ignored and overridden by the one at Gateway level.
 	HugGate *v3.HugGate
 	// Final Conditions
-	Conditions conditions.Conditions
+	Conditions generic.Conditions
 	// Listeners include the listeners of the Gateway.
 	Listeners map[string]*Listener // map[listenerName]
 	// TreeStatus
@@ -93,7 +94,7 @@ func (g *Gateway) SetAsDeleted(logger *slog.Logger) {
 }
 
 func (g *Gateway) reset() {
-	g.Conditions = make(conditions.Conditions)
+	g.Conditions = make(generic.Conditions)
 	g.HugGate = nil
 	g.CheckParamsRef = CheckResult{}
 	g.CheckValidGatewayClass = CheckResult{}
@@ -220,7 +221,7 @@ func (g *Gateway) checkListenerConflicts(portWithoutConflict map[gatewayv1.PortN
 
 	someListenersrAreConflicted := false
 	for _, l := range g.Listeners {
-		_, exists := l.Conditions.GetCondition(conditions.ConditionType(gatewayv1.ListenerConditionConflicted))
+		_, exists := l.Conditions.GetCondition(generic.ConditionType(gatewayv1.ListenerConditionConflicted))
 		if exists {
 			someListenersrAreConflicted = true
 			break
@@ -262,7 +263,7 @@ func (g *Gateway) BuildConditions() {
 	if !g.isManaged() {
 		return
 	}
-	g.Conditions = make(conditions.Conditions)
+	g.Conditions = make(generic.Conditions)
 
 	if !g.CheckValidGatewayClass.Valid {
 		g.Conditions.MergeOverrideConditions(g.CheckValidGatewayClass.Conditions)
@@ -272,13 +273,13 @@ func (g *Gateway) BuildConditions() {
 	if !g.CheckParamsRef.Valid {
 		g.Conditions.MergeOverrideConditions(g.CheckParamsRef.Conditions)
 		// retrieve condition type accepted to get the appropriate message
-		messageInvalidParams := g.Conditions.GetMessage(conditions.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted))
+		messageInvalidParams := g.Conditions.GetMessage(generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted))
 		g.Conditions.MergeOverrideConditions(conditions.NewGatewayProgrammedInvalidParameters(messageInvalidParams))
 		g.Conditions.SetGeneration(g.K8sResource.GetGeneration())
 		return
 	}
 
-	_, exists := g.CheckConflict.Conditions.GetCondition(conditions.ConditionType(gatewayv1.GatewayConditionAccepted))
+	_, exists := g.CheckConflict.Conditions.GetCondition(generic.ConditionType(gatewayv1.GatewayConditionAccepted))
 	if exists {
 		if !g.CheckConflict.Valid {
 			// All listeners are conflicted

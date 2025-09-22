@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	UnifiedGatewayMetatDataKey string = "k8s-unified-ctl"
+	UnifiedGatewayMetaDataKey string = "hug"
 )
 
 type (

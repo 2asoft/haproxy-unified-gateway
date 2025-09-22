@@ -57,6 +57,13 @@ func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig
 	// Certificate
 	certificateBuilder := tree.NewCertificateBuilder(controllerStore, cfg.StoreCertificateOnDisk, cfg.RuntimeUpdateHaproxy, cfg.CertificateStorage)
 
+	// --------------
+	// HTTPRoute
+	httpRouteBuilder := tree.NewHTTPRouteBuilder(tree.HTTPRouteBuilderParams{
+		ControllerStore: controllerStore,
+		MapsStorage:     cfg.MapsStorage,
+	})
+
 	treeBuilder := GateTreeBuilder{
 		cfg:              cfg,
 		referenceManager: referenceManager,
@@ -66,6 +73,7 @@ func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig
 			gatewayClassBuilder,
 			gatewayBuilder,
 			certificateBuilder,
+			httpRouteBuilder,
 		},
 	}
 

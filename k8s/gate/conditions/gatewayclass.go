@@ -16,6 +16,7 @@ package conditions
 import (
 	"fmt"
 
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -32,30 +33,30 @@ const (
 	GatewayClassReasonUnsupported = "Resource ignored due to an unsupported GatewayClass"
 )
 
-var _ ConditionAccessor[*gatewayv1.GatewayClass] = &GatewayClassConditionImpl{}
+var _ generic.ConditionAccessor[*gatewayv1.GatewayClass] = &GatewayClassConditionImpl{}
 
 type GatewayClassConditionImpl struct{}
 
-func (*GatewayClassConditionImpl) GetConditions(obj *gatewayv1.GatewayClass) Conditions {
-	return NewConditionsFromMetav1Conditions(obj.Status.Conditions)
+func (*GatewayClassConditionImpl) GetConditions(obj *gatewayv1.GatewayClass) generic.Conditions {
+	return generic.NewConditionsFromMetav1Conditions(obj.Status.Conditions)
 }
 
-func (*GatewayClassConditionImpl) SetConditions(obj *gatewayv1.GatewayClass, conds Conditions) {
+func (*GatewayClassConditionImpl) SetConditions(obj *gatewayv1.GatewayClass, conds generic.Conditions) {
 	obj.Status.Conditions = conds.ToMetav1Conditions()
 }
 
-// NewDefaultGatewayClassConditions returns Conditions that indicate that the GatewayClass is accepted and that the
+// NewDefaultGatewayClassConditions returns genericconditions.Conditions that indicate that the GatewayClass is accepted and that the
 // Gateway API CRD versions are supported.
-func NewDefaultGatewayClassConditions() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
+func NewDefaultGatewayClassConditions() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.GatewayClassReasonAccepted),
 			Message: "GatewayClass is accepted",
 		},
-		ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion): {
-			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion),
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion): {
+			Type:    generic.ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.GatewayClassReasonSupportedVersion),
 			Message: "Gateway API CRD versions are supported",
@@ -66,10 +67,10 @@ func NewDefaultGatewayClassConditions() Conditions {
 // ---------------------------------------------------------
 // GatewayClassConditionStatusAccepted
 
-func NewGatewayClassAcceptedOK() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
+func NewGatewayClassAcceptedOK() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.GatewayClassReasonAccepted),
 			Message: "GatewayClass is accepted",
@@ -77,10 +78,10 @@ func NewGatewayClassAcceptedOK() Conditions {
 	}
 }
 
-func NewGatewayClassAcceptedConflict() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
+func NewGatewayClassAcceptedConflict() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(GatewayClassReasonGatewayClassConflict),
 			Message: GatewayClassMessageGatewayClassConflict,
@@ -88,10 +89,10 @@ func NewGatewayClassAcceptedConflict() Conditions {
 	}
 }
 
-func NewGatewayClassAcceptedUnsupported() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
+func NewGatewayClassAcceptedUnsupported() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.GatewayClassReasonUnsupported),
 			Message: GatewayClassReasonUnsupported,
@@ -100,10 +101,10 @@ func NewGatewayClassAcceptedUnsupported() Conditions {
 }
 
 // NewGatewayClassAcceptedInvalidParameters returns a Condition that indicates that the GatewayClass has invalid parameters.
-func NewGatewayClassAcceptedInvalidParameters(err *field.Error) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
-			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
+func NewGatewayClassAcceptedInvalidParameters(err *field.Error) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted): {
+			Type:    generic.ConditionType(gatewayv1.GatewayClassConditionStatusAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.GatewayClassReasonInvalidParameters),
 			Message: fmt.Sprintf("invalid parametersRef: %s", err),
@@ -114,12 +115,12 @@ func NewGatewayClassAcceptedInvalidParameters(err *field.Error) Conditions {
 // ---------------------------------------------------------
 // GatewayClassConditionStatusSupportedVersion
 
-// NewGatewayClassSupportedVersionUnsupportedVersion returns Conditions to indicate:
+// NewGatewayClassSupportedVersionUnsupportedVersion returns genericconditions.Conditions to indicate:
 // - the Gateway API CRD versions are not supported.
-func NewGatewayClassSupportedVersionUnsupportedVersion(recommendedVersion string) Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion): {
-			Type:   ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion),
+func NewGatewayClassSupportedVersionUnsupportedVersion(recommendedVersion string) generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion): {
+			Type:   generic.ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion),
 			Status: metav1.ConditionFalse,
 			Reason: string(gatewayv1.GatewayClassReasonUnsupportedVersion),
 			Message: fmt.Sprintf(
@@ -130,10 +131,10 @@ func NewGatewayClassSupportedVersionUnsupportedVersion(recommendedVersion string
 	}
 }
 
-func NewGatewayClassSupportedVersionOK() Conditions {
-	return Conditions{
-		ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion): {
-			Type:    ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion),
+func NewGatewayClassSupportedVersionOK() generic.Conditions {
+	return generic.Conditions{
+		generic.ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion): {
+			Type:    generic.ConditionType(gatewayv1.GatewayClassConditionStatusSupportedVersion),
 			Status:  metav1.ConditionTrue,
 			Reason:  string(gatewayv1.GatewayClassReasonSupportedVersion),
 			Message: "Gateway API CRD versions are supported",

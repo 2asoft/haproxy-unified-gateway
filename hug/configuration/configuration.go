@@ -34,12 +34,12 @@ import (
 type HUGConfig struct {
 	LogSettings map[v3.Category]slog.Level
 	haproxy.HaproxyDirs
-	ControllerConfCRD NamespaceNameValue `ff:"          long: hugconf-crd,     usage: 'namespace/name of the HugConf CRD'"`
-	ControllerName    string             `ff:"          long: controller-name,         usage: 'spec.controllerName' GatewayClass selector'"`
-	IPV4BindAddr      string             `ff:"          long: ipv4-bind-address,       usage: 'IPv4 address to bind to'"`
-	IPV6BindAddr      string             `ff:"          long: ipv6-bind-address,	   usage: 'IPv6 address to bind to'"`
-	LogType           string             `ff:"          long: log-type,	      		 usage: 'sets up the log output type (possible values: text, json)"`
 	External
+	ControllerConfCRD     NamespaceNameValue   `ff:"          long: hugconf-crd,     usage: 'namespace/name of the HugConf CRD'"`
+	ControllerName        string               `ff:"          long: controller-name,         usage: 'spec.controllerName' GatewayClass selector'"`
+	IPV4BindAddr          string               `ff:"          long: ipv4-bind-address,       usage: 'IPv4 address to bind to'"`
+	IPV6BindAddr          string               `ff:"          long: ipv6-bind-address,	   usage: 'IPv6 address to bind to'"`
+	LogType               string               `ff:"          long: log-type,	      		 usage: 'sets up the log output type (possible values: text, json)"`
 	Namespaces            CommaSeparatedValues `ff:"          long: namespaces,                      usage: 'comma separated list of namespaces that controller will monitor'"`
 	ControllerPort        int                  `ff:"          long: controller-port,                 usage: 'port to listen on for controller data: prometheus'"`
 	SyncPeriod            time.Duration        `ff:"          long: sync-period, default: 0,         usage: 'sets the period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`

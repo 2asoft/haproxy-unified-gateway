@@ -83,7 +83,7 @@ func isUnifiedGatewayManaged[T ownerMetaData](obj T) bool {
 	default:
 		return false
 	}
-	if _, ok := metadata[md.UnifiedGatewayMetatDataKey]; ok {
+	if _, ok := metadata[md.UnifiedGatewayMetaDataKey]; ok {
 		return true
 	}
 	return false

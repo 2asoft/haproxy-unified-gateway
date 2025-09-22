@@ -75,6 +75,9 @@ func (cfg *Configuration) ApplyDefaults() {
 	if cfg.HaproxyParams.StoreCertificateStructureType == "" {
 		cfg.HaproxyParams.StoreCertificateStructureType = storage.StructureTypeCertDefault
 	}
+	if cfg.HaproxyParams.StoreMapsStructureType == "" {
+		cfg.HaproxyParams.StoreMapsStructureType = storage.StructureTypeMapsDefault
+	}
 	if cfg.HaproxyParams.HaproxyDirs.CertsDir == "" {
 		cfg.HaproxyParams.HaproxyDirs.CertsDir = DefaultCertsDirName
 	}

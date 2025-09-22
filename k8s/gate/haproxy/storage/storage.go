@@ -13,6 +13,11 @@
 // limitations under the License.
 package storage
 
+import (
+	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage/maps"
+)
+
 type StructureType string
 
 const (
@@ -24,9 +29,25 @@ const (
 	// - /etc/unified.../certs/<namespace>/se/
 	// - /etc/unified.../certs/<namespace>/my/
 	StructureTypeCertDefault = "default"
+	// StructureTypeMapsDefault handles a default storage algorithm
+	// Default algorithm for Maps Storage
+	// TODO
+	StructureTypeMapsDefault = "default"
 )
 
 type CertificateStorage interface {
 	CertStorage
 	CrtListStorage
+}
+
+type MapsStorage interface {
+	// MapPath returns the FilePath for a Map
+	MapPath(listener string) futils.FilePath
+	// NewMapData returns the new MapData for a given key and value
+	NewMapData(key, value string) (maps.MapData, error)
+	WriteOnDisk(data maps.MapData) error
+	DeleteFromDisk(data maps.MapData) error
+	// DeleteEmptyMapsDir checks and deletes subdirectories directly
+	// under the maps Base Dir (namespace level)
+	DeleteEmptyMapsDir() error
 }

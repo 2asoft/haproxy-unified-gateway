@@ -20,6 +20,7 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
@@ -38,7 +39,7 @@ type GatewayClass struct {
 	// HugGate is the linked HugGate from ParamsRef
 	HugGate *v3.HugGate
 	// Conditions include Conditions for the GatewayClass.
-	Conditions conditions.Conditions
+	Conditions generic.Conditions
 	// CheckParamsRef shows whether the GatewayClass is valid as for ParamsRef
 	CheckParamsRef CheckResult
 	// Valid is true if the GatewayClass is Valid (versions + haproxy gate paramsRef)

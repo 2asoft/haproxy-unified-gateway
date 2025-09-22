@@ -51,12 +51,15 @@ type GateTreeConfig struct {
 	// k8sReader is a Kubernets API reader.
 	K8sReader                  client.Reader
 	CertificateStorage         storage.CertificateStorage
+	MapsStorage                storage.MapsStorage
 	BaseLogger                 *slog.Logger
 	LogCategoryFilterHandler   *logging.CategoryFilterHandler
 	ExtractGVK                 utils.ExtractGVK
 	TransferHaproxyConfChannel chan diffs.HaproxyConfDiffs
 	//  Namespace and name of the controller conf CRD
 	ControllerConfNsName types.NamespacedName
+	// ControllerName
+	ControllerName string
 	// StoreCertificatesOnDisk is a flag that indicates to the gate library to store certificates on disk
 	StoreCertificateOnDisk bool
 	// RuntimeUpdateHaproxy
@@ -113,6 +116,7 @@ func NewEventHandlerImpl(
 			Updated: make(map[string]certificate.CrtListData),
 			Deleted: make(map[string]certificate.CrtListData),
 		},
+		ControllerName: gateTreeConfig.ControllerName,
 	}
 
 	treeBuilder := NewGateTreeBuilder(controllerStore, gateTreeConfig)

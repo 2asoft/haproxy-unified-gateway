@@ -14,7 +14,8 @@
 package tree
 
 import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
+	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/references"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
@@ -40,6 +41,7 @@ type GateTree struct {
 	GatewayClasses map[types.NamespacedName]*GatewayClass
 	Gateways       map[types.NamespacedName]*Gateway
 	Secrets        map[types.NamespacedName]*Secret
+	HTTPRoutes     map[types.NamespacedName]*HTTPRoute
 }
 
 type ReferencedObjects struct {
@@ -47,14 +49,26 @@ type ReferencedObjects struct {
 	ReferencedHugGates references.ReferencedBy
 	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
 	ReferencedGatewayClasses references.ReferencedBy
+	ReferencedGateway        references.ReferencedBy
 	//  ReferencedSecrets includes the GatewayClasses that are references by Gateways Listeners
 	// Owners are Listeners
 	ReferencedSecrets         references.ReferencedBy
 	PreviousReferencedSecrets references.ReferencedBy
+	ReferencedServices        references.ReferencedBy
+	ReferencedHTTPRoutes      references.ReferencedBy
 }
 
 type CheckResult struct {
-	Conditions conditions.Conditions
+	Conditions generic.Conditions
+	// If Valid = true, then Conditions should be empty
+	// If Valid = false:
+	// - Conditions are set if there is an invalid check
+	// - Conditions is empty if the check does not make sense (for example no listener status for an invalid Gateway)
+	Valid bool
+}
+
+type CheckResultRoute struct {
+	Conditions rc.RouteConditions
 	// If Valid = true, then Conditions should be empty
 	// If Valid = false:
 	// - Conditions are set if there is an invalid check
@@ -67,6 +81,7 @@ func NewGateTree() *GateTree {
 		GatewayClasses: make(map[types.NamespacedName]*GatewayClass),
 		Gateways:       make(map[types.NamespacedName]*Gateway),
 		Secrets:        make(map[types.NamespacedName]*Secret),
+		HTTPRoutes:     make(map[types.NamespacedName]*HTTPRoute),
 	}
 }
 
@@ -76,6 +91,7 @@ func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 		ReferencedGatewayClasses:  references.NewReferencedBy("gatewayclass", extractGVK),
 		ReferencedSecrets:         references.NewReferencedBy("secret", extractGVK),
 		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),
+		ReferencedHTTPRoutes:      references.NewReferencedBy("httproute", extractGVK),
 	}
 }
 

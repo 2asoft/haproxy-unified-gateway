@@ -34,6 +34,7 @@ func (rm *ReferenceManager) UpdateRefences() {
 	needsHugGatesReferencesRebuild := rm.needsReferencedHugGatesRebuild()
 	needsGatewayClassesReferencesRebuild := rm.needsReferencedGatewayClassesRebuild()
 	needsSecretsReferencesRebuild := rm.needsReferencedSecretsRebuild()
+	needGatewaysReferencesRebuild := rm.needsReferencedGatewaysRebuild()
 
 	if !needsHugGatesReferencesRebuild && !needsGatewayClassesReferencesRebuild && !needsSecretsReferencesRebuild {
 		return
@@ -92,6 +93,21 @@ func (rm *ReferenceManager) UpdateRefences() {
 			}
 		}
 	}
+
+	// Routes
+	if needGatewaysReferencesRebuild {
+		for _, route := range rm.ClusterStore.HTTPRoutes {
+			routekey := client.ObjectKey{Namespace: route.Namespace, Name: route.Name}
+			// TODO: fix this, do not assume its connected
+			rm.ReferencedObjects.ReferencedGateway.AddReferencedBy(rm.Logger, routekey, route)
+			// parentRefExists := len(route.Spec.ParentRefs) > 0
+			// if parentRefExists {
+			// find the gateway by name (if more than one, check by hostname)
+			// } else {
+			//  find the gateway by hostname
+			// }
+		}
+	}
 }
 
 func (rm *ReferenceManager) needsReferencedHugGatesRebuild() bool {
@@ -107,6 +123,10 @@ func (rm *ReferenceManager) needsReferencedGatewayClassesRebuild() bool {
 
 func (rm *ReferenceManager) needsReferencedSecretsRebuild() bool {
 	return len(rm.ClusterStore.Updates.Gateways) > 0
+}
+
+func (rm *ReferenceManager) needsReferencedGatewaysRebuild() bool {
+	return len(rm.ClusterStore.Updates.HTTPRoutes) > 0
 }
 
 func (rm *ReferenceManager) cleanReferencedObjects() {

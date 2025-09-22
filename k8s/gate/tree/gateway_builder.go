@@ -15,7 +15,7 @@ package tree
 
 import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
@@ -27,11 +27,11 @@ import (
 var _ Builder = &GatewayBuilderImpl{}
 
 type GatewayBuilderImpl struct {
-	ControllerStore
 	certStorage                       storage.CertificateStorage
 	portsWithOneListener              map[gatewayv1.PortNumber]struct{}
 	portsWithMutipleListeners         map[gatewayv1.PortNumber][]gatewaylistener
 	previousPortsWithMutipleListeners map[gatewayv1.PortNumber][]gatewaylistener
+	ControllerStore
 }
 
 type gatewaylistener struct {
@@ -40,8 +40,8 @@ type gatewaylistener struct {
 }
 
 type GatewayBuilderParams struct {
-	ControllerStore
 	storage.CertificateStorage
+	ControllerStore
 }
 
 func NewGatewayBuilder(params GatewayBuilderParams) Builder {
@@ -233,9 +233,10 @@ func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
 	for _, listener := range treeGw.K8sResource.Spec.Listeners {
 		kinds := supportedKinds(listener, gateSupportedRouteKindsByProtocol)
 		processedListener := Listener{
+			owner:             client.ObjectKeyFromObject(treeGw.K8sResource),
 			K8sResource:       listener,
 			AllowedRouteKinds: kinds,
-			Conditions:        make(conditions.Conditions),
+			Conditions:        make(generic.Conditions),
 		}
 		processedListeners[string(listener.Name)] = &processedListener
 	}

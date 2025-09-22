@@ -242,6 +242,9 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 				return ""
 			}(),
 		},
+		HTTPRequestRuleList: []*models.HTTPRequestRule{
+			// TODO
+		},
 	}
 	// Set other frontend properties based on the listener
 	port := int64(listener.Port)

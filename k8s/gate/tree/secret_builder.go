@@ -23,8 +23,8 @@ import (
 var _ Builder = &SecretBuilderImpl{}
 
 type SecretBuilderImpl struct {
-	ControllerStore
 	certStorage storage.CertificateStorage
+	ControllerStore
 	// storeCertificatesOnDisk is a flag that indicates to the gate library to store certificates on disk
 	storeCertificateOnDisk bool
 }
