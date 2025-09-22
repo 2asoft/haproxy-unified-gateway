@@ -1,0 +1,213 @@
+#https://taskfile.dev/
+version: '3'
+
+tasks:
+
+  k0s-create-cluster:
+    #internal: true
+    # deps:
+    #   - task: check-go-tool
+    #     vars:
+    #       TOOL: KIND
+    silent: true
+    desc: 'create a k0s cluster with controller'
+    status:
+      - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
+    vars:
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+    dir: 'ci/k0s' # this file is imported so its fine
+    cmds:
+      # - docker-compose down --volumes --remove-orphans || true
+      # - docker compose up -d
+      - sh stop-k0s.sh
+      - sh start-k0s.sh
+
+  k0s-create-cluster-wait-ready:
+    internal: true
+    # deps:
+    #   - task: check-go-tool
+    #     vars:
+    #       TOOL: KIND
+    silent: true
+    desc: 'create a k0s cluster with controller'
+    status:
+      - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
+    vars:
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+    dir: 'ci/k0s' # this file is imported so its fine
+    cmds:
+      - echo -n "Waiting for k0s to be ready "
+      - |
+        until curl -s -k https://127.0.0.1:8443/version > /dev/null 2>&1; do
+          echo -n "."
+          sleep 1
+        done
+      - echo " OK"
+      - echo -n "Waiting for kube-system pods to appear "
+      - |
+        until [ "$(kubectl get pods -n kube-system --no-headers 2>/dev/null | wc -l)" -gt 0 ]; do
+          sleep 1
+        done
+        echo " OK"
+        echo -n "Waiting for pods to be ready "
+        while true; do
+          echo -n "."
+          not_ready=$(kubectl get pods -n kube-system --no-headers | grep -v 'Running' | wc -l)
+          if [ "$not_ready" -eq 0 ]; then
+            echo " OK"
+            break
+          else
+            sleep 1
+          fi
+        done
+      - kubectl get pods -A
+
+  k0s-controller-build:
+    desc: ''
+    internal: true
+    dir: cmd/controller
+    cmds:
+      - CGO_ENABLED=0 go build -o ../../build/kubernetes-controller .
+
+  k0s-build-controller-image-dev:
+    #internal: true
+    desc: 'build docker image of controller'
+    deps:
+      - task: k0s-controller-build
+    status:
+      - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
+    cmds:
+      - docker build -t haproxytech/kubernetes-controller -f build/Dockerfile.dev .
+      - rm build/kubernetes-controller
+
+  k0s-build-controller-image-build-in-docker:
+    #internal: true
+    desc: 'build docker image of controller'
+    deps:
+      - task: k0s-controller-build
+    status:
+      - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
+    cmds:
+      - docker build -t haproxytech/kubernetes-controller -f build/Dockerfile .
+      - rm build/kubernetes-controller
+
+  k0s-build-echo-image:
+    internal: true
+    desc: 'build docker image of echo service'
+    dir: ci/http-echo
+    status:
+      - '[ -f ../../.local/tar/echo.tar ]'
+    cmds:
+      - pwd
+      - docker build --build-arg TARGETPLATFORM={{.TARGETPLATFORM}} -t haproxytech/http-echo .
+
+  k0s-delete:
+    desc: 'delete a k0s cluster'
+    silent: true
+    deps:
+      - task: check-go-tool
+        vars:
+          TOOL: KIND
+    vars:
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+    cmds:
+      - "/{{.kind}} delete cluster --name {{.CLUSTER_NAME}}"
+
+  k0s-echo-create-tar:
+    silent: true
+    internal: true
+    deps:
+      - task: k0s-build-echo-image
+    desc: 'create tar of echo image'
+    status:
+      - '[ -f .local/tar/echo.tar ]'
+    cmds:
+      - mkdir -p .local/tar
+      - docker save haproxytech/http-echo:latest -o .local/tar/echo.tar
+
+  k0s-echo-upload:
+    desc: 'upload echo image to k0s cluster'
+    silent: true
+    internal: true
+    cmds:
+      - docker cp .local/tar/echo.tar k0s-hug-controller:/tmp/
+      - docker exec k0s-hug-controller k0s ctr images import /tmp/echo.tar
+
+  k0s-create:
+    desc: 'create a k0s cluster with HUG and one example app'
+    silent: true
+    vars:
+      # can be set to 'k0s-build-controller-image-build-in-docker' if you want to build in the docker image
+      CONTROLLER_BUILD_TASK: 'k0s-build-controller-image-dev'
+      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+    deps:
+      - task: check-go-tool
+        vars:
+          TOOL: KIND
+      - task: check-kubectl
+    cmds:
+      - task: delimiter
+      - task: k0s-create-cluster
+      - task: delimiter
+      - task: '{{ .CONTROLLER_BUILD_TASK }}'
+      - docker save haproxytech/kubernetes-controller:latest -o hug.tar
+      - task: k0s-echo-create-tar
+      # - task: delimiter
+      # - cmd: /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      # - cmd: /{{.kind}} load docker-image haproxytech/http-echo:latest --name={{.CLUSTER_NAME}}
+      - task: delimiter
+      - task: k0s-create-cluster-wait-ready
+      - docker cp hug.tar k0s-hug-controller:/tmp/
+      - docker exec k0s-hug-controller k0s ctr images import /tmp/hug.tar
+      - rm hug.tar
+      - task: k0s-echo-upload
+      #- rm echo.tar
+      - task: delimiter
+      - echo "Create HAProxy namespace ..."
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/namespace.yaml
+      - task: delimiter
+      - echo "Install custom resource definitions ..."
+      - echo "Install Gateway API CRDs"
+      - /{{.kubectl}} apply -f {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
+      - echo "Install Gateway API Controller CRDs"
+      - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_hugconfs.yaml
+      - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_huggates.yaml
+      #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/rbac.yaml
+      #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/job-crd.yaml
+      #- /{{.kubectl}} wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-controller
+      - task: delimiter
+      - echo "deploying Controller ..."
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/hugconf.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - task: delimiter
+      - echo "deploying echo service ..."
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/echo/echo.yaml
+      - /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - task: delimiter
+      - /{{.kubectl}} wait --for=condition=ready --timeout=20s pod -l run=haproxy-controller -n haproxy-controller
+      - kubectl get pods -A
+
+  k0s-redeploy-controller:
+    deps:
+      - task: check-go-tool
+        vars:
+          TOOL: KIND
+      - task: check-kubectl
+    desc: 'redeploy a KinD cluster with IC'
+    silent: true
+    vars:
+      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
+      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+    cmds:
+      - task: k0s-build-controller-image-dev
+      - task: delimiter
+      - cmd: /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - task: delimiter
+      - echo "deploying Controller ..."
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - task: delimiter
+      - /{{.kubectl}} delete pods -l run=haproxy-controller -n haproxy-controller
+      - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller

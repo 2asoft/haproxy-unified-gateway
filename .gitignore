@@ -11,3 +11,4 @@ controller
 test/integration/*/certlists
 test/integration/*/certs
 test/integration/*/patterns
+ci/k0s/k0s-data/
