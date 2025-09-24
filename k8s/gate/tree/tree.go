@@ -89,6 +89,7 @@ func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 	return &ReferencedObjects{
 		ReferencedHugGates:        references.NewReferencedBy("huggate", extractGVK),
 		ReferencedGatewayClasses:  references.NewReferencedBy("gatewayclass", extractGVK),
+		ReferencedGateway:         references.NewReferencedBy("gateway", extractGVK),
 		ReferencedSecrets:         references.NewReferencedBy("secret", extractGVK),
 		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),
 		ReferencedHTTPRoutes:      references.NewReferencedBy("httproute", extractGVK),

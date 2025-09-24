@@ -133,6 +133,9 @@ func (rm *ReferenceManager) cleanReferencedObjects() {
 	if rm.needsReferencedGatewayClassesRebuild() {
 		rm.ReferencedObjects.ReferencedGatewayClasses.CleanOwners()
 	}
+	if rm.needsReferencedGatewaysRebuild() {
+		rm.ReferencedObjects.ReferencedGateway.CleanOwners()
+	}
 	if rm.needsReferencedHugGatesRebuild() {
 		rm.ReferencedObjects.ReferencedHugGates.CleanOwners()
 	}
