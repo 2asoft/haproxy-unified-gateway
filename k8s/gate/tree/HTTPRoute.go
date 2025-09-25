@@ -26,6 +26,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -273,6 +274,9 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 				}
 			}
 
+			// Set the Listener attached Route
+			listener.addAttachedRoute(client.ObjectKeyFromObject(r.K8sResource), controllerStore)
+
 			return checkParentRefResult{
 				Managed:    true,
 				Valid:      true,
@@ -313,6 +317,9 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 	// We have found a listener
 	// Allowed RouteKind ??
 	allowedRouteKind := r.isAllowedRouteKind(matchedListener, controllerStore.ExtractGVK)
+	// Set the Listener attached Route
+	matchedListener.addAttachedRoute(client.ObjectKeyFromObject(r.K8sResource), controllerStore)
+
 	if !allowedRouteKind {
 		return checkParentRefResult{
 			Managed:    true,

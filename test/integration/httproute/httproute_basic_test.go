@@ -53,6 +53,10 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 
 	httpRouteName := "route-echo"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
@@ -70,6 +74,10 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
 
 	httpRouteName := "route-echo"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 0)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
@@ -87,4 +95,47 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
 
 	httpRouteName := "route-echo"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 0)
+}
+
+func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "attachedroutes"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "route.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "route.yaml"})
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	httpRouteName := "route-echo"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
+
+	// 2- Now create a 2nd route
+	s.CreateFixtures(fixturePath, []string{"route-2.yaml"})
+	expectedCondPath = path.Join(expectationsPath, "conditions-2.yaml")
+	expectedConditions = s.YamlToRouteConditions(expectedCondPath)
+
+	httpRouteName = "route-echo-2"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 2) // Now 2 routes are attached
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
+
+	// 3- Delete the route "route-echo-2"
+	s.CleanupFixtures(fixturePath, []string{"route-2.yaml"})
+
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1) // Now back to 1 route attached
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
 }

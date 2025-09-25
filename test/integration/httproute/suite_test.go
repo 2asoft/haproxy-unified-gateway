@@ -55,3 +55,24 @@ func (s *HTTPRouteSuite) expectConditionsUpdated(ctx context.Context, namespace,
 		s.T().Fatal("conditions not correct")
 	}
 }
+
+func (s *HTTPRouteSuite) expectAttachedRoute(ctx context.Context, namespace, gwName, listenerName string, expectNbAttachedRoutes int32) {
+	gw := &gatewayv1.Gateway{}
+	if !utils.WaitFor(ctx, interval, timeout, func() bool {
+		if err := s.Test().Client.Get(
+			s.Test().Ctx,
+			types.NamespacedName{Name: gwName, Namespace: namespace}, gw); err != nil {
+			return false
+		}
+
+		for _, listenerStatus := range gw.Status.Listeners {
+			if string(listenerStatus.Name) == listenerName {
+				return listenerStatus.AttachedRoutes == expectNbAttachedRoutes
+			}
+		}
+
+		return false
+	}) {
+		s.T().Fatal("AttachedRoutes not correct")
+	}
+}

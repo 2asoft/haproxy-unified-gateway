@@ -378,3 +378,35 @@ func ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey client.ObjectKey)
 	}
 	return gatewayKey, parts[1], nil
 }
+
+func (l *Listener) addAttachedRoute(routeKey client.ObjectKey, controllerStore ControllerStore) {
+	l.AttachedRoutes[routeKey] = struct{}{}
+
+	// Find the corresponding Gateway and set it as upserted
+	gwKey := l.owner
+	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
+	if treeGw.TreeStatus.Status == store.StatusDeleted || !ok {
+		// no action needed, Gateway is Deleted or not manager by our controller
+		return
+	}
+
+	treeGw.TreeStatus.Status = store.StatusUpserted
+	treeGw.TreeStatus.OldTreeResource = treeGw.DeepCopy()
+}
+
+func (l *Listener) deleteAttachedRoute(routeKey client.ObjectKey, controllerStore ControllerStore) {
+	if l.AttachedRoutes == nil {
+		return
+	}
+	delete(l.AttachedRoutes, routeKey)
+
+	// Find the corresponding Gateway and set it as upserted
+	gwKey := l.owner
+	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
+	if treeGw.TreeStatus.Status == store.StatusDeleted || !ok {
+		// no action needed, Gateway is Deleted or not manager by our controller
+		return
+	}
+
+	treeGw.TreeStatus.Status = store.StatusUpserted
+}

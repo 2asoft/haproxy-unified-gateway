@@ -236,6 +236,7 @@ func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
 			owner:             client.ObjectKeyFromObject(treeGw.K8sResource),
 			K8sResource:       listener,
 			AllowedRouteKinds: kinds,
+			AttachedRoutes:    make(map[client.ObjectKey]struct{}),
 			Conditions:        make(generic.Conditions),
 		}
 		processedListeners[string(listener.Name)] = &processedListener

@@ -80,7 +80,7 @@ func newGatewayStatusPatcher(gw *tree.Gateway) StatusPatcher {
 				Name:           listener.K8sResource.Name,
 				Conditions:     conds,
 				SupportedKinds: listener.AllowedRouteKinds,
-				AttachedRoutes: 0, // To be changed with the correct value
+				AttachedRoutes: int32(len(listener.AttachedRoutes)), // To be changed with the correct value
 			})
 		}
 	}
