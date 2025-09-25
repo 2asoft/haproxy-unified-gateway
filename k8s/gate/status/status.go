@@ -15,6 +15,7 @@ package status
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -159,26 +160,9 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 	return func(ctx context.Context) (bool, error) {
 		objAttr := logging.LogAttrKeyGVK(param.NsName, param.extractGVK(param.Object))
 
-		// Create a fresh empty object of type T
-		clusterObj, ok := param.Object.DeepCopyObject().(T)
-		if !ok {
-			param.Logger.LogAttrs(context.Background(), slog.LevelError,
-				"Encountered error when copying object",
-				objAttr)
-			return false, nil
-		}
-		err := param.Getter.Get(ctx, types.NamespacedName{
-			Namespace: param.NsName.Namespace,
-			Name:      param.NsName.Name,
-		}, clusterObj)
+		clusterObj, err := getClusterObj(ctx, param)
 		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return true, nil
-			}
-			param.Logger.LogAttrs(context.Background(), slog.LevelError,
-				"Encountered error when getting resource to update status",
-				objAttr)
-			return false, nil
+			return false, err
 		}
 
 		statusAlreadyUpToDate, err := param.StatusPatcher.StatusEqual(clusterObj)
@@ -186,7 +170,7 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when checking status equality",
 				objAttr)
-			return false, nil
+			return false, err
 		}
 
 		if statusAlreadyUpToDate {
@@ -223,26 +207,9 @@ func TryPatchStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx c
 	return func(ctx context.Context) (bool, error) {
 		objAttr := logging.LogAttrKeyGVK(param.NsName, param.extractGVK(param.Object))
 
-		// Create a fresh empty object of type T
-		clusterObj, ok := param.Object.DeepCopyObject().(T)
-		if !ok {
-			param.Logger.LogAttrs(context.Background(), slog.LevelError,
-				"Encountered error when copying object",
-				objAttr)
-			return false, nil
-		}
-		err := param.Getter.Get(ctx, types.NamespacedName{
-			Namespace: param.NsName.Namespace,
-			Name:      param.NsName.Name,
-		}, clusterObj)
+		clusterObj, err := getClusterObj(ctx, param)
 		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return true, nil
-			}
-			param.Logger.LogAttrs(context.Background(), slog.LevelError,
-				"Encountered error when getting resource to update status",
-				objAttr)
-			return false, nil
+			return false, err
 		}
 
 		statusAlreadyUpToDate, err := param.StatusPatcher.StatusEqual(clusterObj)
@@ -290,4 +257,31 @@ func TryPatchStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx c
 		)
 		return true, nil
 	}
+}
+
+func getClusterObj[T client.Object](ctx context.Context, param StatusUpdateParams[T]) (T, error) {
+	objAttr := logging.LogAttrKeyGVK(param.NsName, param.extractGVK(param.Object))
+
+	// Create a fresh empty object of type T
+	clusterObj, ok := param.Object.DeepCopyObject().(T)
+	if !ok {
+		param.Logger.LogAttrs(context.Background(), slog.LevelError,
+			"Encountered error when copying object",
+			objAttr)
+		return clusterObj, fmt.Errorf("failed to copy object")
+	}
+	err := param.Getter.Get(ctx, types.NamespacedName{
+		Namespace: param.NsName.Namespace,
+		Name:      param.NsName.Name,
+	}, clusterObj)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return clusterObj, nil
+		}
+		param.Logger.LogAttrs(context.Background(), slog.LevelError,
+			"Encountered error when getting resource to update status",
+			objAttr)
+		return clusterObj, fmt.Errorf("failed to get cluster object")
+	}
+	return clusterObj, nil
 }
