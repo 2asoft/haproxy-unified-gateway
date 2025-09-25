@@ -16,11 +16,14 @@ package status
 import (
 	"fmt"
 	"slices"
+	"sort"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
 	"github.com/google/go-cmp/cmp"
+	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -44,21 +47,21 @@ type gatewayClassStatusPatcher struct {
 	conditions generic.Conditions
 }
 
-func (sm *gatewayClassStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
+func (sp *gatewayClassStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
 	gwc, ok := obj.(*gatewayv1.GatewayClass)
 	if !ok {
 		return false, fmt.Errorf("wrong type %T", obj)
 	}
 	conds := generic.NewConditionsFromMetav1Conditions(gwc.Status.Conditions)
-	return sm.conditions.Equal(conds), nil
+	return sp.conditions.Equal(conds), nil
 }
 
-func (sm *gatewayClassStatusPatcher) SetStatus(obj client.Object) error {
+func (sp *gatewayClassStatusPatcher) SetStatus(obj client.Object) error {
 	gwc, ok := obj.(*gatewayv1.GatewayClass)
 	if !ok {
 		return fmt.Errorf("wrong type %T", obj)
 	}
-	metav1conds := sm.conditions.ToMetav1Conditions()
+	metav1conds := sp.conditions.ToMetav1Conditions()
 	gwc.Status = gatewayv1.GatewayClassStatus{
 		Conditions: metav1conds,
 	}
@@ -95,17 +98,17 @@ type gatewayStatusPatcher struct {
 	listenerStatuses []gatewayv1.ListenerStatus
 }
 
-func (sm *gatewayStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
+func (sp *gatewayStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
 	gw, ok := obj.(*gatewayv1.Gateway)
 	if !ok {
 		return false, fmt.Errorf("wrong type %T", obj)
 	}
 	gwConds := generic.NewConditionsFromMetav1Conditions(gw.Status.Conditions)
-	if !sm.conditions.Equal(gwConds) {
+	if !sp.conditions.Equal(gwConds) {
 		return false, nil
 	}
 
-	return ListenerStatusesEqual(sm.listenerStatuses, gw.Status.Listeners), nil
+	return ListenerStatusesEqual(sp.listenerStatuses, gw.Status.Listeners), nil
 }
 
 func ListenerStatusesEqual(a, b []gatewayv1.ListenerStatus) bool {
@@ -131,16 +134,16 @@ func ListenerStatusesEqual(a, b []gatewayv1.ListenerStatus) bool {
 	return slices.EqualFunc(a, b, listenerStatusEqual)
 }
 
-func (sm *gatewayStatusPatcher) SetStatus(obj client.Object) error {
+func (sp *gatewayStatusPatcher) SetStatus(obj client.Object) error {
 	gw, ok := obj.(*gatewayv1.Gateway)
 	if !ok {
 		return fmt.Errorf("wrong type %T", obj)
 	}
-	metav1conds := sm.conditions.ToMetav1Conditions()
+	metav1conds := sp.conditions.ToMetav1Conditions()
 
 	gw.Status = gatewayv1.GatewayStatus{
 		Conditions: metav1conds,
-		Listeners:  sm.listenerStatuses,
+		Listeners:  sp.listenerStatuses,
 	}
 	return nil
 }
@@ -158,4 +161,102 @@ func sortListenerStatusByName(listeners []gatewayv1.ListenerStatus) {
 		}
 		return 0
 	})
+}
+
+// ---------------------------
+// HTTPRoute
+func newHTTPRouteStatusPatcher(route *tree.HTTPRoute) StatusPatcher {
+	return &httpRouteStatusPatcher{
+		controllerName: route.ControllerName,
+		conditions:     route.Conditions,
+	}
+}
+
+var _ StatusPatcher = &httpRouteStatusPatcher{}
+
+type httpRouteStatusPatcher struct {
+	controllerName string
+	conditions     rc.RouteConditions
+}
+
+func (sp *httpRouteStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
+	route, ok := obj.(*gatewayv1.HTTPRoute)
+	if !ok {
+		return false, fmt.Errorf("wrong type %T", obj)
+	}
+	filteredCondFromClusterRoute := FilterStatusByControllerName(route.Status, sp.controllerName)
+	clusterConds := rc.NewRouteConditionsFromV1RouteConditions(filteredCondFromClusterRoute, sp.controllerName)
+
+	// conditions from the sp
+	expectedConds := sp.conditions
+	// should be equal to conditions from the clusterObj
+
+	return RouteStatusesEqual(clusterConds, expectedConds), nil
+}
+
+func (sp *httpRouteStatusPatcher) SetStatus(obj client.Object) error {
+	route, ok := obj.(*gatewayv1.HTTPRoute)
+	if !ok {
+		return fmt.Errorf("wrong type %T", obj)
+	}
+
+	// Start with a list of statuses from other controllers.
+	preservedStatuses := make([]gatewayv1.RouteParentStatus, 0, len(route.Status.Parents))
+	for _, parentStatus := range route.Status.Parents {
+		if parentStatus.ControllerName != gatewayv1.GatewayController(sp.controllerName) {
+			preservedStatuses = append(preservedStatuses, parentStatus)
+		}
+	}
+
+	// Append our controller's new statuses.
+	newParentStatuses := append(preservedStatuses, sp.conditions.ToV1RouteConditions().Parents...)
+	sortRouteParentStatusByParentRef(newParentStatuses)
+	route.Status.Parents = newParentStatuses
+	return nil
+}
+
+// sortRouteParentStatusByParentRef sorts a slice of RouteParentStatus by a
+// deterministic order based on their ParentReference fields.
+func sortRouteParentStatusByParentRef(parents []gatewayv1.RouteParentStatus) {
+	sort.Slice(parents, func(i, j int) bool {
+		a := parents[i].ParentRef
+		b := parents[j].ParentRef
+
+		if c := utils.ComparePointers(a.Group, b.Group); c != 0 {
+			return c < 0
+		}
+		if c := utils.ComparePointers(a.Kind, b.Kind); c != 0 {
+			return c < 0
+		}
+		if c := utils.ComparePointers(a.Namespace, b.Namespace); c != 0 {
+			return c < 0
+		}
+		if a.Name != b.Name {
+			return a.Name < b.Name
+		}
+		if c := utils.ComparePointers(a.SectionName, b.SectionName); c != 0 {
+			return c < 0
+		}
+		if c := utils.ComparePointers(a.Port, b.Port); c != 0 {
+			return c < 0
+		}
+
+		return false // The parent references are considered equal for sorting
+	})
+}
+
+func FilterStatusByControllerName(routeStatus gatewayv1.HTTPRouteStatus, controllerName string) gatewayv1.HTTPRouteStatus {
+	filtered := make([]gatewayv1.RouteParentStatus, 0, len(routeStatus.RouteStatus.Parents))
+	for _, parent := range routeStatus.RouteStatus.Parents {
+		if parent.ControllerName == gatewayv1.GatewayController(controllerName) {
+			filtered = append(filtered, parent)
+		}
+	}
+	return gatewayv1.HTTPRouteStatus{
+		RouteStatus: gatewayv1.RouteStatus{Parents: filtered},
+	}
+}
+
+func RouteStatusesEqual(a, b rc.RouteConditions) bool {
+	return a.Equal(b)
 }

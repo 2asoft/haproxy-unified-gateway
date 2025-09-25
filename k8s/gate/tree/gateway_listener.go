@@ -34,12 +34,13 @@ import (
 )
 
 type Listener struct {
-	// owner is the gateway that this listener is connected to
-	owner client.ObjectKey
 	// K8sResource is the source resource.
 	K8sResource gatewayv1.Listener
 	// Final Conditions
-	Conditions generic.Conditions
+	Conditions     generic.Conditions
+	AttachedRoutes AttachedRoutes
+	// owner is the gateway that this listener is connected to
+	owner client.ObjectKey
 	// Checks results
 	CheckRouteGroupKind CheckResult
 	CheckProtocol       CheckResult
@@ -331,16 +332,20 @@ func (l *Listener) resetChecks() {
 	l.CheckConflict = CheckResult{}
 }
 
-// ListenerKey returns the Certificate owner key appending the listener name to it
+// ListenerKey returns the Listener owner key appending the listener name to it
 // For Gateway ns/gateway, if the Listener name is "https", will return
 // ns/gateway_https
 // = Listener Key
 func ListenerKey(gw *gatewayv1.Gateway, listener gatewayv1.Listener) client.ObjectKey {
+	return ListenerKeyFromListenerName(gw, listener.Name)
+}
+
+func ListenerKeyFromListenerName(gw *gatewayv1.Gateway, listenerName gatewayv1.SectionName) client.ObjectKey {
 	return client.ObjectKey{
 		Namespace: gw.Namespace,
 		Name: fmt.Sprintf("%s_%s",
 			gw.Name,
-			listener.Name,
+			listenerName,
 		),
 	}
 }

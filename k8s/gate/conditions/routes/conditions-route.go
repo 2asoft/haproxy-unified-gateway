@@ -14,74 +14,74 @@
 package routeconditions
 
 import (
-	"maps"
-
 	generic "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type RouteConditions struct {
-	Conditions     map[gatewayv1.ParentReference]map[generic.ConditionType]generic.Condition
+	Conditions     utils.KeyMap[gatewayv1.ParentReference, generic.Conditions]
 	ControllerName string
 }
 
-func (c RouteConditions) MergeOverrideConditions(b RouteConditions) {
-	maps.Copy(c.Conditions, b.Conditions)
+func (c RouteConditions) MergeOverrideConditionsForParentRef(parentRef gatewayv1.ParentReference, conds generic.Conditions) {
+	parentConds, ok := c.Conditions.Get(parentRef)
+	if !ok {
+		parentConds = make(map[generic.ConditionType]generic.Condition)
+	}
+	parentConds.MergeOverrideConditions(conds)
+	c.Conditions.Set(parentRef, parentConds)
 }
 
 func (c RouteConditions) Equal(b RouteConditions) bool {
 	if c.ControllerName != b.ControllerName {
 		return false
 	}
-	if len(c.Conditions) != len(b.Conditions) {
+	if c.Conditions.Len() != b.Conditions.Len() {
 		return false
 	}
-	for k, v := range c.Conditions {
-		if len(v) != len(b.Conditions[k]) {
-			return false
-		}
 
-		for k2, v2 := range v {
-			if b.Conditions[k][k2] != v2 {
-				return false
-			}
+	equal := true
+	c.Conditions.Iterate(func(key string, valA generic.Conditions) bool {
+		parentRef, err := utils.KeyToParentRef(key)
+		if err != nil {
+			equal = false
+			return false // Stop iteration
 		}
-	}
-	return true
+		valB, ok := b.Conditions.Get(parentRef)
+		if !ok || !valA.Equal(valB) {
+			equal = false
+			return false // Stop iteration
+		}
+		return true // Continue iteration
+	})
+	return equal
 }
 
 func (c RouteConditions) SetGeneration(generation int64) {
-	for parentRef, mapConditions := range c.Conditions {
-		for _, condition := range mapConditions {
-			condition.ObservedGeneration = generation
-			c.Conditions[parentRef][condition.Type] = condition
-		}
-	}
+	c.Conditions.Iterate(func(_ string, conditionsForParentRef generic.Conditions) bool {
+		conditionsForParentRef.SetGeneration(generation)
+		return true // Continue iteration
+	})
 }
 
-func NewRouteConditionsFromRouteConditions(routeStatus gatewayv1.RouteStatus, controllerName string) RouteConditions {
-	// map[gatewayv1.ParentReference]map[ConditionType]Condition
-	conditionsMap := make(map[gatewayv1.ParentReference]map[generic.ConditionType]generic.Condition)
+func NewRouteConditionsFromV1RouteConditions(routeStatus gatewayv1.HTTPRouteStatus, controllerName string) RouteConditions {
+	conditionsMap := utils.NewKeyMap[gatewayv1.ParentReference, generic.Conditions](utils.ParentRefToKey)
 	for _, parentConditions := range routeStatus.Parents {
 		parentRef := parentConditions.ParentRef
 		if parentConditions.ControllerName != gatewayv1.GatewayController(controllerName) {
 			continue
 		}
 
-		if len(conditionsMap[parentRef]) == 0 {
-			conditionsMap[parentRef] = make(map[generic.ConditionType]generic.Condition)
+		condsForParent, ok := conditionsMap.Get(parentRef)
+		if !ok {
+			condsForParent = make(generic.Conditions)
 		}
 
 		for _, condition := range parentConditions.Conditions {
-			conditionsMap[parentRef][generic.ConditionType(condition.Type)] = generic.Condition{
-				Type:               generic.ConditionType(condition.Type),
-				Status:             condition.Status,
-				Reason:             condition.Reason,
-				Message:            condition.Message,
-				ObservedGeneration: condition.ObservedGeneration,
-			}
+			condsForParent[generic.ConditionType(condition.Type)] = generic.NewConditionFromMetav1Condition(condition)
 		}
+		conditionsMap.Set(parentRef, condsForParent)
 	}
 	return RouteConditions{
 		Conditions:     conditionsMap,
@@ -89,34 +89,30 @@ func NewRouteConditionsFromRouteConditions(routeStatus gatewayv1.RouteStatus, co
 	}
 }
 
-func (c RouteConditions) ToRouteConditions() gatewayv1.RouteStatus {
-	now := metav1.Now()
-	result := gatewayv1.RouteStatus{}
-	// map[gatewayv1.ParentReference]map[ConditionType]Condition
-	for parentRef, conditions := range c.Conditions {
-		for conditionType, condition := range conditions {
-			result.Parents = append(result.Parents, gatewayv1.RouteParentStatus{
-				ParentRef:      parentRef,
-				ControllerName: gatewayv1.GatewayController(c.ControllerName),
-				Conditions: []metav1.Condition{
-					{
-						Type:               string(conditionType),
-						Status:             condition.Status,
-						Reason:             condition.Reason,
-						Message:            condition.Message,
-						ObservedGeneration: condition.ObservedGeneration,
-						LastTransitionTime: now,
-					},
-				},
-			})
+func (c RouteConditions) ToV1RouteConditions() gatewayv1.HTTPRouteStatus {
+	parents := make([]gatewayv1.RouteParentStatus, 0, c.Conditions.Len())
+
+	c.Conditions.Iterate(func(key string, conditions generic.Conditions) bool {
+		parentRef, err := utils.KeyToParentRef(key)
+		if err != nil {
+			return true // Continue iteration
 		}
+		parents = append(parents, gatewayv1.RouteParentStatus{
+			ParentRef:      parentRef,
+			ControllerName: gatewayv1.GatewayController(c.ControllerName),
+			Conditions:     conditions.ToMetav1Conditions(),
+		})
+		return true // Continue iteration
+	})
+
+	return gatewayv1.HTTPRouteStatus{
+		RouteStatus: gatewayv1.RouteStatus{Parents: parents},
 	}
-	return result
 }
 
 // GetCondition of certain type
 func (c RouteConditions) GetCondition(conditionType generic.ConditionType, parentRef gatewayv1.ParentReference) (generic.Condition, bool) {
-	parent, exists := c.Conditions[parentRef]
+	parent, exists := c.Conditions.Get(parentRef)
 	if !exists {
 		return generic.Condition{}, false
 	}

@@ -16,6 +16,7 @@
 package utils // revive:disable:var-naming
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
@@ -155,4 +156,26 @@ func SetIntersection[K comparable, V any](mapA, mapB map[K]V) map[K]struct{} {
 		}
 	}
 	return intersection
+}
+
+// ComparePointers compares two pointers to any ordered type.
+// It establishes a consistent sort order where nil values come before non-nil values.
+//
+// It returns:
+//   - -1 if a < b
+//   - 0 if a == b (or both are nil)
+//   - +1 if a > b
+func ComparePointers[T cmp.Ordered](a, b *T) int {
+	if a == nil && b != nil {
+		return -1 // nil comes before non-nil
+	}
+	if a != nil && b == nil {
+		return 1 // non-nil comes after nil
+	}
+	if a != nil && b != nil {
+		// Both are non-nil, compare their values.
+		return cmp.Compare(*a, *b)
+	}
+	// Both are nil, so they are equal.
+	return 0
 }

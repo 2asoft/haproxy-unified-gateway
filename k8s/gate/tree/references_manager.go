@@ -94,18 +94,13 @@ func (rm *ReferenceManager) UpdateRefences() {
 		}
 	}
 
-	// Routes
+	// Gateways refs
 	if needGatewaysReferencesRebuild {
 		for _, route := range rm.ClusterStore.HTTPRoutes {
-			routekey := client.ObjectKey{Namespace: route.Namespace, Name: route.Name}
-			// TODO: fix this, do not assume its connected
-			rm.ReferencedObjects.ReferencedGateway.AddReferencedBy(rm.Logger, routekey, route)
-			// parentRefExists := len(route.Spec.ParentRefs) > 0
-			// if parentRefExists {
-			// find the gateway by name (if more than one, check by hostname)
-			// } else {
-			//  find the gateway by hostname
-			// }
+			for _, parentRef := range route.Spec.ParentRefs {
+				nsName := GetParentRefNamespacedName(parentRef, route)
+				rm.ReferencedObjects.ReferencedGateways.AddReferencedBy(rm.Logger, nsName, route)
+			}
 		}
 	}
 }
@@ -133,14 +128,14 @@ func (rm *ReferenceManager) cleanReferencedObjects() {
 	if rm.needsReferencedGatewayClassesRebuild() {
 		rm.ReferencedObjects.ReferencedGatewayClasses.CleanOwners()
 	}
-	if rm.needsReferencedGatewaysRebuild() {
-		rm.ReferencedObjects.ReferencedGateway.CleanOwners()
-	}
 	if rm.needsReferencedHugGatesRebuild() {
 		rm.ReferencedObjects.ReferencedHugGates.CleanOwners()
 	}
 	rm.ReferencedObjects.PreviousReferencedSecrets = rm.ReferencedObjects.ReferencedSecrets.DeepCopy()
 	if rm.needsReferencedSecretsRebuild() {
 		rm.ReferencedObjects.ReferencedSecrets.CleanOwners()
+	}
+	if rm.needsReferencedGatewaysRebuild() {
+		rm.ReferencedObjects.ReferencedGateways.CleanOwners()
 	}
 }

@@ -19,6 +19,8 @@ import (
 	"os"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
+
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -33,6 +35,16 @@ func (b *BaseSuite) YamlToConditions(yamlPath string) conditions.Conditions {
 	err = yaml.Unmarshal(yamlFile, &expectedConditionsMetaV1)
 	assert.NoError(b.T(), err, "Failed to unmarshal YAML")
 	return conditions.NewConditionsFromMetav1Conditions(expectedConditionsMetaV1)
+}
+
+func (b *BaseSuite) YamlToRouteConditions(yamlPath string) rc.RouteConditions {
+	yamlFile, err := os.ReadFile(yamlPath)
+	assert.NoError(b.T(), err, "Failed to read YAML file")
+
+	var expectedConditionsV1 gatewayv1.HTTPRouteStatus
+	err = yaml.Unmarshal(yamlFile, &expectedConditionsV1)
+	assert.NoError(b.T(), err, "Failed to unmarshal YAML")
+	return rc.NewRouteConditionsFromV1RouteConditions(expectedConditionsV1, TestControllerName)
 }
 
 func (b *BaseSuite) YamlToListenerStatuses(yamlPath string) []gatewayv1.ListenerStatus {

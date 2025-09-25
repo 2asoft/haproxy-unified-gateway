@@ -1,0 +1,23 @@
+parents:
+- conditions:
+  - message: Route Accepted
+    reason: Accepted
+    status: "True"
+    type: Accepted
+  controllerName: gate.haproxy.org/hug
+  parentRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: gateway
+    sectionName: http
+- conditions:
+  - message: No matching parent found
+    reason: NoMatchingParent
+    status: "False"
+    type: Accepted
+  controllerName: gate.haproxy.org/hug
+  parentRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: gateway
+    sectionName: http3

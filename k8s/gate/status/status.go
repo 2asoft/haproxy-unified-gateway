@@ -17,7 +17,6 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
@@ -32,38 +31,44 @@ type StatusUpdater interface {
 }
 
 type StatusUpdaterConf struct {
-	logger     *slog.Logger
-	client     client.Client
-	extractGVK utils.ExtractGVK
+	logger         *slog.Logger
+	client         client.Client
+	extractGVK     utils.ExtractGVK
+	controllerName string
 }
 
 type StatusUpdaterImpl struct {
-	config         StatusUpdaterConf
 	GatewayClasses map[types.NamespacedName]*tree.GatewayClass
 	Gateways       map[types.NamespacedName]*tree.Gateway
+	HTTPRoutes     map[types.NamespacedName]*tree.HTTPRoute
+	config         StatusUpdaterConf
 }
 
 func NewStatusUpdater(
 	cfg StatusUpdaterConf,
 	gatewayClasses map[types.NamespacedName]*tree.GatewayClass,
 	gateways map[types.NamespacedName]*tree.Gateway,
+	httpRoutes map[types.NamespacedName]*tree.HTTPRoute,
 ) StatusUpdater {
 	return &StatusUpdaterImpl{
 		config:         cfg,
 		GatewayClasses: gatewayClasses,
 		Gateways:       gateways,
+		HTTPRoutes:     httpRoutes,
 	}
 }
 
 func NewStatusUpdaterConf(
 	k8sClient client.Client,
 	extractGVK utils.ExtractGVK,
+	controllerName string,
 	logger *slog.Logger,
 ) StatusUpdaterConf {
 	return StatusUpdaterConf{
-		logger:     logger.With(logging.LogAttrCategory(logging.LogCategoryStatus)),
-		extractGVK: extractGVK,
-		client:     k8sClient,
+		logger:         logger.With(logging.LogAttrCategory(logging.LogCategoryStatus)),
+		extractGVK:     extractGVK,
+		client:         k8sClient,
+		controllerName: controllerName,
 	}
 }
 
@@ -120,19 +125,34 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 	}
 
 	// HTTPRoutes
-	// TODO
-	// END HTTPRoutes
+	for _, route := range s.HTTPRoutes {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// Do not set Status for Deleted or unchanged HTTPRoutes
+		if route.TreeStatus.Status == store.StatusDeleted || route.TreeStatus.Status == "" {
+			continue
+		}
+
+		s.config.logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Updating status for resource",
+			logging.LogAttrResource(route.K8sResource, s.config.extractGVK(route.K8sResource)),
+		)
+		s.writeHTTPRouteStatus(ctx, route)
+	}
 }
 
 type StatusUpdateParams[T client.Object] struct {
-	Object           T
-	StatusPatcher    StatusPatcher
-	Getter           client.Client
-	StatusUpdater    client.SubResourceWriter
-	ConditionHandler generic.ConditionAccessor[T]
-	Logger           *slog.Logger
-	extractGVK       utils.ExtractGVK
-	NsName           types.NamespacedName
+	Object        T
+	StatusPatcher StatusPatcher
+	Getter        client.Client
+	StatusUpdater client.SubResourceWriter
+	Logger        *slog.Logger
+	extractGVK    utils.ExtractGVK
+	NsName        types.NamespacedName
 }
 
 func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx context.Context) (bool, error) {
@@ -184,6 +204,79 @@ func TryUpdateStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx 
 			return false, nil
 		}
 		if err := param.StatusUpdater.Update(ctx, clusterObj); err != nil {
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when updating status",
+				objAttr,
+				logging.LogAttrError(err))
+			return false, nil
+		}
+
+		param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Successfully updated status",
+			objAttr,
+		)
+		return true, nil
+	}
+}
+
+func TryPatchStatusFunc[T client.Object](param StatusUpdateParams[T]) func(ctx context.Context) (bool, error) {
+	return func(ctx context.Context) (bool, error) {
+		objAttr := logging.LogAttrKeyGVK(param.NsName, param.extractGVK(param.Object))
+
+		// Create a fresh empty object of type T
+		clusterObj, ok := param.Object.DeepCopyObject().(T)
+		if !ok {
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when copying object",
+				objAttr)
+			return false, nil
+		}
+		err := param.Getter.Get(ctx, types.NamespacedName{
+			Namespace: param.NsName.Namespace,
+			Name:      param.NsName.Name,
+		}, clusterObj)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when getting resource to update status",
+				objAttr)
+			return false, nil
+		}
+
+		statusAlreadyUpToDate, err := param.StatusPatcher.StatusEqual(clusterObj)
+		if err != nil {
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when checking status equality",
+				objAttr)
+			return false, nil
+		}
+
+		if statusAlreadyUpToDate {
+			param.Logger.LogAttrs(context.Background(), slog.LevelDebug,
+				"Status already up to date",
+				objAttr)
+			return true, nil
+		}
+
+		// Status patch
+		originalObj, ok := clusterObj.DeepCopyObject().(T) // Create a copy before modification
+		if err := param.StatusPatcher.SetStatus(clusterObj); err != nil {
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when setting status",
+				objAttr)
+			return false, nil
+		}
+
+		if !ok {
+			param.Logger.LogAttrs(context.Background(), slog.LevelError,
+				"Encountered error when copying object",
+				objAttr)
+			return false, nil
+		}
+		client.MergeFrom(clusterObj)
+		if err := param.StatusUpdater.Patch(ctx, clusterObj, client.MergeFrom(originalObj)); err != nil {
 			param.Logger.LogAttrs(context.Background(), slog.LevelError,
 				"Encountered error when updating status",
 				objAttr,

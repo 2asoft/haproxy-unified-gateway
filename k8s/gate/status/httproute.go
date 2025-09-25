@@ -22,17 +22,16 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
-
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-func (s *StatusUpdaterImpl) writeGatewayClassStatus(ctx context.Context, gwc *tree.GatewayClass) {
-	updateOptions := StatusUpdateParams[*gatewayv1.GatewayClass]{
-		Object:        objtypes.ObjectTypeGatewayClass,
-		NsName:        types.NamespacedName{Name: gwc.K8sResource.Name, Namespace: gwc.K8sResource.Namespace},
-		StatusPatcher: newGatewayClassStatusPatcher(gwc),
+func (s *StatusUpdaterImpl) writeHTTPRouteStatus(ctx context.Context, route *tree.HTTPRoute) {
+	updateOptions := StatusUpdateParams[*gatewayv1.HTTPRoute]{
+		Object:        objtypes.ObjectTypeHTTPRoute,
+		NsName:        types.NamespacedName{Name: route.K8sResource.Name, Namespace: route.K8sResource.Namespace},
+		StatusPatcher: newHTTPRouteStatusPatcher(route),
 		Getter:        s.config.client,
 		StatusUpdater: s.config.client.Status(),
 		Logger:        s.config.logger,
@@ -49,12 +48,12 @@ func (s *StatusUpdaterImpl) writeGatewayClassStatus(ctx context.Context, gwc *tr
 			Cap:      time.Millisecond * 3000,
 		},
 		// Function returns true if the condition is satisfied, or an error if the loop should be aborted.
-		TryUpdateStatusFunc(updateOptions),
+		TryPatchStatusFunc(updateOptions),
 	)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		s.config.logger.LogAttrs(context.Background(), slog.LevelError,
 			"Failed to update status",
-			logging.LogAttrResource(gwc.K8sResource, s.config.extractGVK(gwc.K8sResource)),
+			logging.LogAttrResource(route.K8sResource, s.config.extractGVK(route.K8sResource)),
 			logging.LogAttrError(err),
 		)
 	}

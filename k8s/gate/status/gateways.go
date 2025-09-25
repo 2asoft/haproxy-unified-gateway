@@ -19,7 +19,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
@@ -31,14 +30,13 @@ import (
 
 func (s *StatusUpdaterImpl) writeGatewayStatus(ctx context.Context, gw *tree.Gateway) {
 	updateOptions := StatusUpdateParams[*gatewayv1.Gateway]{
-		Object:           objtypes.ObjectTypeGateway,
-		NsName:           types.NamespacedName{Name: gw.K8sResource.Name, Namespace: gw.K8sResource.Namespace},
-		StatusPatcher:    newGatewayStatusPatcher(gw),
-		Getter:           s.config.client,
-		StatusUpdater:    s.config.client.Status(),
-		Logger:           s.config.logger,
-		ConditionHandler: &conditions.GatewayConditionImpl{},
-		extractGVK:       s.config.extractGVK,
+		Object:        objtypes.ObjectTypeGateway,
+		NsName:        types.NamespacedName{Name: gw.K8sResource.Name, Namespace: gw.K8sResource.Namespace},
+		StatusPatcher: newGatewayStatusPatcher(gw),
+		Getter:        s.config.client,
+		StatusUpdater: s.config.client.Status(),
+		Logger:        s.config.logger,
+		extractGVK:    s.config.extractGVK,
 	}
 
 	err := wait.ExponentialBackoffWithContext(

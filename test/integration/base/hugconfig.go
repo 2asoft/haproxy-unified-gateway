@@ -26,6 +26,8 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
 
+const TestControllerName = "gate.haproxy.org/hug"
+
 func hugConfig(test *IntTest) hugconfig.HUGConfig {
 	cfgDir := os.Getenv("HAPROXY_CFG_DIR")
 	if cfgDir == "" {
@@ -44,7 +46,7 @@ func hugConfig(test *IntTest) hugconfig.HUGConfig {
 		SyncPeriod:        time.Second,
 		StartupSyncPeriod: 2 * time.Second,
 		ControllerConfCRD: hugconfig.NamespaceNameValue{Name: hugConfNsName.Name, Namespace: hugConfNsName.Namespace},
-		ControllerName:    "gate.haproxy.org/hug",
+		ControllerName:    TestControllerName,
 		Namespaces:        []string{test.Namespace, "other"},
 		LogType:           string(logging.LogHandlerTypeText),
 		DefaultLogLevel:   slog.LevelDebug,

@@ -26,12 +26,12 @@ type HTTPRouteConditionImpl struct {
 }
 
 func (r *HTTPRouteConditionImpl) GetConditions(obj *gatewayv1.HTTPRoute) RouteConditions {
-	return NewRouteConditionsFromRouteConditions(obj.Status.RouteStatus, r.ControllerName)
+	return NewRouteConditionsFromV1RouteConditions(obj.Status, r.ControllerName)
 }
 
 func (*HTTPRouteConditionImpl) SetConditions(obj *gatewayv1.HTTPRoute, conds RouteConditions) {
 	// TODO preserve other conditions from other controllers
-	obj.Status.RouteStatus = conds.ToRouteConditions()
+	obj.Status = conds.ToV1RouteConditions()
 }
 
 func ConditionAccepted() genericconditions.Conditions {
@@ -51,7 +51,7 @@ func ConditionNotAcceptedNoMatchingParent() genericconditions.Conditions {
 			Type:    genericconditions.ConditionType(gatewayv1.RouteConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.RouteReasonNoMatchingParent),
-			Message: "no matching parent found",
+			Message: "No matching parent found",
 		},
 	}
 }
@@ -62,18 +62,18 @@ func ConditionNotAcceptedNoMatchingHostname() genericconditions.Conditions {
 			Type:    genericconditions.ConditionType(gatewayv1.RouteConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.RouteReasonNoMatchingListenerHostname),
-			Message: "no matching hostname found",
+			Message: "No matching hostname found",
 		},
 	}
 }
 
-func ConditionRouteReasonNotAllowedByListeners() genericconditions.Conditions {
+func ConditionNotAcceptedRouteReasonNotAllowedByListeners() genericconditions.Conditions {
 	return genericconditions.Conditions{
 		genericconditions.ConditionType(gatewayv1.RouteConditionAccepted): {
 			Type:    genericconditions.ConditionType(gatewayv1.RouteConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.RouteReasonNotAllowedByListeners),
-			Message: "route kind not allowed by listeners",
+			Message: "Route kind not allowed by listeners",
 		},
 	}
 }

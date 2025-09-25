@@ -49,13 +49,15 @@ type ReferencedObjects struct {
 	ReferencedHugGates references.ReferencedBy
 	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
 	ReferencedGatewayClasses references.ReferencedBy
-	ReferencedGateway        references.ReferencedBy
+
 	//  ReferencedSecrets includes the GatewayClasses that are references by Gateways Listeners
 	// Owners are Listeners
 	ReferencedSecrets         references.ReferencedBy
 	PreviousReferencedSecrets references.ReferencedBy
-	ReferencedServices        references.ReferencedBy
-	ReferencedHTTPRoutes      references.ReferencedBy
+	// ReferencedGateways includes the Gateways that are referenced by HTTPRoutes
+	ReferencedGateways references.ReferencedBy
+	// ReferencedServices includes the Services that are references by HTTPRoutes
+	ReferencedServices references.ReferencedBy
 }
 
 type CheckResult struct {
@@ -89,10 +91,10 @@ func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 	return &ReferencedObjects{
 		ReferencedHugGates:        references.NewReferencedBy("huggate", extractGVK),
 		ReferencedGatewayClasses:  references.NewReferencedBy("gatewayclass", extractGVK),
-		ReferencedGateway:         references.NewReferencedBy("gateway", extractGVK),
 		ReferencedSecrets:         references.NewReferencedBy("secret", extractGVK),
 		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),
-		ReferencedHTTPRoutes:      references.NewReferencedBy("httproute", extractGVK),
+		ReferencedGateways:        references.NewReferencedBy("gateway", extractGVK),
+		ReferencedServices:        references.NewReferencedBy("service", extractGVK),
 	}
 }
 

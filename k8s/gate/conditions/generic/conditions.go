@@ -57,15 +57,19 @@ func (c Conditions) SetGeneration(generation int64) {
 func NewConditionsFromMetav1Conditions(conditions []metav1.Condition) Conditions {
 	conditionsMap := make(Conditions)
 	for _, condition := range conditions {
-		conditionsMap[ConditionType(condition.Type)] = Condition{
-			Type:               ConditionType(condition.Type),
-			Status:             condition.Status,
-			Reason:             condition.Reason,
-			Message:            condition.Message,
-			ObservedGeneration: condition.ObservedGeneration,
-		}
+		conditionsMap[ConditionType(condition.Type)] = NewConditionFromMetav1Condition(condition)
 	}
 	return conditionsMap
+}
+
+func NewConditionFromMetav1Condition(condition metav1.Condition) Condition {
+	return Condition{
+		Type:               ConditionType(condition.Type),
+		Status:             condition.Status,
+		Reason:             condition.Reason,
+		Message:            condition.Message,
+		ObservedGeneration: condition.ObservedGeneration,
+	}
 }
 
 func (c Conditions) ToMetav1Conditions() []metav1.Condition {

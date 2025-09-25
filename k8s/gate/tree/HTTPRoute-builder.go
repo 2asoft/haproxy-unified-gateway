@@ -94,7 +94,7 @@ func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateways() {
 func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateway(gatewayUpdate store.Update[*gatewayv1.Gateway]) {
 	addIndirectFromReferenced(
 		gatewayUpdate,
-		b.ReferencedObjects.ReferencedGateway,
+		b.ReferencedObjects.ReferencedGateways,
 		b.ClusterStore.HTTPRoutes,
 		b.ClusterStore.Updates.HTTPRoutes,
 		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),
@@ -124,6 +124,7 @@ func (b *HTTPRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, 
 	case store.StatusUpserted:
 		if treeHTTPRoute != nil {
 			treeHTTPRoute.SetAsUpserted(b.Logger, routeUpdate.NewObject)
+			treeHTTPRoute.ResetChecks()
 		} else {
 			treeHTTPRoute = NewRoute(routeUpdate.NewObject, b.ControllerStore.ControllerName)
 		}
@@ -143,6 +144,7 @@ func (b *HTTPRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, 
 	case store.StatusDeleted:
 		if treeHTTPRoute != nil {
 			treeHTTPRoute.SetAsDeleted(b.Logger)
+			treeHTTPRoute.ResetChecks()
 		}
 		// else nothing to do
 		// It did not exists, it's deleted, noop
@@ -150,7 +152,12 @@ func (b *HTTPRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, 
 }
 
 func (r *HTTPRoute) isManaged() bool {
-	return r.CheckParamsRef.Valid
+	return r.CheckParentRefs.Valid
+}
+
+func (r *HTTPRoute) ResetChecks() {
+	r.CheckParentRefs = CheckResultRoute{}
+	r.Listeners.Clear()
 }
 
 // -----------------------------------------------

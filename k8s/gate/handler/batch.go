@@ -201,10 +201,12 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		status.NewStatusUpdaterConf(
 			h.treeBuilder.cfg.K8sClient,
 			h.config.ExtractGVK,
+			h.config.ControllerName,
 			h.config.BaseLogger,
 		),
 		gatetree.GatewayClasses,
 		gatetree.Gateways,
+		gatetree.HTTPRoutes,
 	)
 
 	statusUpdater.UpdateStatus(ctx)
