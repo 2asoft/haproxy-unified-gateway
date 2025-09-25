@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gateway
+package gatewaytls
 
 import (
 	"path"
@@ -24,7 +24,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
 )
 
-func (s *GatewayTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
+func (s *GatewayTLSTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "tls_multiple"
 
@@ -45,11 +45,11 @@ func (s *GatewayTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
 	// Check certificates
 	expectedCerts := []*models.SslCertificate{
 		{
-			StorageName: "/tmp/hug/certs/e2e-tests-gateway/of/e2e-tests-gateway_offload.pem",
+			StorageName: "/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload.pem",
 			Subject:     "/CN=offload.haproxy",
 		},
 		{
-			StorageName: "/tmp/hug/certs/e2e-tests-gateway/of/e2e-tests-gateway_offload2.pem",
+			StorageName: "/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload2.pem",
 			Subject:     "/CN=offload2.haproxy",
 		},
 	}
@@ -59,15 +59,15 @@ func (s *GatewayTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
 	expectedCrtLists := map[futils.FilePath][]string{ // map[crt-list .File]
 		{
 			Dir:      "/tmp/hug/certlists",
-			FileName: "/e2e-tests-gateway_gateway_https.list",
+			FileName: "/e2e-tests-gateway-tls_gateway_https.list",
 		}: {
-			"/tmp/hug/certs/e2e-tests-gateway/of/e2e-tests-gateway_offload.pem",
-			"/tmp/hug/certs/e2e-tests-gateway/of/e2e-tests-gateway_offload2.pem",
+			"/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload.pem",
+			"/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload2.pem",
 		},
 	}
 	s.ExpectCrtLists(s.Test().Ctx, expectedCrtLists)
 
 	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
-	expectedFrontends := []string{"link1_e2e-tests-gateway_gateway_http", "link1_e2e-tests-gateway_gateway_https"}
+	expectedFrontends := []string{"link1_e2e-tests-gateway-tls_gateway_http", "link1_e2e-tests-gateway-tls_gateway_https"}
 	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
 }

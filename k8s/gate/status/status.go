@@ -15,7 +15,7 @@ package status
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log/slog"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -268,7 +268,7 @@ func getClusterObj[T client.Object](ctx context.Context, param StatusUpdateParam
 		param.Logger.LogAttrs(context.Background(), slog.LevelError,
 			"Encountered error when copying object",
 			objAttr)
-		return clusterObj, fmt.Errorf("failed to copy object")
+		return clusterObj, errors.New("failed to copy object")
 	}
 	err := param.Getter.Get(ctx, types.NamespacedName{
 		Namespace: param.NsName.Namespace,
@@ -281,7 +281,7 @@ func getClusterObj[T client.Object](ctx context.Context, param StatusUpdateParam
 		param.Logger.LogAttrs(context.Background(), slog.LevelError,
 			"Encountered error when getting resource to update status",
 			objAttr)
-		return clusterObj, fmt.Errorf("failed to get cluster object")
+		return clusterObj, errors.New("failed to get cluster object")
 	}
 	return clusterObj, nil
 }

@@ -21,7 +21,7 @@
     kind: HTTPRoute
 - attachedRoutes: 0
   conditions:
-  - message: Secret e2e-tests-gateway/offload does not exist
+  - message: Secret e2e-tests-gateway-tls/offload does not exist
     observedGeneration: 1
     reason: ResolvedRefs
     status: "False"

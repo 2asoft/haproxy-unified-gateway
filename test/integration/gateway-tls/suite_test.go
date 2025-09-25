@@ -1,0 +1,69 @@
+// Copyright 2019 HAProxy Technologies LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package gatewaytls
+
+import (
+	"context"
+	"time"
+
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
+	"github.com/haproxytech/kubernetes-controller/test/integration/base"
+	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+
+	"k8s.io/apimachinery/pkg/types"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+)
+
+const (
+	timeout  = time.Second * 30
+	interval = time.Second * 1
+)
+
+type GatewayTLSSuite struct {
+	base.BaseSuite
+}
+
+func (s *GatewayTLSSuite) SetupSuite() {
+	s.BaseSuite.SetupSuite()
+}
+
+func (s *GatewayTLSSuite) TearDownSuite() {
+	s.BaseSuite.TearDownSuite()
+}
+
+func (s *GatewayTLSSuite) expectConditionsUpdated(ctx context.Context, namespace, name string,
+	expectedConditions conditions.Conditions,
+	expectedListenerStatuses []gatewayv1.ListenerStatus,
+) {
+	gw := &gatewayv1.Gateway{}
+	if !utils.WaitFor(ctx, interval, timeout, func() bool {
+		if err := s.Test().Client.Get(
+			s.Test().Ctx,
+			types.NamespacedName{Name: name, Namespace: namespace}, gw); err != nil {
+			return false
+		}
+
+		gotConditions := conditions.NewConditionsFromMetav1Conditions(gw.Status.Conditions)
+
+		if resGwConds := gotConditions.Equal(expectedConditions); !resGwConds {
+			return false
+		}
+
+		return status.ListenerStatusesEqual(gw.Status.Listeners, expectedListenerStatuses)
+	}) {
+		s.T().Fatal("conditions not correct")
+	}
+}

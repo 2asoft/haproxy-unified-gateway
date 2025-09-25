@@ -13,17 +13,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gateway
+package gatewaytls
 
 import (
 	"path"
+	"testing"
 
 	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	"github.com/stretchr/testify/suite"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (s *GatewayTestSuite) Test_Gateway_TLS_missingSecret() {
+// Adding GatewayTLSTestSuite, just to be able to debug directly
+type GatewayTLSTestSuite struct {
+	GatewayTLSSuite
+}
+
+func TestGatewayTLSTestSuite(t *testing.T) {
+	suite.Run(t, new(GatewayTLSTestSuite))
+}
+
+func (s *GatewayTLSTestSuite) Test_Gateway_TLS_missingSecret() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "tls"
 	fixtures := []string{"gatewayclass.yaml", "gateway.yaml"}
@@ -43,7 +54,7 @@ func (s *GatewayTestSuite) Test_Gateway_TLS_missingSecret() {
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 }
 
-func (s *GatewayTestSuite) Test_Gateway_TLS_okSecret() {
+func (s *GatewayTLSTestSuite) Test_Gateway_TLS_okSecret() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "tls"
 
@@ -62,7 +73,7 @@ func (s *GatewayTestSuite) Test_Gateway_TLS_okSecret() {
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 }
 
-func (s *GatewayTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
+func (s *GatewayTLSTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "tls"
 
@@ -94,7 +105,7 @@ func (s *GatewayTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 }
 
-func (s *GatewayTestSuite) deleteSecret(name string) *v1.Secret {
+func (s *GatewayTLSTestSuite) deleteSecret(name string) *v1.Secret {
 	var secret v1.Secret
 	err := s.Test().Client.Get(s.Test().Ctx, client.ObjectKey{Name: name, Namespace: s.Test().Namespace}, &secret)
 	s.Require().NoError(err)
@@ -105,7 +116,7 @@ func (s *GatewayTestSuite) deleteSecret(name string) *v1.Secret {
 	return &secret
 }
 
-func (s *GatewayTestSuite) createSecret(secret *v1.Secret) {
+func (s *GatewayTLSTestSuite) createSecret(secret *v1.Secret) {
 	secret.ResourceVersion = ""
 	err := s.Test().Client.Create(s.Test().Ctx, secret)
 	s.Require().NoError(err)

@@ -3,11 +3,11 @@ from: haproxytech
 metadata:
   hug:
     Gateway:
-      e2e-tests-gateway/gateway:
+      e2e-tests-gateway-tls/gateway:
         Generation: 1
         LinkID: link1
 mode: http
-name: link1_e2e-tests-gateway_gateway_http
+name: link1_e2e-tests-gateway-tls_gateway_http
 binds:
   v4:
     name: v4

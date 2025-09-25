@@ -2,20 +2,20 @@ from: haproxytech
 metadata:
   hug:
     Gateway:
-      e2e-tests-gateway/gateway:
+      e2e-tests-gateway-tls/gateway:
         Generation: 1
         LinkID: link1
 mode: http
-name: link1_e2e-tests-gateway_gateway_https
+name: link1_e2e-tests-gateway-tls_gateway_https
 binds:
   v4:
-    crt_list: /tmp/hug/certlists/e2e-tests-gateway_gateway_https.list
+    crt_list: /tmp/hug/certlists/e2e-tests-gateway-tls_gateway_https.list
     name: v4
     ssl: true
     address: 0.0.0.0
     port: 8443
   v6:
-    crt_list: /tmp/hug/certlists/e2e-tests-gateway_gateway_https.list
+    crt_list: /tmp/hug/certlists/e2e-tests-gateway-tls_gateway_https.list
     name: v6
     ssl: true
     address: '::'
