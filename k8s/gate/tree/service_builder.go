@@ -19,14 +19,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var _ Builder = &SecretBuilderImpl{}
+var _ Builder = &ServiceBuilderImpl{}
 
-type SecretBuilderImpl struct {
+type ServiceBuilderImpl struct {
 	ControllerStore
 }
 
-func NewSecretBuilder(controllerStore ControllerStore) Builder {
-	return &SecretBuilderImpl{
+func NewServiceBuilder(controllerStore ControllerStore) Builder {
+	return &ServiceBuilderImpl{
 		ControllerStore: controllerStore,
 	}
 }
@@ -35,30 +35,30 @@ func NewSecretBuilder(controllerStore ControllerStore) Builder {
 // GateTree Updates
 // --------------------
 
-func (b *SecretBuilderImpl) ComputeTreeUpdates() {
+func (b *ServiceBuilderImpl) ComputeTreeUpdates() {
 	b.computeGateTreeUpdates()
 }
 
-func (b *SecretBuilderImpl) computeGateTreeUpdates() {
-	for secretKey, secretUpdate := range b.ClusterStore.Updates.Secrets {
-		b.computeTreeSecretUpdate(secretKey, secretUpdate)
+func (b *ServiceBuilderImpl) computeGateTreeUpdates() {
+	for serviceKey, serviceUpdate := range b.ClusterStore.Updates.Services {
+		b.computeTreeServiceUpdate(serviceKey, serviceUpdate)
 	}
 }
 
-func (b *SecretBuilderImpl) computeTreeSecretUpdate(secretKey client.ObjectKey, secretUpdate store.Update[*v1.Secret]) {
-	treeSecret := b.GateTree.Secrets[secretKey]
+func (b *ServiceBuilderImpl) computeTreeServiceUpdate(serviceKey client.ObjectKey, serviceUpdate store.Update[*v1.Service]) {
+	treeService := b.GateTree.Services[serviceKey]
 
-	switch secretUpdate.Status {
+	switch serviceUpdate.Status {
 	case store.StatusUpserted:
-		if treeSecret != nil {
-			treeSecret.SetAsUpserted(b.Logger, secretUpdate.NewObject)
+		if treeService != nil {
+			treeService.SetAsUpserted(b.Logger, serviceUpdate.NewObject)
 		} else {
-			treeSecret = NewSecret(secretUpdate.NewObject)
+			treeService = NewService(serviceUpdate.NewObject)
 		}
-		treeSecret.SetAsManaged(b.Logger, b.ControllerStore)
+		treeService.SetAsManaged(b.Logger, b.ControllerStore)
 	case store.StatusDeleted:
-		if treeSecret != nil {
-			treeSecret.SetAsDeleted(b.Logger)
+		if treeService != nil {
+			treeService.SetAsDeleted(b.Logger)
 		}
 
 		// else nothing to do
@@ -68,7 +68,7 @@ func (b *SecretBuilderImpl) computeTreeSecretUpdate(secretKey client.ObjectKey, 
 
 // -----------------------------------------------
 
-func (b *SecretBuilderImpl) CleanTreeUpdates() {
-	cleanTreeUpdates(b.GateTree.Secrets)
-	cleanTreeUpdates(b.UnmanagedGateTree.Secrets)
+func (b *ServiceBuilderImpl) CleanTreeUpdates() {
+	cleanTreeUpdates(b.GateTree.Services)
+	cleanTreeUpdates(b.UnmanagedGateTree.Services)
 }

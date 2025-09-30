@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -105,7 +105,7 @@ func TestObjectStoreImpl_Upsert(t *testing.T) {
 
 	t.Run("wrong object type", func(t *testing.T) {
 		store, logBuf := newTestObjectStore[*gatewayv1.GatewayClass](t)
-		wrongTypeObj := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "test-gc"}}
+		wrongTypeObj := &v1.Service{ObjectMeta: metav1.ObjectMeta{Name: "test-gc"}}
 
 		store.upsert(wrongTypeObj)
 

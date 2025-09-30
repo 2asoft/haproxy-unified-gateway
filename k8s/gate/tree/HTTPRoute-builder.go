@@ -169,20 +169,8 @@ func (r *HTTPRoute) ResetChecks() {
 // -----------------------------------------------
 
 func (b *HTTPRouteBuilderImpl) CleanTreeUpdates() {
-	for gwKey, route := range b.GateTree.HTTPRoutes {
-		if route.TreeStatus.Status == store.StatusDeleted {
-			delete(b.GateTree.HTTPRoutes, gwKey)
-			continue
-		}
-		route.TreeStatus = TreeUpdate[HTTPRoute]{}
-	}
-	for gwKey, treeGw := range b.UnmanagedGateTree.HTTPRoutes {
-		if treeGw.TreeStatus.Status == store.StatusDeleted {
-			delete(b.GateTree.HTTPRoutes, gwKey)
-			continue
-		}
-		treeGw.TreeStatus = TreeUpdate[HTTPRoute]{}
-	}
+	cleanTreeUpdates(b.GateTree.HTTPRoutes)
+	cleanTreeUpdates(b.UnmanagedGateTree.HTTPRoutes)
 }
 
 func (b *HTTPRouteBuilderImpl) SetAsManaged(route *HTTPRoute) {

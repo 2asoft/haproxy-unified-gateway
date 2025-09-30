@@ -33,24 +33,71 @@ func (rm *ReferenceManager) UpdateRefences() {
 
 	needsHugGatesReferencesRebuild := rm.needsReferencedHugGatesRebuild()
 	needsGatewayClassesReferencesRebuild := rm.needsReferencedGatewayClassesRebuild()
-	needsSecretsReferencesRebuild := rm.needsReferencedSecretsRebuild()
 	needGatewaysReferencesRebuild := rm.needsReferencedGatewaysRebuild()
+	needsSecretsReferencesRebuild := rm.needsReferencedSecretsRebuild()
+	needServicesReferencesRebuild := rm.needsReferencedServicesRebuild()
 
-	if !needsHugGatesReferencesRebuild && !needsGatewayClassesReferencesRebuild && !needsSecretsReferencesRebuild {
+	if !needsHugGatesReferencesRebuild && !needsGatewayClassesReferencesRebuild &&
+		!needsSecretsReferencesRebuild && !needGatewaysReferencesRebuild && !needServicesReferencesRebuild {
 		return
 	}
 
 	// HugGates refs
-	if needsHugGatesReferencesRebuild {
-		for _, gwc := range rm.ClusterStore.GatewayClasses {
-			paramsRefKey, hasParamsRef := getGatewayClassParamsRefKey(gwc)
-			if hasParamsRef {
-				rm.ReferencedObjects.ReferencedHugGates.AddReferencedBy(rm.Logger, paramsRefKey, gwc)
-			}
-		}
-	}
+	rm.buildHugGatesReferences()
 
 	// GatewayClass refs
+	rm.buildGatewayClassReferences()
+
+	// Secrets refs
+	rm.buildSecretReferences()
+
+	// Gateways refs
+	rm.buildGatewayReferences()
+
+	// Services refs
+	rm.buildServiceReferences()
+}
+
+func (rm *ReferenceManager) needsReferencedHugGatesRebuild() bool {
+	if len(rm.ClusterStore.Updates.GatewayClasses) > 0 || len(rm.ClusterStore.Updates.Gateways) > 0 {
+		return true
+	}
+	return false
+}
+
+func (rm *ReferenceManager) needsReferencedGatewayClassesRebuild() bool {
+	return len(rm.ClusterStore.Updates.Gateways) > 0
+}
+
+func (rm *ReferenceManager) needsReferencedSecretsRebuild() bool {
+	return len(rm.ClusterStore.Updates.Gateways) > 0
+}
+
+func (rm *ReferenceManager) needsReferencedGatewaysRebuild() bool {
+	return len(rm.ClusterStore.Updates.HTTPRoutes) > 0
+}
+
+func (rm *ReferenceManager) needsReferencedServicesRebuild() bool {
+	return len(rm.ClusterStore.Updates.Services) > 0
+}
+
+func (rm *ReferenceManager) buildHugGatesReferences() {
+	if needsHugGatesReferencesRebuild := rm.needsReferencedHugGatesRebuild(); !needsHugGatesReferencesRebuild {
+		return
+	}
+
+	for _, gwc := range rm.ClusterStore.GatewayClasses {
+		paramsRefKey, hasParamsRef := getGatewayClassParamsRefKey(gwc)
+		if hasParamsRef {
+			rm.ReferencedObjects.ReferencedHugGates.AddReferencedBy(rm.Logger, paramsRefKey, gwc)
+		}
+	}
+}
+
+func (rm *ReferenceManager) buildGatewayClassReferences() {
+	needsHugGatesReferencesRebuild := rm.needsReferencedHugGatesRebuild()
+	needsGatewayClassesReferencesRebuild := rm.needsReferencedGatewayClassesRebuild()
+
 	for _, gw := range rm.ClusterStore.Gateways {
 		gwcKey := client.ObjectKey{Name: string(gw.Spec.GatewayClassName)}
 		if needsGatewayClassesReferencesRebuild {
@@ -73,55 +120,65 @@ func (rm *ReferenceManager) UpdateRefences() {
 			}
 		}
 	}
+}
 
-	// Secrets refs
-	if needsSecretsReferencesRebuild {
-		for _, gw := range rm.ClusterStore.Gateways {
-			for _, listener := range gw.Spec.Listeners {
-				if listener.TLS == nil {
+func (rm *ReferenceManager) buildSecretReferences() {
+	if needsSecretsReferencesRebuild := rm.needsReferencedSecretsRebuild(); !needsSecretsReferencesRebuild {
+		return
+	}
+
+	for _, gw := range rm.ClusterStore.Gateways {
+		for _, listener := range gw.Spec.Listeners {
+			if listener.TLS == nil {
+				continue
+			}
+			for _, certRef := range listener.TLS.CertificateRefs {
+				// We only accept v1.Secret
+				if !isSecretGroupKindSupported(certRef) {
 					continue
 				}
-				for _, certRef := range listener.TLS.CertificateRefs {
-					// We only accept v1.Secret
-					if !isSecretGroupKindSupported(certRef) {
-						continue
-					}
-					nsName := GetCertificateRefNamespacedName(certRef, gw)
-					ownerGVK := rm.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway)
-					rm.ReferencedObjects.ReferencedSecrets.AddReferencedByUsingKeys(rm.Logger, nsName, ListenerKey(gw, listener), ownerGVK)
+				nsName := GetCertificateRefNamespacedName(certRef, gw)
+				ownerGVK := rm.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway)
+				rm.ReferencedObjects.ReferencedSecrets.AddReferencedByUsingKeys(rm.Logger, nsName, ListenerKey(gw, listener), ownerGVK)
+			}
+		}
+	}
+}
+
+func (rm *ReferenceManager) buildGatewayReferences() {
+	if needGatewaysReferencesRebuild := rm.needsReferencedGatewaysRebuild(); !needGatewaysReferencesRebuild {
+		return
+	}
+
+	for _, route := range rm.ClusterStore.HTTPRoutes {
+		for _, parentRef := range route.Spec.ParentRefs {
+			// We only accept v1.Gateway
+			if !isParentRefGroupKindSupported(parentRef, rm.ControllerStore.ExtractGVK) {
+				continue
+			}
+			nsName := GetParentRefNamespacedName(parentRef, route)
+			rm.ReferencedObjects.ReferencedGateways.AddReferencedBy(rm.Logger, nsName, route)
+		}
+	}
+}
+
+func (rm *ReferenceManager) buildServiceReferences() {
+	if needServicesReferencesRebuild := rm.needsReferencedServicesRebuild(); !needServicesReferencesRebuild {
+		return
+	}
+
+	for _, route := range rm.ClusterStore.HTTPRoutes {
+		for _, rule := range route.Spec.Rules {
+			for _, backendRef := range rule.BackendRefs {
+				// We only accept v1.Service
+				if !isBackendRefGroupKindSupported(backendRef.BackendObjectReference, rm.ControllerStore.ExtractGVK) {
+					continue
 				}
+				nsName := GetBackendRefNamespacedName(backendRef.BackendObjectReference, route)
+				rm.ReferencedObjects.ReferencedServices.AddReferencedBy(rm.Logger, nsName, route)
 			}
 		}
 	}
-
-	// Gateways refs
-	if needGatewaysReferencesRebuild {
-		for _, route := range rm.ClusterStore.HTTPRoutes {
-			for _, parentRef := range route.Spec.ParentRefs {
-				nsName := GetParentRefNamespacedName(parentRef, route)
-				rm.ReferencedObjects.ReferencedGateways.AddReferencedBy(rm.Logger, nsName, route)
-			}
-		}
-	}
-}
-
-func (rm *ReferenceManager) needsReferencedHugGatesRebuild() bool {
-	if len(rm.ClusterStore.Updates.GatewayClasses) > 0 || len(rm.ClusterStore.Updates.Gateways) > 0 {
-		return true
-	}
-	return false
-}
-
-func (rm *ReferenceManager) needsReferencedGatewayClassesRebuild() bool {
-	return len(rm.ClusterStore.Updates.Gateways) > 0
-}
-
-func (rm *ReferenceManager) needsReferencedSecretsRebuild() bool {
-	return len(rm.ClusterStore.Updates.Gateways) > 0
-}
-
-func (rm *ReferenceManager) needsReferencedGatewaysRebuild() bool {
-	return len(rm.ClusterStore.Updates.HTTPRoutes) > 0
 }
 
 func (rm *ReferenceManager) cleanReferencedObjects() {
@@ -137,5 +194,8 @@ func (rm *ReferenceManager) cleanReferencedObjects() {
 	}
 	if rm.needsReferencedGatewaysRebuild() {
 		rm.ReferencedObjects.ReferencedGateways.CleanOwners()
+	}
+	if rm.needsReferencedServicesRebuild() {
+		rm.ReferencedObjects.ReferencedServices.CleanOwners()
 	}
 }

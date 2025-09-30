@@ -14,8 +14,13 @@
 package tree
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/references"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
@@ -42,6 +47,7 @@ type GateTree struct {
 	Gateways       map[types.NamespacedName]*Gateway
 	Secrets        map[types.NamespacedName]*Secret
 	HTTPRoutes     map[types.NamespacedName]*HTTPRoute
+	Services       map[types.NamespacedName]*Service
 }
 
 type ReferencedObjects struct {
@@ -84,7 +90,26 @@ func NewGateTree() *GateTree {
 		Gateways:       make(map[types.NamespacedName]*Gateway),
 		Secrets:        make(map[types.NamespacedName]*Secret),
 		HTTPRoutes:     make(map[types.NamespacedName]*HTTPRoute),
+		Services:       make(map[types.NamespacedName]*Service),
 	}
+}
+
+// TreeResource is a constraint that permits any of the tree's resource types.
+type TreeResource interface {
+	GatewayClass | Gateway | Secret | HTTPRoute | Service
+}
+
+type TreeObject[T TreeResource] interface {
+	GetTreeStatus() *TreeUpdate[T]
+	SetTreeStatus(TreeUpdate[T])
+	DeepCopy() *T
+}
+
+// TreeResourcePointer is a constraint for a pointer to a tree resource
+// that implements the TreeObject interface.
+type TreeResourcePointer[T TreeResource] interface {
+	*T
+	TreeObject[T]
 }
 
 func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
@@ -131,4 +156,31 @@ func addIndirectFromReferenced[OWNED client.Object, OWNER client.Object](
 			Indirect:  true,
 		}
 	}
+}
+
+func cleanTreeUpdates[T TreeResource, R TreeResourcePointer[T]](resourceMap map[types.NamespacedName]R) {
+	for key, resource := range resourceMap {
+		status := resource.GetTreeStatus()
+		if status.Status == store.StatusDeleted {
+			delete(resourceMap, key)
+			continue
+		}
+		status.Status = ""
+		status.OldTreeResource = nil
+	}
+}
+
+func setResourceStatus[T TreeResource, R TreeResourcePointer[T]](
+	logger *slog.Logger,
+	treeResource R,
+	logObj client.Object,
+	status store.Status,
+) {
+	logMessage := fmt.Sprintf("%T %s", *treeResource, status)
+
+	logger.LogAttrs(context.Background(), slog.LevelDebug, logMessage,
+		logging.LogAttrObjectKey(logObj))
+
+	treeResource.GetTreeStatus().Status = status
+	treeResource.GetTreeStatus().OldTreeResource = treeResource.DeepCopy()
 }

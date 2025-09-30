@@ -28,6 +28,7 @@ allowed:
   - hugconf
   - init
   - json
+  - keymap
   - kubebuilder
   - kubeconfig
   - leaderelection

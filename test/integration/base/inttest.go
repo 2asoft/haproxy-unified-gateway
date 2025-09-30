@@ -43,7 +43,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +65,7 @@ var initialHaproxyCfg string
 
 func init() {
 	utilruntime.Must(v3.AddToScheme(scheme.Scheme))
-	utilruntime.Must(corev1.AddToScheme(scheme.Scheme))
+	utilruntime.Must(v1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(discoveryV1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(apiext.AddToScheme(scheme.Scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme.Scheme))
@@ -266,7 +266,7 @@ func (test *IntTest) killAnyRunningHaproxy(t *testing.T, haproxyBinary string) {
 }
 
 func (test *IntTest) createNamespace(ns string) error {
-	err := utils.CreateRuntimeObject(test.Ctx, test.Client, &corev1.Namespace{
+	err := utils.CreateRuntimeObject(test.Ctx, test.Client, &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
 		},
@@ -275,7 +275,7 @@ func (test *IntTest) createNamespace(ns string) error {
 }
 
 func (test *IntTest) cleanupNamespace(ns string) error {
-	err := utils.DeleteRuntimeObject(test.Ctx, test.Client, &corev1.Namespace{
+	err := utils.DeleteRuntimeObject(test.Ctx, test.Client, &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ns,
 		},

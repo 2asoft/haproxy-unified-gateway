@@ -47,19 +47,13 @@ func NewSecret(k8sObject *v1.Secret) *Secret {
 
 // SetAsUpserted marks the Secret as upserted in the GateTree.
 func (s *Secret) SetAsUpserted(logger *slog.Logger, newK8sResource *v1.Secret) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeSecret Upserted",
-		logging.LogAttrObjectKey(newK8sResource))
-	s.TreeStatus.Status = store.StatusUpserted
-	s.TreeStatus.OldTreeResource = s.DeepCopy()
+	setResourceStatus(logger, s, newK8sResource, store.StatusUpserted)
 	s.K8sResource = newK8sResource
 }
 
 // SetAsDeleted marks the Secret as deleted in the GateTree.
 func (s *Secret) SetAsDeleted(logger *slog.Logger) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeSecret Deleted",
-		logging.LogAttrObjectKey(s.K8sResource))
-	s.TreeStatus.Status = store.StatusDeleted
-	s.TreeStatus.OldTreeResource = s.DeepCopy()
+	setResourceStatus(logger, s, nil, store.StatusDeleted)
 	s.K8sResource = nil
 }
 
@@ -89,6 +83,16 @@ func (s *Secret) DeepCopy() *Secret {
 	// Restore TreeStatus
 	s.TreeStatus = treeStatus
 	return &copied
+}
+
+// GetTreeStatus returns the TreeStatus of the Secret.
+func (s *Secret) GetTreeStatus() *TreeUpdate[Secret] {
+	return &s.TreeStatus
+}
+
+// SetTreeStatus sets the TreeStatus of the Secret.
+func (s *Secret) SetTreeStatus(treeStatus TreeUpdate[Secret]) {
+	s.TreeStatus = treeStatus
 }
 
 // GetCertificateRefNamespacedName returns the namespaced name for a certificate reference,

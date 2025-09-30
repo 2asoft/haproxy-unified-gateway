@@ -147,3 +147,39 @@ func StringToPtr[T stringer](s string) *T {
 	}
 	return Ptr(T(s))
 }
+
+// BackendObjectReferenceToKey converts a BackendObjectReferenceToKey to a unique string key.
+// It handles nil pointers by using a consistent placeholder.
+func BackendObjectReferenceToKey(backendRef gatewayv1.BackendObjectReference) string {
+	var parts []string
+
+	parts = append(parts, StrPtrToString(backendRef.Group))
+	parts = append(parts, StrPtrToString(backendRef.Kind))
+	parts = append(parts, StrPtrToString(backendRef.Namespace))
+	parts = append(parts, string(backendRef.Name))
+	// Port is not supported yet
+
+	return strings.Join(parts, ":")
+}
+
+// KeyToBackendObjectReference converts a string key back to a gatewayv1.BackendObjectReference.
+// It is the inverse of BackendObjectReferenceToKey.
+func KeyToBackendObjectReference(key string) (gatewayv1.BackendObjectReference, error) {
+	parts := strings.Split(key, ":")
+	if len(parts) != 4 {
+		return gatewayv1.BackendObjectReference{}, fmt.Errorf("invalid backendref key: expected 5 parts, got %d", len(parts))
+	}
+
+	group := StringToPtr[gatewayv1.Group](parts[0])
+	kind := StringToPtr[gatewayv1.Kind](parts[1])
+	namespace := StringToPtr[gatewayv1.Namespace](parts[2])
+	name := gatewayv1.ObjectName(parts[3])
+
+	return gatewayv1.BackendObjectReference{
+		Group:     group,
+		Kind:      kind,
+		Namespace: namespace,
+		Name:      name,
+		// Port is not supported yet
+	}, nil
+}

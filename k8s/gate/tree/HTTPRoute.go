@@ -14,17 +14,16 @@
 package tree
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"strings"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -68,21 +67,15 @@ func NewRoute(k8sObject *gatewayv1.HTTPRoute, controllerName string) *HTTPRoute 
 	}
 }
 
-// SetAsUpserted marks the Secret as upserted in the GateTree.
+// SetAsUpserted marks the HTTPRoute as upserted in the GateTree.
 func (r *HTTPRoute) SetAsUpserted(logger *slog.Logger, newK8sResource *gatewayv1.HTTPRoute) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeHTTPRoute Upserted",
-		logging.LogAttrObjectKey(newK8sResource))
-	r.TreeStatus.Status = store.StatusUpserted
-	r.TreeStatus.OldTreeResource = r.DeepCopy()
+	setResourceStatus(logger, r, newK8sResource, store.StatusUpserted)
 	r.K8sResource = newK8sResource
 }
 
 // SetAsDeleted marks the Secret as deleted in the GateTree.
 func (r *HTTPRoute) SetAsDeleted(logger *slog.Logger) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeHTTPRoute Deleted",
-		logging.LogAttrObjectKey(r.K8sResource))
-	r.TreeStatus.Status = store.StatusDeleted
-	r.TreeStatus.OldTreeResource = r.DeepCopy()
+	setResourceStatus(logger, r, nil, store.StatusDeleted)
 	r.K8sResource = nil
 }
 
@@ -118,6 +111,16 @@ func (r *HTTPRoute) DeepCopy() *HTTPRoute {
 	copied.Listeners = listeners.DeepCopy()
 
 	return &copied
+}
+
+// GetTreeStatus returns the TreeStatus of the HTTPRoute.
+func (r *HTTPRoute) GetTreeStatus() *TreeUpdate[HTTPRoute] {
+	return &r.TreeStatus
+}
+
+// SetTreeStatus sets the TreeStatus of the HTTPRoute.
+func (r *HTTPRoute) SetTreeStatus(treeStatus TreeUpdate[HTTPRoute]) {
+	r.TreeStatus = treeStatus
 }
 
 // processChecks processes the all checks for a HTTPRoute
@@ -418,17 +421,32 @@ func (r *HTTPRoute) BuildConditions() {
 	r.Valid = r.CheckParentRefs.Valid
 }
 
-// GetParentRefNamespacedName returns the namespaced name for a certificate reference,
-// using the Gateway's namespace as a default if the reference does not specify one.
+// GetParentRefNamespacedName returns the namespaced name for a parentRef reference,
+// using the Route's namespace as a default if the reference does not specify one.
 func GetParentRefNamespacedName(parentRef gatewayv1.ParentReference, route *gatewayv1.HTTPRoute) types.NamespacedName {
-	namespace := route.Namespace
-	if parentRef.Namespace != nil {
-		namespace = string(*parentRef.Namespace)
-	}
 	return types.NamespacedName{
-		Namespace: namespace,
+		Namespace: getNamespace(parentRef.Namespace, route),
 		Name:      string(parentRef.Name),
 	}
+}
+
+// GetBackendRefNamespacedName returns the namespaced name for a backendref reference,
+// using the Route's namespace as a default if the reference does not specify one.
+func GetBackendRefNamespacedName(backendRef gatewayv1.BackendObjectReference, route *gatewayv1.HTTPRoute) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: getNamespace(backendRef.Namespace, route),
+		Name:      string(backendRef.Name),
+	}
+}
+
+// getNamespace returns
+//   - the route's namespace if ns if nil
+//   - *ns if not nil
+func getNamespace(ns *gatewayv1.Namespace, route *gatewayv1.HTTPRoute) string {
+	if ns != nil {
+		return string(*ns)
+	}
+	return route.Namespace
 }
 
 // isParentRefGroupKindSupported checks if the provided HTTPRoute parent reference has a supported Group and Kind.
@@ -440,6 +458,20 @@ func isParentRefGroupKindSupported(parentRef gatewayv1.ParentReference, extractG
 		return false
 	}
 	if parentRef.Group != nil && *parentRef.Group != gatewayv1.Group(gatewayGVK.Group) {
+		return false
+	}
+	return true
+}
+
+// isBackendRefGroupKindSupported checks if the provided HTTPRoute parent reference has a supported Group and Kind.
+// It only supports `corev1.Service` resources.
+func isBackendRefGroupKindSupported(backendRef gatewayv1.BackendObjectReference, extractGVK utils.ExtractGVK) bool {
+	servicetype := objtypes.ObjectTypeService
+	serviceGVK := extractGVK(servicetype)
+	if backendRef.Kind != nil && *backendRef.Kind != gatewayv1.Kind(serviceGVK.Kind) {
+		return false
+	}
+	if backendRef.Group != nil && *backendRef.Group != gatewayv1.Group(serviceGVK.Group) {
 		return false
 	}
 	return true

@@ -24,7 +24,7 @@ import (
 
 	haproxyapiv3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,7 +42,7 @@ var scheme = runtime.NewScheme()
 
 func init() { //nolint:gochecknoinits
 	utilruntime.Must(gatewayv1.Install(scheme))
-	utilruntime.Must(corev1.AddToScheme(scheme))
+	utilruntime.Must(v1.AddToScheme(scheme))
 	utilruntime.Must(discoveryV1.AddToScheme(scheme))
 	utilruntime.Must(apiext.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))

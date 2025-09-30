@@ -150,21 +150,6 @@ func (b *GatewayClassBuilderImpl) computeTreeGatewayClassUpdate(gwcKey client.Ob
 // -----------
 
 func (b *GatewayClassBuilderImpl) CleanTreeUpdates() {
-	// if a Tree object is delete remove it from the Tree
-	for gwcKey, treeGwc := range b.GateTree.GatewayClasses {
-		if treeGwc.TreeStatus.Status == store.StatusDeleted {
-			delete(b.GateTree.GatewayClasses, gwcKey)
-			continue
-		}
-		treeGwc.TreeStatus = TreeUpdate[GatewayClass]{}
-	}
-
-	// Remove them from Unmanaged ???
-	for gwcKey, treeGwc := range b.UnmanagedGateTree.GatewayClasses {
-		if treeGwc.TreeStatus.Status == store.StatusDeleted {
-			delete(b.GateTree.GatewayClasses, gwcKey)
-			continue
-		}
-		treeGwc.TreeStatus = TreeUpdate[GatewayClass]{}
-	}
+	cleanTreeUpdates(b.GateTree.GatewayClasses)
+	cleanTreeUpdates(b.UnmanagedGateTree.GatewayClasses)
 }

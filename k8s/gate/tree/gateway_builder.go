@@ -211,20 +211,8 @@ func (b *GatewayBuilderImpl) processManagementChecks(treeGw *Gateway) {
 // -----------------------------------------------
 
 func (b *GatewayBuilderImpl) CleanTreeUpdates() {
-	for gwKey, treeGw := range b.GateTree.Gateways {
-		if treeGw.TreeStatus.Status == store.StatusDeleted {
-			delete(b.GateTree.Gateways, gwKey)
-			continue
-		}
-		treeGw.TreeStatus = TreeUpdate[Gateway]{}
-	}
-	for gwKey, treeGw := range b.UnmanagedGateTree.Gateways {
-		if treeGw.TreeStatus.Status == store.StatusDeleted {
-			delete(b.GateTree.Gateways, gwKey)
-			continue
-		}
-		treeGw.TreeStatus = TreeUpdate[Gateway]{}
-	}
+	cleanTreeUpdates(b.GateTree.Gateways)
+	cleanTreeUpdates(b.UnmanagedGateTree.Gateways)
 }
 
 func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {

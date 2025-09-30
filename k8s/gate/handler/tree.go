@@ -51,11 +51,15 @@ func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig
 
 	// --------------
 	// Secret
-	secretBuilder := tree.NewSecretBuilder(controllerStore, cfg.StoreCertificateOnDisk, cfg.CertificateStorage)
+	secretBuilder := tree.NewSecretBuilder(controllerStore)
 
 	// --------------
 	// Certificate
 	certificateBuilder := tree.NewCertificateBuilder(controllerStore, cfg.StoreCertificateOnDisk, cfg.RuntimeUpdateHaproxy, cfg.CertificateStorage)
+
+	// --------------
+	// Service
+	serviceBuilder := tree.NewServiceBuilder(controllerStore)
 
 	// --------------
 	// HTTPRoute
@@ -73,6 +77,7 @@ func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig
 			gatewayClassBuilder,
 			gatewayBuilder,
 			certificateBuilder,
+			serviceBuilder,
 			httpRouteBuilder,
 		},
 	}

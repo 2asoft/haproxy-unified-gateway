@@ -76,19 +76,13 @@ func (g *Gateway) GetK8sResource() *gatewayv1.Gateway {
 }
 
 func (g *Gateway) SetAsUpserted(logger *slog.Logger, newK8sResource *gatewayv1.Gateway) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGateway Upserted",
-		logging.LogAttrObjectKey(newK8sResource))
-	g.TreeStatus.Status = store.StatusUpserted
-	g.TreeStatus.OldTreeResource = g.DeepCopy()
+	setResourceStatus(logger, g, newK8sResource, store.StatusUpserted)
 	g.K8sResource = newK8sResource
 	g.reset()
 }
 
 func (g *Gateway) SetAsDeleted(logger *slog.Logger) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGateway Deleted",
-		logging.LogAttrObjectKey(g.K8sResource))
-	g.TreeStatus.Status = store.StatusDeleted
-	g.TreeStatus.OldTreeResource = g.DeepCopy()
+	setResourceStatus(logger, g, nil, store.StatusDeleted)
 	g.K8sResource = nil
 	g.reset()
 }
@@ -142,6 +136,16 @@ func (g *Gateway) DeepCopy() *Gateway {
 	// Restore TreeStatus
 	g.TreeStatus = treeStatus
 	return &copied
+}
+
+// GetTreeStatus returns the TreeStatus of the Gateway.
+func (g *Gateway) GetTreeStatus() *TreeUpdate[Gateway] {
+	return &g.TreeStatus
+}
+
+// SetTreeStatus sets the TreeStatus of the Gateway.
+func (g *Gateway) SetTreeStatus(treeStatus TreeUpdate[Gateway]) {
+	g.TreeStatus = treeStatus
 }
 
 func (g *Gateway) checkParametersRef(controllerStore ControllerStore) {
