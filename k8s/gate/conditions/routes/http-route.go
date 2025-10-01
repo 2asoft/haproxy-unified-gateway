@@ -14,6 +14,8 @@
 package routeconditions
 
 import (
+	"fmt"
+
 	genericconditions "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -45,6 +47,8 @@ func ConditionAccepted() genericconditions.Conditions {
 	}
 }
 
+// RouteConditionAccepted
+
 func ConditionNotAcceptedNoMatchingParent() genericconditions.Conditions {
 	return genericconditions.Conditions{
 		genericconditions.ConditionType(gatewayv1.RouteConditionAccepted): {
@@ -74,6 +78,41 @@ func ConditionNotAcceptedRouteReasonNotAllowedByListeners() genericconditions.Co
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.RouteReasonNotAllowedByListeners),
 			Message: "Route kind not allowed by listeners",
+		},
+	}
+}
+
+//  RouteConditionResolvedRefs
+
+func ConditionKOResolvedRefInvalidKind(backendRef string) genericconditions.Conditions {
+	return genericconditions.Conditions{
+		genericconditions.ConditionType(gatewayv1.RouteConditionResolvedRefs): {
+			Type:    genericconditions.ConditionType(gatewayv1.RouteConditionResolvedRefs),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(gatewayv1.RouteReasonInvalidKind),
+			Message: fmt.Sprintf("Invalid Kind/Group for backendRef %s", backendRef),
+		},
+	}
+}
+
+func ConditionKOResolvedRefNotFound(backendRef string) genericconditions.Conditions {
+	return genericconditions.Conditions{
+		genericconditions.ConditionType(gatewayv1.RouteConditionResolvedRefs): {
+			Type:    genericconditions.ConditionType(gatewayv1.RouteConditionResolvedRefs),
+			Status:  metav1.ConditionFalse,
+			Reason:  string(gatewayv1.RouteReasonBackendNotFound),
+			Message: fmt.Sprintf("backendRef not found %s", backendRef),
+		},
+	}
+}
+
+func ConditionOKResolvedRef() genericconditions.Conditions {
+	return genericconditions.Conditions{
+		genericconditions.ConditionType(gatewayv1.RouteConditionResolvedRefs): {
+			Type:    genericconditions.ConditionType(gatewayv1.RouteConditionResolvedRefs),
+			Status:  metav1.ConditionTrue,
+			Reason:  string(gatewayv1.RouteReasonResolvedRefs),
+			Message: "References resolved",
 		},
 	}
 }

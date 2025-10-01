@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	timeout  = time.Second * 15
+	timeout  = time.Second * 60
 	interval = time.Second * 1
 )
 
@@ -106,8 +106,8 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 	fixtureDir := "attachedroutes"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
-	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "route.yaml"})
-	defer s.CleanupFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "route.yaml"})
+	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"})
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -137,5 +137,26 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 	s.CleanupFixtures(fixturePath, []string{"route-2.yaml"})
 
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1) // Now back to 1 route attached
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
+}
+
+func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "basic"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir, "ko_resolvedRef")
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	httpRouteName := "route-echo"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
 }

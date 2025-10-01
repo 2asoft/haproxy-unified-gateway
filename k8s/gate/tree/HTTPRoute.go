@@ -35,6 +35,8 @@ type HTTPRoute struct {
 	K8sResource *gatewayv1.HTTPRoute
 	// selected listener
 	Listeners utils.KeyMap[gatewayv1.ParentReference, *Listener] // map[parentRef]
+	// Rules
+	Rules []*HTTPRouteRule
 	// Final Conditions
 	Conditions rc.RouteConditions
 	// TreeStatus
@@ -64,6 +66,7 @@ func NewRoute(k8sObject *gatewayv1.HTTPRoute, controllerName string) *HTTPRoute 
 			},
 		},
 		ControllerName: controllerName,
+		Rules:          make([]*HTTPRouteRule, 0),
 	}
 }
 
@@ -475,4 +478,45 @@ func isBackendRefGroupKindSupported(backendRef gatewayv1.BackendObjectReference,
 		return false
 	}
 	return true
+}
+
+func (r *HTTPRoute) mergeBackendConditions() {
+	// Complete the RouteConditions with the BackendRef check results
+	// The rules checks result will apply to each parent
+	koBackendRefConds := generic.Conditions{}
+
+	for _, rule := range r.Rules {
+		// iterate over rules,
+		// 1- overall rule is OK,
+		// 2- overall rule is KO, set a failing condition ResolvedRef (take any on the failing condition, let say the latest one
+		// as there could be several reason for failure
+
+		// First merge the 'failing; BackendRef Conditions over all rules and backendRefs
+		rule.CheckBackendRef.Iterate(
+			func(_ string, checkResult CheckResult) bool {
+				if !checkResult.Valid {
+					koBackendRefConds.MergeOverrideConditions(checkResult.Conditions)
+				}
+				return true
+			})
+	}
+
+	// There is 1 failing condition ResolvedRefs
+	resolvedRefConds := generic.Conditions{}
+	if len(koBackendRefConds) > 0 {
+		resolvedRefConds = koBackendRefConds
+	} else {
+		// All are OK
+		resolvedRefConds = rc.ConditionOKResolvedRef()
+	}
+
+	r.Conditions.Conditions.Iterate(
+		func(key string, _ generic.Conditions) bool {
+			parentRefKey, err := utils.KeyToParentRef(key)
+			if err != nil {
+				return true // continue iteration
+			}
+			r.Conditions.MergeOverrideConditionsForParentRef(parentRefKey, resolvedRefConds)
+			return true
+		})
 }

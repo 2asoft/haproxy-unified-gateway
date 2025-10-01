@@ -21,6 +21,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -51,10 +52,6 @@ func NewHTTPRouteBuilder(params HTTPRouteBuilderParams) Builder {
 
 func (b *HTTPRouteBuilderImpl) ComputeTreeUpdates() {
 	b.addIndirectClusterStoreUpdates()
-	// After this step, the clusterStore.Updates contains all impacted Gateways
-	// Including the one impacted by:
-	// - HugGate updates
-	// - GatewayClass updates
 	b.computeGateTreeUpdates()
 }
 
@@ -63,9 +60,6 @@ func (b *HTTPRouteBuilderImpl) addIndirectClusterStoreUpdates() {
 	b.addIndirectMapsFromServices()
 	// Indirect from Gateways
 	b.addIndirectMapsFromGateways()
-
-	// TODO add the same thing in gateway
-	// TODO compute the referencedByObject
 }
 
 func (b *HTTPRouteBuilderImpl) addIndirectMapsFromServices() {
@@ -105,6 +99,19 @@ func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateway(gatewayUpdate store.Up
 func (b *HTTPRouteBuilderImpl) computeGateTreeUpdates() {
 	for gwKey, routeUpdate := range b.ClusterStore.Updates.HTTPRoutes {
 		b.computeTreeGatewayUpdate(gwKey, routeUpdate)
+	}
+
+	for _, httpRoute := range b.ControllerStore.GateTree.HTTPRoutes {
+		if httpRoute.TreeStatus.Status != store.StatusUpserted {
+			continue
+		}
+		if httpRoute.isManaged() {
+			// Process Rules
+			b.buildRules(httpRoute)
+		}
+
+		// Merge the backendRef conditions
+		httpRoute.mergeBackendConditions()
 	}
 }
 
@@ -189,4 +196,21 @@ func (b *HTTPRouteBuilderImpl) SetAsUnmanaged(route *HTTPRoute) {
 	key := client.ObjectKeyFromObject(route.K8sResource)
 	b.ControllerStore.UnmanagedGateTree.HTTPRoutes[key] = route
 	delete(b.ControllerStore.GateTree.Gateways, key)
+}
+
+func (b *HTTPRouteBuilderImpl) buildRules(httpRoute *HTTPRoute) {
+	httpRoute.Rules = make([]*HTTPRouteRule, 0)
+
+	for _, rule := range httpRoute.K8sResource.Spec.Rules {
+		treeRouteRule := HTTPRouteRule{
+			K8sResource:     rule,
+			CheckBackendRef: utils.NewKeyMap[gatewayv1.BackendObjectReference, CheckResult](utils.BackendObjectReferenceToKey),
+		}
+		httpRoute.Rules = append(httpRoute.Rules, &treeRouteRule)
+	}
+
+	// Performs all needed checks
+	for _, rule := range httpRoute.Rules {
+		rule.checkBackendRef(httpRoute, b.ControllerStore)
+	}
 }

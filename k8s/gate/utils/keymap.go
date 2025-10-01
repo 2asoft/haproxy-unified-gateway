@@ -167,7 +167,7 @@ func BackendObjectReferenceToKey(backendRef gatewayv1.BackendObjectReference) st
 func KeyToBackendObjectReference(key string) (gatewayv1.BackendObjectReference, error) {
 	parts := strings.Split(key, ":")
 	if len(parts) != 4 {
-		return gatewayv1.BackendObjectReference{}, fmt.Errorf("invalid backendref key: expected 5 parts, got %d", len(parts))
+		return gatewayv1.BackendObjectReference{}, fmt.Errorf("invalid backendref key: expected 4 parts, got %d", len(parts))
 	}
 
 	group := StringToPtr[gatewayv1.Group](parts[0])

@@ -4,6 +4,10 @@ parents:
     reason: Accepted
     status: "True"
     type: Accepted
+  - message: References resolved
+    reason: ResolvedRefs
+    status: "True"
+    type: ResolvedRefs
   controllerName: gate.haproxy.org/hug
   parentRef:
     group: gateway.networking.k8s.io
@@ -15,6 +19,10 @@ parents:
     reason: Accepted
     status: "True"
     type: Accepted
+  - message: References resolved
+    reason: ResolvedRefs
+    status: "True"
+    type: ResolvedRefs
   controllerName: gate.haproxy.org/hug
   parentRef:
     group: gateway.networking.k8s.io
