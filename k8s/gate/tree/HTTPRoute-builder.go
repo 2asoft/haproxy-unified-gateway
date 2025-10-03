@@ -15,6 +15,7 @@ package tree
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
@@ -97,8 +98,8 @@ func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateway(gatewayUpdate store.Up
 }
 
 func (b *HTTPRouteBuilderImpl) computeGateTreeUpdates() {
-	for gwKey, routeUpdate := range b.ClusterStore.Updates.HTTPRoutes {
-		b.computeTreeGatewayUpdate(gwKey, routeUpdate)
+	for routeKey, routeUpdate := range b.ClusterStore.Updates.HTTPRoutes {
+		b.computeTreeGatewayUpdate(routeKey, routeUpdate)
 	}
 
 	for _, httpRoute := range b.ControllerStore.GateTree.HTTPRoutes {
@@ -181,7 +182,7 @@ func (b *HTTPRouteBuilderImpl) CleanTreeUpdates() {
 }
 
 func (b *HTTPRouteBuilderImpl) SetAsManaged(route *HTTPRoute) {
-	b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "HTTPRoute Managed",
+	b.Logger.LogAttrs(context.Background(), slog.LevelDebug, fmt.Sprintf("%T MANAGED", *route),
 		logging.LogAttrObjectKey(route.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(route.K8sResource)
@@ -190,7 +191,7 @@ func (b *HTTPRouteBuilderImpl) SetAsManaged(route *HTTPRoute) {
 }
 
 func (b *HTTPRouteBuilderImpl) SetAsUnmanaged(route *HTTPRoute) {
-	b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "HTTPRoute Unmanaged",
+	b.Logger.LogAttrs(context.Background(), slog.LevelDebug, fmt.Sprintf("%T UNMANAGED", *route),
 		logging.LogAttrObjectKey(route.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(route.K8sResource)

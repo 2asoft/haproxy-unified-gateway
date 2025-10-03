@@ -42,7 +42,7 @@ enableAllRules = true
   disabled = true
 
 [rule.function-length]
-  arguments = [50, 100]
+  arguments = [55, 100]
 
 [rule.argument-limit]
   arguments = [10]

@@ -20,6 +20,7 @@ import (
 
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 )
@@ -105,5 +106,94 @@ func (c *Configuration) deleteFrontend(logger *slog.Logger, feName string) error
 
 	c.diffs.Deleted.Frontends[fe.Name] = nil
 	delete(c.structured.Frontends, feName)
+	return nil
+}
+
+func (c *Configuration) upsertBackend(logger *slog.Logger, be *models.Backend) error {
+	if be == nil {
+		logger.LogAttrs(context.Background(), slog.LevelError, "nil backend")
+		return errors.New("nil backend")
+	}
+
+	if previsouBe, ok := c.structured.Backends[be.Name]; ok {
+		// Check if they are the same
+		if previsouBe.Equal(*be) {
+			logger.LogAttrs(context.Background(), slog.LevelDebug, "Backend [same]",
+				logging.LogAttrBackendName(be.Name),
+			)
+			return nil
+		}
+
+		// Update existing backend
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Backend [UPDATE]",
+			logging.LogAttrBackendName(be.Name),
+		)
+
+		// We need to deep copy the backend to avoid modifying the original
+		// as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
+		deepCopied, err := DeepCopyBackend(be)
+		if err != nil {
+			return err
+		}
+
+		c.diffs.Updated.Backends[be.Name] = deepCopied
+		c.structured.Backends[be.Name] = be
+	} else {
+		// Create new backend
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Backend [CREATE]",
+			logging.LogAttrBackendName(be.Name),
+		)
+
+		// We need to deep copy the backend to avoid modifying the original
+		// as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
+		deepCopied, err := DeepCopyBackend(be)
+		if err != nil {
+			return err
+		}
+
+		c.structured.Backends[be.Name] = deepCopied
+		c.diffs.Created.Backends[be.Name] = deepCopied
+	}
+	return nil
+}
+
+func (c *Configuration) upsertBackendMetadata(logger *slog.Logger, beName string, md metadata.MetaData) error {
+	if previousBe, ok := c.structured.Backends[beName]; ok {
+		// Update existing backend
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Backend [UPDATE_METADATA]",
+			logging.LogAttrBackendName(beName),
+		)
+
+		previousBe.Metadata = md
+
+		// We need to deep copy the backend to avoid modifying the original
+		// as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
+		deepCopied, err := DeepCopyBackend(previousBe)
+		if err != nil {
+			return err
+		}
+
+		c.diffs.Updated.Backends[beName] = deepCopied
+		c.structured.Backends[beName] = previousBe
+	}
+	return nil
+}
+
+func (c *Configuration) deleteBackend(logger *slog.Logger, beName string) error {
+	// Retrieve the backend from the store
+	be, ok := c.structured.Backends[beName]
+	if !ok {
+		// It could happen that the backend was already deleted
+		return nil
+	}
+	// delete the backend from the store
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "Backend [DELETE]",
+		logging.LogAttrBackendName(beName),
+	)
+	// We need to deep copy the backend to avoid modifying the original
+	// as the diffs will be sent on a channel and used at the same time we continue to update the haproxy cfg store.
+
+	c.diffs.Deleted.Backends[be.Name] = nil
+	delete(c.structured.Backends, beName)
 	return nil
 }

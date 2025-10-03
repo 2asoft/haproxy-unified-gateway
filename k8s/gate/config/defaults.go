@@ -26,7 +26,7 @@ const (
 	defaultLeaderElectionLockName = "hug-leader-election-lock"
 	defaultSyncPeriod             = 5 * time.Second
 	defaultFrontendNameTemplate   = "{{ .LINK_ID }}_{{ .GATEWAY_NAMESPACE}}_{{ .GATEWAY_NAME }}_{{ .LISTENER_NAME }}"
-	defaultBackendNameTemplate    = ""
+	defaultBackendNameTemplate    = "{{ .LINK_ID }}_{{ .SERVICE_NAMESPACE}}_{{ .SERVICE_NAME }}_{{ .SERVICE_PORT}}_{{ .FILTER_HASH}}"
 	defaultServerNameTemplate     = ""
 	DefaultsSectionName           = "haproxytech"
 	DefaultWaitForRuntimeTimeout  = 10 * time.Second

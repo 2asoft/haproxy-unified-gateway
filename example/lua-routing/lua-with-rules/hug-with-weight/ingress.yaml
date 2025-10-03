@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"networking.k8s.io/v1","kind":"Ingress","metadata":{"annotations":{"request-set-header":"Cache-Control no-store,no-cache,private"},"name":"http-echo","namespace":"e2e-tests-set-header"},"spec":{"ingressClassName":"haproxy","rules":[{"host":"e2e-tests-set-header.test","http":{"paths":[{"backend":{"service":{"name":"http-echo","port":{"name":"http"}}},"path":"/","pathType":"Prefix"}]}}]}}
+
+    request-set-header: |  ########################################################## CURRENT INGRESS ANNOTATION
+      Cache-Control no-store,no-cache,private
+      X-Custom-Header helene
+
+
+  name: http-echo
+  namespace: e2e-tests-set-header
+spec:
+  ingressClassName: haproxy
+  rules:
+  - host: e2e-tests-set-header.test
+    http:
+      paths:
+      - backend:
+          service:
+            name: http-echo
+            port:
+              name: http
+        path: /mypath
+        pathType: Prefix
+status:
+  loadBalancer: {}

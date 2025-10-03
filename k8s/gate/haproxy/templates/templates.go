@@ -24,6 +24,10 @@ type TemplateData struct {
 	GATEWAY_NAMESPACE string
 	GATEWAY_NAME      string
 	LISTENER_NAME     string
+	SERVICE_NAMESPACE string
+	SERVICE_NAME      string
+	FILTER_HASH       string
 	LINK_ID           string
+	SERVICE_PORT      int32
 	// revive:enable:var-naming
 }

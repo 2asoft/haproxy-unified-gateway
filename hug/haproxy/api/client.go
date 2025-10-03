@@ -37,6 +37,7 @@ type HAProxyClient interface { //nolint:interfacebloat
 	APIDisposeTransaction()
 	Frontend
 	Bind
+	Backend
 	RuntimeClient() runtime.Runtime
 }
 
@@ -54,6 +55,14 @@ type Bind interface {
 	BindEdit(parentType parser.Section, name string, bind models.Bind) error
 	BindDelete(parentType parser.Section, name string, bind string) error
 	BindDeleteAll(parentType parser.Section, name string) error
+}
+
+type Backend interface {
+	BackendCreate(frontend models.Backend) error
+	BackendDelete(backendName string) error
+	BackendsGet() (models.Backends, error)
+	BackendGet(backendName string) (models.Backend, error)
+	BackendEdit(backend models.Backend) error
 }
 
 type clientNative struct {

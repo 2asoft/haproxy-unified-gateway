@@ -16,6 +16,7 @@ package tree
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -57,7 +58,7 @@ func (s *Service) SetAsDeleted(logger *slog.Logger) {
 
 // SetAsManaged moves the Service to the managed GateTree.
 func (s *Service) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeService Managed",
+	logger.LogAttrs(context.Background(), slog.LevelDebug, fmt.Sprintf("%T MANAGED", *s),
 		logging.LogAttrObjectKey(s.K8sResource))
 	key := client.ObjectKeyFromObject(s.K8sResource)
 	cs.GateTree.Services[key] = s

@@ -16,6 +16,7 @@ package tree
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
@@ -81,7 +82,7 @@ func (g *GatewayClass) ResetChecks() {
 }
 
 func (g *GatewayClass) SetAsManaged(logger *slog.Logger, controllerStore ControllerStore) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass managed",
+	logger.LogAttrs(context.Background(), slog.LevelDebug, fmt.Sprintf("%T MANAGED", *g),
 		logging.LogAttrObjectKey(g.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(g.K8sResource)
@@ -90,7 +91,7 @@ func (g *GatewayClass) SetAsManaged(logger *slog.Logger, controllerStore Control
 }
 
 func (g *GatewayClass) SetAsUnmanaged(logger *slog.Logger, controllerStore ControllerStore) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeGatewayClass unmanaged",
+	logger.LogAttrs(context.Background(), slog.LevelDebug, fmt.Sprintf("%T UNMANAGED", *g),
 		logging.LogAttrObjectKey(g.K8sResource))
 	// Is it already in Managed
 	key := client.ObjectKeyFromObject(g.K8sResource)

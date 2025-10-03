@@ -45,7 +45,7 @@ func (r *HTTPRouteRule) checkBackendRef(httpRoute *HTTPRoute, controllerStore Co
 		}
 
 		// 2- Check if the Service does exists
-		serviceKey := serviceNsNameKey(httpRoute.K8sResource, backendRef.BackendObjectReference)
+		serviceKey := ServiceNsNameKey(httpRoute.K8sResource, backendRef.BackendObjectReference)
 		service, ok := controllerStore.GateTree.Services[serviceKey]
 		if !ok || service.TreeStatus.Status == store.StatusDeleted {
 			cond := rc.ConditionKOResolvedRefNotFound(utils.BackendObjectReferenceToKey(backendRef.BackendObjectReference))
@@ -66,9 +66,9 @@ func (r *HTTPRouteRule) checkBackendRef(httpRoute *HTTPRoute, controllerStore Co
 	}
 }
 
-// serviceNsNameKey returns the service Ns/Name
+// ServiceNsNameKey returns the service Ns/Name
 // If the backendRef namespace is empty or nil, fills with the Route Namesapce
-func serviceNsNameKey(route *gatewayv1.HTTPRoute, backendRef gatewayv1.BackendObjectReference) client.ObjectKey {
+func ServiceNsNameKey(route *gatewayv1.HTTPRoute, backendRef gatewayv1.BackendObjectReference) client.ObjectKey {
 	if backendRef.Namespace == nil || *backendRef.Namespace == "" {
 		return types.NamespacedName{
 			Namespace: route.Namespace,

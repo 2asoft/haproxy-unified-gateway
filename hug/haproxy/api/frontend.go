@@ -92,6 +92,21 @@ func (c *clientNative) FrontendGet(frontendName string) (models.Frontend, error)
 	if err != nil {
 		return models.Frontend{}, err
 	}
+
+	// Binds
+	_, binds, err := configuration.GetBinds(string(parser.Frontends), frontend.Name, c.activeTransaction)
+	if err != nil {
+		return models.Frontend{}, err
+	}
+	if len(binds) != 0 {
+		frontend.Binds = make(map[string]models.Bind)
+	}
+	for _, bind := range binds {
+		if bind != nil {
+			frontend.Binds[bind.Name] = *bind
+		}
+	}
+
 	return *frontend, err
 }
 

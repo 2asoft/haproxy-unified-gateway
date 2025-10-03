@@ -16,6 +16,7 @@ package tree
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -59,7 +60,7 @@ func (s *Secret) SetAsDeleted(logger *slog.Logger) {
 
 // SetAsManaged moves the Secret to the managed GateTree.
 func (s *Secret) SetAsManaged(logger *slog.Logger, cs ControllerStore) {
-	logger.LogAttrs(context.Background(), slog.LevelDebug, "TreeSecret Managed",
+	logger.LogAttrs(context.Background(), slog.LevelDebug, fmt.Sprintf("%T MANAGED", *s),
 		logging.LogAttrObjectKey(s.K8sResource))
 	key := client.ObjectKeyFromObject(s.K8sResource)
 	cs.GateTree.Secrets[key] = s

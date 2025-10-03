@@ -114,7 +114,7 @@ func LogAttrFrontendName(name string) slog.Attr {
 	return slog.String("frontendName", name)
 }
 
-func LogAttrBackendendName(name string) slog.Attr {
+func LogAttrBackendName(name string) slog.Attr {
 	return slog.String("backendName", name)
 }
 

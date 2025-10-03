@@ -1,0 +1,28 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-1
+spec:
+  gatewayClassName: haproxy
+  listeners:
+  - name: http
+    port: 8080
+    protocol: HTTP
+    hostname: "*.haproxy"
+    allowedRoutes:
+      kinds:
+      - group: gateway.networking.k8s.io
+        kind: HTTPRoute
+  - name: http2
+    protocol: HTTP
+    port: 8081
+    hostname: "*.haproxy"
+    allowedRoutes:
+      kinds:
+      - group: gateway.networking.k8s.io
+        kind: HTTPRoute
+  # infrastructure:
+  #   parametersRef:
+  #     group: gate.v3.haproxy.org
+  #     kind: HugGate
+  #     name: huggate1

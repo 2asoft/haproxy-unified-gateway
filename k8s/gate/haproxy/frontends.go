@@ -26,14 +26,15 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type FrontendsOwnedbyGateway struct {
-	current map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
-	updated map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
+	current           map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
+	byUpdatedGateways map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
 }
 
 func (b *HaproxyConfMgrImpl) getFrontendName(gwKey k8stypes.NamespacedName, listener gatewayv1.Listener) (string, error) {
@@ -59,6 +60,7 @@ func (b *HaproxyConfMgrImpl) getFrontendName(gwKey k8stypes.NamespacedName, list
 }
 
 func (b *HaproxyConfMgrImpl) processGateways() error {
+	var errors utils.Errors
 	// Managed Gateways => Create / update/ delete frontends
 	for gwKey, gateway := range b.controllerStore.GateTree.Gateways {
 		switch gateway.TreeStatus.Status {
@@ -66,23 +68,17 @@ func (b *HaproxyConfMgrImpl) processGateways() error {
 			continue
 		case store.StatusUpserted:
 			err := b.onUpsertedGateway(gwKey, gateway)
-			if err != nil {
-				return err
-			}
+			errors.Add(err)
 		case store.StatusDeleted:
 			err := b.onDeletedGateway(gwKey, gateway)
-			if err != nil {
-				return err
-			}
+			errors.Add(err)
 		}
 	}
 
 	// Unmanaged Gateways => Delete frontends
 	for gwKey, gateway := range b.controllerStore.UnmanagedGateTree.Gateways {
 		err := b.onUnmanagedGateway(gwKey, gateway)
-		if err != nil {
-			return err
-		}
+		errors.Add(err)
 	}
 
 	// Cleanup frontends for gateways that were updated
@@ -90,11 +86,12 @@ func (b *HaproxyConfMgrImpl) processGateways() error {
 		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to cleanup frontends for gateways",
 			logging.LogAttrError(err),
 		)
+		errors.Add(err)
 	}
 
 	// Finalize frontends by gateway
 	b.finalizeFrontendsByGateway()
-	return nil
+	return errors.Result()
 }
 
 func (b *HaproxyConfMgrImpl) onUpsertedGateway(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
@@ -116,37 +113,25 @@ func (b *HaproxyConfMgrImpl) onUpsertedGateway(gwKey k8stypes.NamespacedName, gw
 func (b *HaproxyConfMgrImpl) onValidGatewayUpserted(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
 	b.logGatewayUpdate("upserted", gwKey)
 	err := b.upsertFrontends(gwKey, gw)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (b *HaproxyConfMgrImpl) onInvalidGatewayUpserted(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
 	b.logGatewayUpdate("upserted-invalid", gwKey)
 	err := b.deleteFrontendForAllListeners(gwKey, gw)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (b *HaproxyConfMgrImpl) onDeletedGateway(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
 	b.logGatewayUpdate("deleted", gwKey)
 	err := b.deleteFrontendForAllListeners(gwKey, gw)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (b *HaproxyConfMgrImpl) onUnmanagedGateway(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
 	b.logGatewayUpdate("unmanaged", gwKey)
 	err := b.deleteFrontendForAllListeners(gwKey, gw)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (b *HaproxyConfMgrImpl) upsertFrontends(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
@@ -171,8 +156,8 @@ func (b *HaproxyConfMgrImpl) upsertFrontends(gwKey k8stypes.NamespacedName, gw *
 		if err != nil {
 			return err
 		}
-		if b.firstSync {
-			b.frontendsContainedInFirstSync[newFe.Name] = struct{}{}
+		if b.firstSync.flag {
+			b.firstSync.frontends[newFe.Name] = struct{}{}
 		}
 		if err := b.configuration.upsertFrontend(b.logger, newFe); err != nil {
 			b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to upsert frontend",
@@ -188,14 +173,17 @@ func (b *HaproxyConfMgrImpl) upsertFrontends(gwKey k8stypes.NamespacedName, gw *
 
 func (b *HaproxyConfMgrImpl) cleanupFrontendsForGateways() error {
 	// For each updated gateway, check if the frontend is still present
-	for gwKey := range b.frontendsOwnedbyGateway.updated {
+	for gwKey := range b.frontendsOwnedbyGateway.byUpdatedGateways {
 		for frontendName := range b.frontendsOwnedbyGateway.current[gwKey] {
 			b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Cleaning up frontend for gateway",
 				logging.LogAttrKey(gwKey),
 				slog.Any("current frontends", b.frontendsOwnedbyGateway.current[gwKey]))
-			if _, ok := b.frontendsOwnedbyGateway.updated[gwKey][frontendName]; !ok {
+			if _, ok := b.frontendsOwnedbyGateway.byUpdatedGateways[gwKey][frontendName]; !ok {
 				if err := b.deleteFrontend(gwKey, frontendName); err != nil {
-					return err
+					b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to deleted frontend",
+						logging.LogAttrFrontendName(frontendName),
+						logging.LogAttrError(err))
+					continue
 				}
 			}
 		}
@@ -205,9 +193,9 @@ func (b *HaproxyConfMgrImpl) cleanupFrontendsForGateways() error {
 
 func (b *HaproxyConfMgrImpl) finalizeFrontendsByGateway() {
 	// For each updated gateway, check if the frontend is still present
-	for gwKey := range b.frontendsOwnedbyGateway.updated {
-		b.frontendsOwnedbyGateway.current[gwKey] = b.frontendsOwnedbyGateway.updated[gwKey]
-		delete(b.frontendsOwnedbyGateway.updated, gwKey)
+	for gwKey := range b.frontendsOwnedbyGateway.byUpdatedGateways {
+		b.frontendsOwnedbyGateway.current[gwKey] = b.frontendsOwnedbyGateway.byUpdatedGateways[gwKey]
+		delete(b.frontendsOwnedbyGateway.byUpdatedGateways, gwKey)
 	}
 }
 
@@ -313,8 +301,8 @@ func (b *HaproxyConfMgrImpl) deleteFrontendForListener(gwKey k8stypes.Namespaced
 			logging.LogAttrError(err))
 		return err
 	}
-	if b.firstSync {
-		delete(b.frontendsContainedInFirstSync, feName)
+	if b.firstSync.flag {
+		delete(b.firstSync.frontends, feName)
 	}
 	return nil
 }
@@ -348,21 +336,24 @@ func DeepCopyFrontend(original *models.Frontend) (*models.Frontend, error) {
 
 func NewFrontendsOwnedbyGateway() FrontendsOwnedbyGateway {
 	return FrontendsOwnedbyGateway{
-		current: make(map[client.ObjectKey]map[string]struct{}),
-		updated: make(map[client.ObjectKey]map[string]struct{}),
+		current:           make(map[client.ObjectKey]map[string]struct{}),
+		byUpdatedGateways: make(map[client.ObjectKey]map[string]struct{}),
 	}
 }
 
 func (f *FrontendsOwnedbyGateway) AddToUpdated(gwKey client.ObjectKey, frontendName string) {
-	if _, ok := f.updated[gwKey]; !ok {
-		f.updated[gwKey] = make(map[string]struct{})
+	if _, ok := f.byUpdatedGateways[gwKey]; !ok {
+		f.byUpdatedGateways[gwKey] = make(map[string]struct{})
 	}
-	f.updated[gwKey][frontendName] = struct{}{}
+	f.byUpdatedGateways[gwKey][frontendName] = struct{}{}
 }
 
 func (f *FrontendsOwnedbyGateway) RemoveFromUpdated(gwKey client.ObjectKey, frontendName string) {
-	if _, ok := f.updated[gwKey]; ok {
-		delete(f.updated[gwKey], frontendName)
+	if _, ok := f.byUpdatedGateways[gwKey]; !ok {
+		f.byUpdatedGateways[gwKey] = make(map[string]struct{})
+	}
+	if _, ok := f.byUpdatedGateways[gwKey]; ok {
+		delete(f.byUpdatedGateways[gwKey], frontendName)
 	}
 }
 

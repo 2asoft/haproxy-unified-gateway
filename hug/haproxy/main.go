@@ -28,6 +28,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 )
 
 type AppManager interface {
@@ -174,6 +175,9 @@ func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs)
 }
 
 func (h *AppManagerImpl) processCreate(created structured.Structured) error {
+	var errors utils.Errors
+
+	// Frontends
 	for _, createdFE := range created.Frontends {
 		if createdFE == nil {
 			// Should not happend
@@ -186,30 +190,65 @@ func (h *AppManagerImpl) processCreate(created structured.Structured) error {
 			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to create frontend",
 				logging.LogAttrError(err),
 			)
-			return err
+			errors.Add(err)
+			continue
 		}
 	}
-	// To do for BE
-	// ....
-	return nil
+
+	// Backends
+	for _, createdBE := range created.Backends {
+		if createdBE == nil {
+			// Should not happend
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "nil backend")
+			continue
+		}
+
+		err := h.client.BackendCreate(*createdBE)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to create backend",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+			continue
+		}
+	}
+	return errors.Result()
 }
 
 func (h *AppManagerImpl) processDelete(deleted structured.Structured) error {
+	var errors utils.Errors
+
+	// Frontends
 	for feName := range deleted.Frontends {
 		err := h.client.FrontendDelete(feName)
 		if err != nil {
 			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to delete frontend",
 				logging.LogAttrError(err),
 			)
-			return err
+			errors.Add(err)
+			continue
 		}
 	}
-	// To do for BE
-	// ....
-	return nil
+
+	// Backends
+	for beName := range deleted.Backends {
+		err := h.client.BackendDelete(beName)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to delete backend",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+			continue
+		}
+	}
+
+	return errors.Result()
 }
 
 func (h *AppManagerImpl) processUpdate(updated structured.Structured) error {
+	var errors utils.Errors
+
+	// Frontends
 	for _, udpatedFE := range updated.Frontends {
 		if udpatedFE == nil {
 			// Should not happend
@@ -221,15 +260,34 @@ func (h *AppManagerImpl) processUpdate(updated structured.Structured) error {
 
 		err := h.client.FrontendEdit(*udpatedFE)
 		if err != nil {
-			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to create frontend",
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit frontend",
 				logging.LogAttrError(err),
 			)
-			return err
+			errors.Add(err)
+			continue
 		}
 	}
-	// To do for BE
-	// ....
-	return nil
+
+	// Backends
+	for _, udpatedBE := range updated.Backends {
+		if udpatedBE == nil {
+			// Should not happend
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "nil backend")
+			continue
+		}
+		// TODO: need to check if only the Metadata has changed
+		// If so, no need to reload
+
+		err := h.client.BackendEdit(*udpatedBE)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit backend",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+			continue
+		}
+	}
+	return errors.Result()
 }
 
 func (h *AppManagerImpl) confUpdateProcessed(haproxyCfgDiffs diffs.HaproxyConfDiffs, err error) {

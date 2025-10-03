@@ -25,6 +25,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type HaproxyConfMgr interface {
@@ -40,37 +41,55 @@ type HaproxyConfMgrImpl struct {
 	// frontendsOwnedbyGateway keeps track of frontends owned by each Gateway
 	// This is usefull to cleanup the frontends removed from a Gateway (some listeners removed)
 	frontendsOwnedbyGateway FrontendsOwnedbyGateway // map[gwKey] -> map[frontendName]struct{}
+	// Backend owners
+	backendOwners BackendReferencedBy // map[backendName] -> map[ownerType] -> map[ownerName] -> struct{}
+	// backendsImpactedInCycle are all the upserted/deleted backends in the refresh cycle
+	backendsImpactedInCycle BackendsImpactedInCycle
 	metadataManager         metadata.Manager
 	// haproxyClient is set if HaproxyConfMgrParams.UpdateHaproxyThroughRuntime is true
 	haproxyClient api.HAProxyClient
 	logger        *slog.Logger
-	// frontendsContainedInFirstSync that are present at startup, used to cleanup after the first sync
+	firstSync     FirstSync
+	mu            *sync.Mutex
+	configuration Configuration
+	params        HaproxyConfMgrParams
+}
+
+type FirstSync struct {
+	// frontends that are present at startup, used to cleanup after the first sync
 	// the frontends that are not anymore in the cluster
-	frontendsContainedInFirstSync map[string]struct{}
-	mu                            *sync.Mutex
-	configuration                 Configuration
-	params                        HaproxyConfMgrParams
+	frontends map[string]struct{}
+	// Same for backends
+	backends map[string]struct{}
 	// If this is the initial sync, we will add to the diffs Deleted all items that are not upserted
-	firstSync bool // True if this is the initial sync
+	flag bool // True if this is the initial sync
 }
 
 func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured structured.Structured,
 	params HaproxyConfMgrParams, haproxyClient api.HAProxyClient,
 ) HaproxyConfMgr {
-	firstSync := true
 	impl := HaproxyConfMgrImpl{
 		controllerStore: controllerStore,
 		configuration: Configuration{
 			structured: startupStructured,
 		},
-		firstSync:                     firstSync,
-		params:                        params,
-		logger:                        logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)),
-		frontendsContainedInFirstSync: make(map[string]struct{}),
-		frontendsOwnedbyGateway:       NewFrontendsOwnedbyGateway(),
-		metadataManager:               metadata.NewManager(params.extractGVK, params.LinkID),
-		haproxyClient:                 haproxyClient,
-		mu:                            &sync.Mutex{},
+		params: params,
+		logger: logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)),
+		firstSync: FirstSync{
+			frontends: make(map[string]struct{}),
+			backends:  make(map[string]struct{}),
+			flag:      true,
+		},
+		frontendsOwnedbyGateway: NewFrontendsOwnedbyGateway(),
+		backendOwners:           NewBackendOwners(),
+		backendsImpactedInCycle: BackendsImpactedInCycle{
+			Upserted:     make(map[string]map[client.ObjectKey]BackendImpactedInCycle),
+			Deleted:      make(map[string]struct{}),
+			Unreferenced: make(map[string]struct{}),
+		},
+		metadataManager: metadata.NewManager(params.extractGVK, params.LinkID),
+		haproxyClient:   haproxyClient,
+		mu:              &sync.Mutex{},
 	}
 
 	return &impl
@@ -84,6 +103,12 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
 	// Clear the previous configuration diffs
 	// This is important to ensure that we only transfer the current configuration changes.
 	b.configuration.resetDiffs()
+	// Refresh the backends impacted in the refresh cycle
+	b.backendsImpactedInCycle = BackendsImpactedInCycle{
+		Upserted:     make(map[string]map[client.ObjectKey]BackendImpactedInCycle),
+		Deleted:      make(map[string]struct{}),
+		Unreferenced: make(map[string]struct{}),
+	}
 
 	// Build HAProxy configuration for the Gateways
 	if err := b.processGateways(); err != nil {
@@ -97,6 +122,14 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
 		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing certificates",
 			logging.LogAttrError(err))
 	}
+
+	// ------------
+	// HTTPRoutes
+	if err := b.processHTTPRoutes(); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing HTTPRoutes",
+			logging.LogAttrError(err))
+	}
+
 	b.configuration.diffs.ReloadNeed = reload.Instance().NeedReload()
 
 	// Perform the needed cleanup after the first sync
@@ -111,7 +144,7 @@ func (b *HaproxyConfMgrImpl) GetDiffs() diffs.HaproxyConfDiffs {
 }
 
 func (b *HaproxyConfMgrImpl) cleanupAfterFirstSync() {
-	if !b.firstSync {
+	if !b.firstSync.flag {
 		return
 	}
 
@@ -121,7 +154,7 @@ func (b *HaproxyConfMgrImpl) cleanupAfterFirstSync() {
 	// But we would receive an Upsert on the next sync
 	// The state will be eventually consistent
 	for feName := range b.configuration.structured.Frontends {
-		_, toKeep := b.frontendsContainedInFirstSync[feName]
+		_, toKeep := b.firstSync.frontends[feName]
 		if !toKeep {
 			b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Frontend [DELETE STARTUP]",
 				logging.LogAttrFrontendName(feName),
@@ -134,6 +167,22 @@ func (b *HaproxyConfMgrImpl) cleanupAfterFirstSync() {
 		}
 	}
 
-	b.frontendsContainedInFirstSync = make(map[string]struct{})
-	b.firstSync = false
+	// Same for Backends
+	for beName := range b.configuration.structured.Backends {
+		_, toKeep := b.firstSync.backends[beName]
+		if !toKeep {
+			b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Backend [DELETE STARTUP]",
+				logging.LogAttrBackendName(beName),
+			)
+			if err := b.configuration.deleteBackend(b.logger, beName); err != nil {
+				slog.LogAttrs(context.Background(), slog.LevelError, "Failed to delete backend [startup]",
+					logging.LogAttrBackendName(beName))
+				// continue to delete the rest of the frontends
+			}
+		}
+	}
+
+	b.firstSync.frontends = make(map[string]struct{})
+	b.firstSync.backends = make(map[string]struct{})
+	b.firstSync.flag = false
 }
