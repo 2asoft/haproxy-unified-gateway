@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	timeout  = time.Second * 60
+	timeout  = time.Second * 30
 	interval = time.Second * 1
 )
 
@@ -57,6 +57,11 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 	// Check AttachedRoutes on Gateway status
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
+
+	// haproxy.cfg Backends
+	backendsExpectationsPath := path.Join(expectationsPath, "backends")
+	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo_80__"}
+	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {

@@ -107,8 +107,26 @@ func CreateRuntimeObjectsFromYAMLFiles(params RuntimeYamlParams) error {
 func CreateRuntimeObject(ctx context.Context, client ctrlruntimeclient.Client, obj ctrlruntimeclient.Object, waitForResult bool) error {
 	//revive:enable
 	logger := log.FromContext(ctx)
+	var err error
 
-	if err := client.Create(ctx, obj); err != nil {
+	if err = client.Create(ctx, obj); err != nil {
+		if apierrors.IsAlreadyExists(err) {
+			// The object already exists, so we'll try to update it.
+			// This is useful in tests where we might re-apply the same manifest.
+			logger.Info("Object already exists, trying to update", "details", ctrlruntimeclient.ObjectKeyFromObject(obj))
+			existingObj, ok := obj.DeepCopyObject().(ctrlruntimeclient.Object)
+			if !ok {
+				return fmt.Errorf("failed to copy object %s", ctrlruntimeclient.ObjectKeyFromObject(obj))
+			}
+			if getErr := client.Get(ctx, ctrlruntimeclient.ObjectKeyFromObject(obj), existingObj); getErr != nil {
+				return fmt.Errorf("failed to get existing object for update %s: %w", ctrlruntimeclient.ObjectKeyFromObject(obj), getErr)
+			}
+			obj.SetResourceVersion(existingObj.GetResourceVersion())
+			if updateErr := client.Update(ctx, obj); updateErr != nil {
+				return fmt.Errorf("failed to update object %s: %w", ctrlruntimeclient.ObjectKeyFromObject(obj), updateErr)
+			}
+			return nil
+		}
 		logger.Error(err, "Failed to create object in cluster", "details", ctrlruntimeclient.ObjectKeyFromObject(obj))
 		return fmt.Errorf("failed to create object %s: %w", ctrlruntimeclient.ObjectKeyFromObject(obj), err)
 	}

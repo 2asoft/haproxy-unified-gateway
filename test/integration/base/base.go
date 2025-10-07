@@ -284,6 +284,74 @@ func (b *BaseSuite) FrontendFromManifest(manifestPath, manifestName string) *mod
 	return &fe
 }
 
+func (b *BaseSuite) ExpectBackends(ctx context.Context, expectationPath string, expectedBackends []string) {
+	var diffs map[string][]any
+	if !utils.WaitFor(ctx, interval, timeout, func() bool {
+		backends, err := b.test.HaproxyClient.BackendsGet()
+		if err != nil {
+			return false
+		}
+
+		gotBackends := make(map[string]*models.Backend)
+		for _, be := range backends {
+			gotBackends[be.Name] = be
+			// b.exportBackend(be)
+		}
+
+		for _, expectedBeName := range expectedBackends {
+			var gotBackend *models.Backend
+			var ok bool
+			if gotBackend, ok = gotBackends[expectedBeName]; !ok {
+				return false
+			}
+
+			expectedBackend := b.BackendFromManifest(expectationPath, expectedBeName)
+			areSame := expectedBackend.Equal(*gotBackend)
+			if !areSame {
+				diffs = expectedBackend.Diff(*gotBackend)
+				return false
+			}
+		}
+		return true
+	}) {
+		b.T().Fatalf("backends diffs\n %v ", diffs)
+	}
+}
+
+func (b *BaseSuite) ExpectBackendsDoNotExist(ctx context.Context, backendThatShouldNotExist string) {
+	var diffs map[string][]any
+	if !utils.WaitFor(ctx, interval, timeout, func() bool {
+		backends, err := b.test.HaproxyClient.BackendsGet()
+		if err != nil {
+			return false
+		}
+
+		gotBackends := make(map[string]*models.Backend)
+		for _, be := range backends {
+			gotBackends[be.Name] = be
+		}
+
+		if _, ok := gotBackends[backendThatShouldNotExist]; !ok {
+			return true
+		}
+
+		return false
+	}) {
+		b.T().Fatalf("backends diffs\n %v ", diffs)
+	}
+}
+
+func (b *BaseSuite) BackendFromManifest(manifestPath, manifestName string) *models.Backend {
+	mpath := path.Join(manifestPath, manifestName+".yaml")
+	yamlFile, err := os.ReadFile(mpath)
+	b.Require().NoError(err)
+
+	var be models.Backend
+	err = yaml.Unmarshal(yamlFile, &be)
+	b.Require().NoError(err)
+	return &be
+}
+
 // func (b *BaseSuite) exportFrontend(fe *models.Frontend) {
 // 	// Marshal the Go struct into a YAML byte slice.
 // 	// This process converts the Go data structure into its YAML representation.
@@ -293,6 +361,25 @@ func (b *BaseSuite) FrontendFromManifest(manifestPath, manifestName string) *mod
 // 	}
 // 	// Define the output file name.
 // 	filePath := fe.Name + ".yaml"
+
+// 	// Write the YAML data to the file.
+// 	// os.WriteFile is a convenience function that creates the file if it doesn't exist,
+// 	// writes the data, and closes the file.
+// 	err = os.WriteFile(filePath, jsonData, 0o644)
+// 	if err != nil {
+// 		log.Fatalf("Error writing file: %v", err)
+// 	}
+// }
+
+// func (b *BaseSuite) exportBackend(be *models.Backend) {
+// 	// Marshal the Go struct into a YAML byte slice.
+// 	// This process converts the Go data structure into its YAML representation.
+// 	jsonData, err := json.Marshal(be)
+// 	if err != nil {
+// 		log.Fatalf("Error marshaling to YAML: %v", err)
+// 	}
+// 	// Define the output file name.
+// 	filePath := be.Name + ".yaml"
 
 // 	// Write the YAML data to the file.
 // 	// os.WriteFile is a convenience function that creates the file if it doesn't exist,

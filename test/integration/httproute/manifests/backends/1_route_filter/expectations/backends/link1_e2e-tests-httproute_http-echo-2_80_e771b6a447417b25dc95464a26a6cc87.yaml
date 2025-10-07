@@ -1,0 +1,15 @@
+{
+    "from": "haproxytech",
+    "metadata": {
+        "hug": {
+            "HTTPRoute": {
+                "e2e-tests-httproute/route-echo-1": {
+                    "Generation": 1,
+                    "LinkID": "link1"
+                }
+            }
+        }
+    },
+    "mode": "http",
+    "name": "link1_e2e-tests-httproute_http-echo-2_80_e771b6a447417b25dc95464a26a6cc87"
+}

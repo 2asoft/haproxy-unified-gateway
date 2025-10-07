@@ -321,12 +321,13 @@ func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType 
 	return nil
 }
 
-func (*HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData, _ gatewayv1.HTTPBackendRef) (*models.Backend, error) {
+func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData, _ gatewayv1.HTTPBackendRef) (*models.Backend, error) {
 	return &models.Backend{
 		BackendBase: models.BackendBase{
 			Metadata: md,
 			Name:     backendName,
 			Mode:     "http",
+			From:     b.params.DefaultsSectionName,
 		},
 	}, nil
 }
