@@ -222,7 +222,6 @@ func (b *HaproxyConfMgrImpl) upsertBackends(routeKey k8stypes.NamespacedName, ro
 	unreferenced := utils.SetDifference(backendsReferencedByRoute, upsertedBackendsReferencedByRoute)
 	for unreferencedBeName := range unreferenced {
 		b.backendOwners.removeHTTPRoute(unreferencedBeName, routeKey)
-		b.backendsImpactedInCycle.Deleted[unreferencedBeName] = struct{}{}
 		b.backendsImpactedInCycle.Unreferenced[unreferencedBeName] = struct{}{}
 	}
 	return errs.Result()
@@ -409,16 +408,26 @@ func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 		routesInfo := make(map[string]metadata.HTTPRouteMetadaInfo)
 		owners, ok := b.backendOwners.owners[backendName]
 		if !ok {
-			err := fmt.Errorf("could not find owner for backend %s", backendName)
-			errs.Add(err)
+			// This is not an error, this can happen, especially if unreferenced
+			// If there are still some routes that reference this backend, it would lead to
+			// metadata updates only just below
+			// if no route references it anymore, it would lead to backend deletion done previously in cleanupUnreferencedBackendsForHTTPRoutes
+			//
 			continue
 		}
 		ownersForHTTPRoute, ok := owners[BackendOwnerTypeHTTPRoute]
 		if !ok {
-			err := fmt.Errorf("could not find owners for type %s", BackendOwnerTypeHTTPRoute)
-			errs.Add(err)
+			// No more owners, delete it
+			if err := b.configuration.deleteBackend(b.logger, backendName); err != nil {
+				errs.Add(err)
+				continue
+			}
+			if b.firstSync.flag {
+				delete(b.firstSync.backends, backendName)
+			}
 			continue
 		}
+
 		for routeKey, generation := range ownersForHTTPRoute {
 			routesInfo[routeKey] = metadata.HTTPRouteMetadaInfo{
 				OwnerType:  string(BackendOwnerTypeHTTPRoute),
