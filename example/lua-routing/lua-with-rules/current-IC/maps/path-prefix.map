@@ -1,3 +1,0 @@
-/techdump			haproxy-controller_svc_techdump_http.9a178dfeed75b5393e21fb20a834c7b4
-e2e-tests-set-header.test/			e2e-tests-set-header_svc_http-echo_http.5cc9b6842e58459f2a0d5aaaf628aa04.52e25795e6594236bd5de0ad1e8f4c67
-echo.haproxy.local/			default_svc_http-echo_http

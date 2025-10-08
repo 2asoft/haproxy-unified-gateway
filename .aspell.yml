@@ -35,6 +35,7 @@ allowed:
   - lifecycle
   - linter
   - linters
+  - lua
   - maxconn
   - mkdir
   - modfile
