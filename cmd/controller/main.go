@@ -29,6 +29,7 @@ import (
 	haproxyparams "github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/process"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 
 	"github.com/joho/godotenv"
 )
@@ -56,7 +57,7 @@ func main() {
 
 	// Haproxy clients (runtime and configuration)
 	gateconfig := cntlr.Configuration
-	haproxyClient, err := api.New(gateconfig.Logger, gateconfig.HaproxyParams.CfgDir,
+	haproxyClient, err := api.New(gateconfig.Logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)), gateconfig.HaproxyParams.CfgDir,
 		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket)
 	if err != nil {
 		err = fmt.Errorf("failed to initialize haproxy API client: %w", err)

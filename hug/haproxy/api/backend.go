@@ -17,9 +17,13 @@ import (
 	"context"
 	"log/slog"
 
+	parser "github.com/haproxytech/client-native/v6/config-parser"
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/kubernetes-controller/hug/reload"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func (c *clientNative) BackendCreate(backend models.Backend) error {
@@ -41,6 +45,8 @@ func (c *clientNative) BackendCreate(backend models.Backend) error {
 	}
 	reload.Instance().SetReload("Backend upserted %s", backend.Name)
 
+	// Servers
+	err = c.ServerReplaceAll(parser.Backends, backend.Name, backend.Servers)
 	return err
 }
 
@@ -61,6 +67,22 @@ func (c *clientNative) BackendsGet() (models.Backends, error) {
 	// TODO: complete with children
 	_, backends, err := configuration.GetBackends(c.activeTransaction)
 
+	// Servers
+	for _, backend := range backends {
+		_, servers, err := configuration.GetServers(string(parser.Backends), backend.Name, c.activeTransaction)
+		if err != nil {
+			return nil, err
+		}
+		if len(backends) != 0 {
+			backend.Servers = make(map[string]models.Server)
+		}
+		for _, server := range servers {
+			if server != nil {
+				backend.Servers[server.Name] = *server
+			}
+		}
+	}
+
 	return backends, err
 }
 
@@ -75,6 +97,20 @@ func (c *clientNative) BackendGet(backendName string) (models.Backend, error) {
 		return models.Backend{}, err
 	}
 
+	// Servers
+	_, servers, err := configuration.GetServers(string(parser.Backends), backend.Name, c.activeTransaction)
+	if err != nil {
+		return models.Backend{}, err
+	}
+	if len(servers) != 0 {
+		backend.Servers = make(map[string]models.Server)
+	}
+	for _, server := range servers {
+		if server != nil {
+			backend.Servers[server.Name] = *server
+		}
+	}
+
 	return *backend, err
 }
 
@@ -84,14 +120,49 @@ func (c *clientNative) BackendEdit(backend models.Backend) error {
 		return err
 	}
 	b := &models.Backend{BackendBase: backend.BackendBase}
+	previousBackend, err := c.BackendGet(backend.Name)
+	if err != nil {
+		return err
+	}
+
+	// Check if only Servers were udpated
+	onlyServersUpdated := false
+	if cmp.Equal(previousBackend, backend, cmpopts.IgnoreFields(models.Backend{}, "Servers")) {
+		c.logger.LogAttrs(context.Background(), slog.LevelInfo, "Only Servers are udpated",
+			slog.String("backend", backend.Name),
+		)
+		onlyServersUpdated = true
+	}
+
 	if err := configuration.EditBackend(backend.Name, b, c.activeTransaction, 0); err != nil {
-		c.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit backend",
+		c.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to edit backend",
 			logging.LogAttrError(err),
-			slog.String("frontend", backend.Name),
+			slog.String("backend", backend.Name),
 		)
 		return err
 	}
 
-	reload.Instance().SetReload("Backend upserted %s", backend.Name)
-	return nil
+	// Servers only updated
+	// Did we try runtime updates ? (server state update)
+	if onlyServersUpdated {
+		if reload.Instance().DynamicUpdateServerStateAttempted() {
+			// Yes we did perform runtime update of server states
+			if reload.Instance().DynamicUpdateServerStateFailed() {
+				// If failed, we need to reload
+				reload.Instance().SetReload("[onlyServersUpdated] [runtime] servers state update failure - backend %s", backend.Name)
+			} else {
+				c.logger.LogAttrs(context.Background(), slog.LevelDebug, "[onlyServersUpdated] [runtime] success",
+					slog.String("backend", backend.Name),
+				)
+			}
+		} else {
+			// We did not try runtime udpate (server create, for now is NOT done through runtime, it needs a realod)
+			reload.Instance().SetReload("[onlyServersUpdated] [reload needed] - backend %s", backend.Name)
+		}
+	} else {
+		reload.Instance().SetReload("Backend upserted %s", backend.Name)
+	}
+	// Servers
+	err = c.ServerReplaceAll(parser.Backends, backend.Name, backend.Servers)
+	return err
 }

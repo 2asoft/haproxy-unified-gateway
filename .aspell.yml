@@ -11,6 +11,7 @@ allowed:
   - crt
   - crtlistfiles
   - crtlists
+  - endpointslices
   - env
   - entreprise
   - entrypoint

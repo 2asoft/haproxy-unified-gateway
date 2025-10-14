@@ -44,7 +44,7 @@ const (
 )
 
 type BackendReferencedBy struct {
-	owners map[string]map[BackendOwnerType]map[string]int64 // map[backendName] -> map[ownerType] -> map[ownerName] -> generation
+	owners map[string]map[BackendOwnerType]map[client.ObjectKey]int64 // map[backendName] -> map[ownerType] -> map[owner RouteKey] -> generation
 }
 
 type BackendImpactedInCycle struct {
@@ -61,10 +61,10 @@ type BackendsImpactedInCycle struct {
 }
 
 func NewBackendOwners() BackendReferencedBy {
-	return BackendReferencedBy{owners: make(map[string]map[BackendOwnerType]map[string]int64)}
+	return BackendReferencedBy{owners: make(map[string]map[BackendOwnerType]map[client.ObjectKey]int64)}
 }
 
-func (b *HaproxyConfMgrImpl) getBackendNameName(svcKey k8stypes.NamespacedName, svcPort int32, filterHash string) (string, error) {
+func (b *HaproxyConfMgrImpl) getBackendName(svcKey k8stypes.NamespacedName, svcPort int32, filterHash string) (string, error) {
 	tmpl, err := template.New("backend").Parse(b.params.BackendNameTemplate)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse backend name template: %w", err)
@@ -146,7 +146,7 @@ func (b *HaproxyConfMgrImpl) onValidHTTPRouteUpserted(routeKey k8stypes.Namespac
 
 func (b *HaproxyConfMgrImpl) onInvalidHTTPRouteUpserted(routeKey k8stypes.NamespacedName, _ *tree.HTTPRoute) error {
 	b.logHTTPRouteUpdate("upserted-invalid", routeKey)
-	impactedBackends := b.backendOwners.getBackendsReferencedByHTTPRoute(routeKey.String())
+	impactedBackends := b.backendOwners.getBackendsReferencedByHTTPRoute(routeKey)
 	for beName := range impactedBackends {
 		b.backendOwners.removeHTTPRoute(beName, routeKey)
 		b.addImpactedBackendDeleted(beName)
@@ -156,7 +156,7 @@ func (b *HaproxyConfMgrImpl) onInvalidHTTPRouteUpserted(routeKey k8stypes.Namesp
 
 func (b *HaproxyConfMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName, _ *tree.HTTPRoute) error {
 	b.logHTTPRouteUpdate("deleted", routeKey)
-	impactedBackends := b.backendOwners.getBackendsReferencedByHTTPRoute(routeKey.String())
+	impactedBackends := b.backendOwners.getBackendsReferencedByHTTPRoute(routeKey)
 	for beName := range impactedBackends {
 		b.backendOwners.removeHTTPRoute(beName, routeKey)
 		b.addImpactedBackendDeleted(beName)
@@ -184,7 +184,7 @@ func (b *HaproxyConfMgrImpl) upsertBackends(routeKey k8stypes.NamespacedName, ro
 				if backendRef.Port != nil {
 					svcPort = int32(*backendRef.Port)
 				}
-				beName, err := b.getBackendNameName(svcNsName, svcPort, filterHash)
+				beName, err := b.getBackendName(svcNsName, svcPort, filterHash)
 				if err != nil {
 					b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to compute backendName",
 						logging.LogAttrError(err))
@@ -218,7 +218,7 @@ func (b *HaproxyConfMgrImpl) upsertBackends(routeKey k8stypes.NamespacedName, ro
 	// Step1: Route1 references BE1, BE2, BE3
 	// Step2: Update Route1 references BE1, BE2
 	// Action: We have to remove BE3 from Backends referenced by Route1
-	backendsReferencedByRoute := b.backendOwners.getBackendsReferencedByHTTPRoute(routeKey.String())
+	backendsReferencedByRoute := b.backendOwners.getBackendsReferencedByHTTPRoute(routeKey)
 	unreferenced := utils.SetDifference(backendsReferencedByRoute, upsertedBackendsReferencedByRoute)
 	for unreferencedBeName := range unreferenced {
 		b.backendOwners.removeHTTPRoute(unreferencedBeName, routeKey)
@@ -250,27 +250,25 @@ func (bo *BackendReferencedBy) addHTTPRoute(backendName string, routeKey k8stype
 	if route == nil {
 		return errors.New("nil route")
 	}
-	routeName := routeKey.String()
-	bo.add(backendName, BackendOwnerTypeHTTPRoute, routeName, route.Generation)
+	bo.add(backendName, BackendOwnerTypeHTTPRoute, routeKey, route.Generation)
 	return nil
 }
 
-func (bo *BackendReferencedBy) add(backendName string, ownerType BackendOwnerType, ownerName string, generation int64) {
+func (bo *BackendReferencedBy) add(backendName string, ownerType BackendOwnerType, ownerKey client.ObjectKey, generation int64) {
 	if _, ok := bo.owners[backendName]; !ok {
-		bo.owners[backendName] = make(map[BackendOwnerType]map[string]int64)
+		bo.owners[backendName] = make(map[BackendOwnerType]map[client.ObjectKey]int64)
 	}
 	if _, ok := bo.owners[backendName][ownerType]; !ok {
-		bo.owners[backendName][ownerType] = make(map[string]int64)
+		bo.owners[backendName][ownerType] = make(map[client.ObjectKey]int64)
 	}
-	bo.owners[backendName][ownerType][ownerName] = generation
+	bo.owners[backendName][ownerType][ownerKey] = generation
 }
 
 func (bo *BackendReferencedBy) removeHTTPRoute(backendName string, routeKey k8stypes.NamespacedName) {
-	routeName := routeKey.String()
-	bo.remove(backendName, BackendOwnerTypeHTTPRoute, routeName)
+	bo.remove(backendName, BackendOwnerTypeHTTPRoute, routeKey)
 }
 
-func (bo *BackendReferencedBy) remove(backendName string, ownerType BackendOwnerType, ownerName string) {
+func (bo *BackendReferencedBy) remove(backendName string, ownerType BackendOwnerType, ownerKey client.ObjectKey) {
 	ownersForBackend, ok := bo.owners[backendName]
 	if !ok {
 		return
@@ -279,21 +277,21 @@ func (bo *BackendReferencedBy) remove(backendName string, ownerType BackendOwner
 	if !ok {
 		return
 	}
-	delete(ownersForType, ownerName)
+	delete(ownersForType, ownerKey)
 }
 
-func (bo *BackendReferencedBy) getBackendsReferencedByHTTPRoute(ownerName string) map[string]struct{} { // map[beName] -> struct{}
-	return bo.getBackendsReferencedBy(BackendOwnerTypeHTTPRoute, ownerName)
+func (bo *BackendReferencedBy) getBackendsReferencedByHTTPRoute(ownerKey client.ObjectKey) map[string]struct{} { // map[beName] -> struct{}
+	return bo.getBackendsReferencedBy(BackendOwnerTypeHTTPRoute, ownerKey)
 }
 
-func (bo *BackendReferencedBy) getBackendsReferencedBy(ownerType BackendOwnerType, ownerName string) map[string]struct{} { // map[beName] -> struct{}
+func (bo *BackendReferencedBy) getBackendsReferencedBy(ownerType BackendOwnerType, ownerKey client.ObjectKey) map[string]struct{} { // map[beName] -> struct{}
 	backends := make(map[string]struct{})
 	for backendName, ownersForBackend := range bo.owners {
 		ownersForType, ok := ownersForBackend[ownerType]
 		if !ok {
 			continue
 		}
-		if _, ok := ownersForType[ownerName]; ok {
+		if _, ok := ownersForType[ownerKey]; ok {
 			backends[backendName] = struct{}{}
 		}
 	}
@@ -324,10 +322,19 @@ func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType 
 func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData, _ gatewayv1.HTTPBackendRef) (*models.Backend, error) {
 	return &models.Backend{
 		BackendBase: models.BackendBase{
-			Metadata: md,
-			Name:     backendName,
-			Mode:     "http",
-			From:     b.params.DefaultsSectionName,
+			Metadata:      md,
+			Name:          backendName,
+			Mode:          "http",
+			From:          b.params.DefaultsSectionName,
+			Balance:       &models.Balance{Algorithm: utils.Ptr("roundrobin")},
+			Abortonclose:  "disabled",
+			ServerTimeout: utils.PtrInt64(50000),
+			Forwardfor: &models.Forwardfor{
+				Enabled: utils.Ptr("enabled"),
+			},
+			DefaultServer: &models.DefaultServer{
+				ServerParams: models.ServerParams{Check: "enabled"},
+			},
 		},
 	}, nil
 }
@@ -381,7 +388,7 @@ func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 			continue
 		}
 		for routeKey, generation := range ownersForHTTPRoute {
-			routesInfo[routeKey] = metadata.HTTPRouteMetadaInfo{
+			routesInfo[routeKey.String()] = metadata.HTTPRouteMetadaInfo{
 				OwnerType:  string(BackendOwnerTypeHTTPRoute),
 				Generation: generation,
 			}
@@ -430,7 +437,7 @@ func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 		}
 
 		for routeKey, generation := range ownersForHTTPRoute {
-			routesInfo[routeKey] = metadata.HTTPRouteMetadaInfo{
+			routesInfo[routeKey.String()] = metadata.HTTPRouteMetadaInfo{
 				OwnerType:  string(BackendOwnerTypeHTTPRoute),
 				Generation: generation,
 			}

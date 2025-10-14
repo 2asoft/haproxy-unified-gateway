@@ -28,6 +28,7 @@ type TemplateData struct {
 	SERVICE_NAME      string
 	FILTER_HASH       string
 	LINK_ID           string
+	POD_IP_PORT_HASH  string
 	SERVICE_PORT      int32
 	// revive:enable:var-naming
 }

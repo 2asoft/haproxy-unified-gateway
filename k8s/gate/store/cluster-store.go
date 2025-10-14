@@ -18,7 +18,9 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+
 	v1 "k8s.io/api/core/v1"
+	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,6 +41,7 @@ type ClusterStore struct {
 	GatewayAPICRDs  map[types.NamespacedName]*metav1.PartialObjectMetadata
 	HugGates        map[types.NamespacedName]*v3.HugGate
 	ControllerConfs map[types.NamespacedName]*v3.HugConf
+	EndpointSlices  map[types.NamespacedName]*discoveryV1.EndpointSlice
 	Updates         ClusterUpdates
 }
 
@@ -78,6 +81,7 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, clusterStore.Updates.GatewayAPICRDs, logger),
 				extractGVK(&v3.HugGate{}):                      newObjectStoreImpl(clusterStore.HugGates, clusterStore.Updates.HugGates, logger),
 				extractGVK(&v3.HugConf{}):                      newObjectStoreImpl(clusterStore.ControllerConfs, clusterStore.Updates.HugConfs, logger),
+				extractGVK(&discoveryV1.EndpointSlice{}):       newObjectStoreImpl(clusterStore.EndpointSlices, clusterStore.Updates.EndpointSlices, logger),
 			},
 		},
 		extractGVK: extractGVK,

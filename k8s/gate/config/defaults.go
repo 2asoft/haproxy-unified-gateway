@@ -27,7 +27,7 @@ const (
 	defaultSyncPeriod             = 5 * time.Second
 	defaultFrontendNameTemplate   = "{{ .LINK_ID }}_{{ .GATEWAY_NAMESPACE}}_{{ .GATEWAY_NAME }}_{{ .LISTENER_NAME }}"
 	defaultBackendNameTemplate    = "{{ .LINK_ID }}_{{ .SERVICE_NAMESPACE}}_{{ .SERVICE_NAME }}_{{ .SERVICE_PORT}}_{{ .FILTER_HASH}}"
-	defaultServerNameTemplate     = ""
+	defaultServerNameTemplate     = "SRV_{{ .POD_IP_PORT_HASH}}"
 	DefaultsSectionName           = "haproxytech"
 	DefaultWaitForRuntimeTimeout  = 10 * time.Second
 	DefaultCertsDirName           = "certs"

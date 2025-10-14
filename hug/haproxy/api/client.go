@@ -65,6 +65,14 @@ type Backend interface {
 	BackendEdit(backend models.Backend) error
 }
 
+type Server interface {
+	ServersGet(parentType parser.Section, name string) (models.Servers, error)
+	ServerCreate(parentType parser.Section, name string, server models.Server) error
+	ServerEdit(parentType parser.Section, name string, server models.Server) error
+	ServerDelete(parentType parser.Section, name string, server string) error
+	ServerDeleteAll(parentType parser.Section, name string) error
+}
+
 type clientNative struct {
 	nativeAPI                           clientnative.HAProxyClient
 	logger                              *slog.Logger

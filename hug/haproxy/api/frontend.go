@@ -127,18 +127,6 @@ func (c *clientNative) FrontendEdit(frontend models.Frontend) error {
 	reload.Instance().SetReload("Frontend upserted %s", frontend.Name)
 
 	// Binds
-	if errDel := c.BindDeleteAll(parser.Frontends, frontend.Name); errDel != nil {
-		return errDel
-	}
-	for _, bind := range frontend.Binds {
-		if err := c.BindCreate(parser.Frontends, frontend.Name, bind); err != nil {
-			c.logger.LogAttrs(context.Background(), slog.LevelError, "failed to create bind",
-				logging.LogAttrError(err),
-				slog.String("bind", bind.Name),
-				slog.String("frontend", frontend.Name),
-			)
-			continue
-		}
-	}
-	return nil
+	err = c.BindReplaceAll(parser.Frontends, frontend.Name, frontend.Binds)
+	return err
 }

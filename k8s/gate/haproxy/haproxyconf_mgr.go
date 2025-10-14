@@ -25,12 +25,13 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type HaproxyConfMgr interface {
 	// ComputeDiffs computes the HAProxy configuration diffs.
-	ComputeDiffs() error
+	ComputeDiffs(ctx context.Context) error
 	GetDiffs() diffs.HaproxyConfDiffs
 }
 
@@ -48,6 +49,7 @@ type HaproxyConfMgrImpl struct {
 	metadataManager         metadata.Manager
 	// haproxyClient is set if HaproxyConfMgrParams.UpdateHaproxyThroughRuntime is true
 	haproxyClient api.HAProxyClient
+	k8sClient     client.Client
 	logger        *slog.Logger
 	firstSync     FirstSync
 	mu            *sync.Mutex
@@ -66,7 +68,7 @@ type FirstSync struct {
 }
 
 func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured structured.Structured,
-	params HaproxyConfMgrParams, haproxyClient api.HAProxyClient,
+	params HaproxyConfMgrParams, haproxyClient api.HAProxyClient, k8sClient client.Client,
 ) HaproxyConfMgr {
 	impl := HaproxyConfMgrImpl{
 		controllerStore: controllerStore,
@@ -89,13 +91,14 @@ func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore
 		},
 		metadataManager: metadata.NewManager(params.extractGVK, params.LinkID),
 		haproxyClient:   haproxyClient,
+		k8sClient:       k8sClient,
 		mu:              &sync.Mutex{},
 	}
 
 	return &impl
 }
 
-func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
+func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 	logger := b.logger
 	logger.LogAttrs(context.Background(), slog.LevelDebug, "Start computing HAProxy configuration diffs")
 	defer logger.LogAttrs(context.Background(), slog.LevelDebug, "Finished computing HAProxy configuration diffs")
@@ -133,8 +136,14 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs() error {
 	b.configuration.diffs.ReloadNeed = reload.Instance().NeedReload()
 
 	// Perform the needed cleanup after the first sync
-	// Remove frontends that were present at startup but not anymore in the cluster
+	// Remove frontends and backends that were present at startup but not anymore in the cluster
 	b.cleanupAfterFirstSync()
+
+	// Now handle Servers (EndpointSlices)
+	if err := b.processEndpointSlices(ctx); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing EndpointSlices",
+			logging.LogAttrError(err))
+	}
 
 	return nil
 }

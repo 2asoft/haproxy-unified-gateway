@@ -15,7 +15,9 @@ package store
 
 import (
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+
 	v1 "k8s.io/api/core/v1"
+	discoveryV1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,6 +58,7 @@ type ClusterUpdates struct {
 	GatewayAPICRDs map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]
 	HugGates       map[types.NamespacedName]Update[*v3.HugGate]
 	HugConfs       map[types.NamespacedName]Update[*v3.HugConf]
+	EndpointSlices map[types.NamespacedName]Update[*discoveryV1.EndpointSlice]
 }
 
 func NewClusterUpdates() ClusterUpdates {
@@ -70,5 +73,6 @@ func NewClusterUpdates() ClusterUpdates {
 		GatewayAPICRDs: make(map[types.NamespacedName]Update[*metav1.PartialObjectMetadata]),
 		HugGates:       make(map[types.NamespacedName]Update[*v3.HugGate]),
 		HugConfs:       make(map[types.NamespacedName]Update[*v3.HugConf]),
+		EndpointSlices: make(map[types.NamespacedName]Update[*discoveryV1.EndpointSlice]),
 	}
 }

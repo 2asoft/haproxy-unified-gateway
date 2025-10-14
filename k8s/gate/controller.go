@@ -165,6 +165,7 @@ func Add(
 		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
 		HugGates:        make(map[types.NamespacedName]*v3.HugGate),
 		ControllerConfs: make(map[types.NamespacedName]*v3.HugConf),
+		EndpointSlices:  make(map[types.NamespacedName]*discoveryV1.EndpointSlice),
 		Updates:         store.NewClusterUpdates(),
 	}
 

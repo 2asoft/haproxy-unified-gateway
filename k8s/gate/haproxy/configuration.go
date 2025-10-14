@@ -16,13 +16,18 @@ package haproxy
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 )
 
 type Configuration struct {
@@ -115,9 +120,11 @@ func (c *Configuration) upsertBackend(logger *slog.Logger, be *models.Backend) e
 		return errors.New("nil backend")
 	}
 
-	if previsouBe, ok := c.structured.Backends[be.Name]; ok {
+	if previousBe, ok := c.structured.Backends[be.Name]; ok {
 		// Check if they are the same
-		if previsouBe.Equal(*be) {
+		// Here, the input parameter be has no Servers, it's only the Backend without Servers that we want to compare
+		// Even though Servers are part of the structured Backend, they are managed differently from Backend fields.
+		if cmp.Equal(*previousBe, *be, cmpopts.IgnoreFields(models.Backend{}, "Servers")) {
 			logger.LogAttrs(context.Background(), slog.LevelDebug, "Backend [same]",
 				logging.LogAttrBackendName(be.Name),
 			)
@@ -155,6 +162,56 @@ func (c *Configuration) upsertBackend(logger *slog.Logger, be *models.Backend) e
 		c.diffs.Created.Backends[be.Name] = deepCopied
 	}
 	return nil
+}
+
+func (c *Configuration) upsertBackendWithServers(logger *slog.Logger, beName string, servers map[string]models.Server) ([]RuntimeServerStateData, error) {
+	be, ok := c.structured.Backends[beName]
+	if !ok {
+		return nil, fmt.Errorf("could not find backend %s", beName)
+	}
+
+	beBackup, err := DeepCopyBackend(be)
+	if err != nil {
+		return nil, err
+	}
+	be.Servers = servers
+	// 1- Same servers
+	// TODO : use models.EqualMapStringServer
+	if cmp.Equal(beBackup.Servers, be.Servers) {
+		// if beBackup.Equal(*be) {
+		logger.LogAttrs(context.Background(), slog.LevelDebug, "Backend [servers][same]",
+			logging.LogAttrBackendName(be.Name),
+		)
+		return nil, nil
+	}
+
+	// 2- Servers differ
+	// Update existing backend
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "Backend [servers][UPDATE]",
+		logging.LogAttrBackendName(be.Name),
+	)
+
+	// Compute list of delete servers to update them through runtime = to set to MAINT
+	deletedServerNames := utils.SetDifference(beBackup.Servers, be.Servers)
+
+	// 2.1- Update the new Servers in Backend, so it will be written in the configuration
+	c.diffs.Updated.Backends[be.Name] = be
+	c.structured.Backends[be.Name] = be
+
+	// 2.2- If some servers were deleted, set the server to Maintenance through runtime
+	// TODO: we also need to check in HUG when we udpate the configuration that if BE differ only by deleted servers...
+	runtimeServerStateData := make([]RuntimeServerStateData, 0)
+	for serverName := range deletedServerNames {
+		runtimeServerStateData = append(runtimeServerStateData, RuntimeServerStateData{
+			BackendName: be.Name,
+			ServerName:  serverName,
+			IP:          "127.0.0.1",
+			Port:        1,
+			State:       "maint",
+		})
+	}
+
+	return runtimeServerStateData, nil
 }
 
 func (c *Configuration) upsertBackendMetadata(logger *slog.Logger, beName string, md metadata.MetaData) error {

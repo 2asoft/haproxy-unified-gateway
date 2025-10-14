@@ -11,5 +11,16 @@
         }
     },
     "mode": "http",
-    "name": "link1_e2e-tests-httproute_http-echo-2_80_e771b6a447417b25dc95464a26a6cc87"
+    "name": "link1_e2e-tests-httproute_http-echo-2_80_e771b6a447417b25dc95464a26a6cc87",
+    "abortonclose": "disabled",
+    "balance": {
+        "algorithm": "roundrobin"
+    },
+    "default_server": {
+        "check": "enabled"
+    },
+    "forwardfor": {
+        "enabled": "enabled"
+    },
+    "server_timeout": 50000
 }

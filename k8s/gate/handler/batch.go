@@ -25,14 +25,12 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/status"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
-	discoveryV1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -122,7 +120,7 @@ func NewEventHandlerImpl(
 	treeBuilder := NewGateTreeBuilder(controllerStore, gateTreeConfig)
 
 	haproxyConfMgr := haproxy.NewHaproxyConfMgr(gateTreeConfig.BaseLogger, controllerStore, initialStructuredConf,
-		haproxyCfgManagerParams, haproxyClient)
+		haproxyCfgManagerParams, haproxyClient, gateTreeConfig.K8sClient)
 
 	handler := &eventHandlerImpl{
 		treeBuilder:         treeBuilder,
@@ -160,7 +158,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	gatetree := h.treeBuilder.GetTree()
 
 	// HAProxy Configuration building
-	err := h.haproxyConfBuilder.ComputeDiffs()
+	err := h.haproxyConfBuilder.ComputeDiffs(ctx)
 	if err != nil {
 		h.logger.LogAttrs(context.Background(), slog.LevelError,
 			"error building HAProxy configuration",
@@ -173,29 +171,6 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 			h.config.TransferHaproxyConfChannel <- haproxyConfDiffs
 		}
 	}
-
-	// START EXAMPLE
-	// Below is just an example
-	// We list EndpointSlices using the Service Name Index Field we added as an index to the EndpointSlice cache.
-	// This allows us to perform a quick lookup of all EndpointSlices for a Service.
-	var endpointSliceList discoveryV1.EndpointSliceList
-	svcName := "http-echo"
-	svcNs := "default"
-	err = h.treeBuilder.cfg.K8sClient.List(
-		ctx,
-		&endpointSliceList,
-		client.MatchingFields{index.EndpointSliceServiceNameIndexField: svcName},
-		client.InNamespace(svcNs),
-	)
-	if err != nil {
-		h.config.BaseLogger.LogAttrs(context.Background(), slog.LevelError,
-			"could not retrieve http-echo endpoints",
-			logging.LogAttrError(err),
-		)
-	}
-	// h.config.Logger.Info(
-	// 	fmt.Sprintf("JUST AN EXAMPLE to show cache indexes usage. eps for http-echo svc %v", endpointSliceList))
-	// END EXAMPLE
 
 	statusUpdater := status.NewStatusUpdater(
 		status.NewStatusUpdaterConf(

@@ -27,10 +27,16 @@ var (
 	once sync.Once
 )
 
+type dynamicUpdateServerState struct {
+	attempted bool
+	failed    bool
+}
+
 // The singleton type
 type reloadMgr struct {
-	logger *slog.Logger
-	reload bool
+	logger                   *slog.Logger
+	reload                   bool
+	dynamicUpdateServerState dynamicUpdateServerState
 }
 
 // Instance returns the singleton instance.
@@ -57,6 +63,30 @@ func (rlm *reloadMgr) SetReload(reason string, args ...any) {
 	}
 }
 
+func (rlm *reloadMgr) AttemptDynamicServerStateUpdate(reason string, args ...any) {
+	rlm.dynamicUpdateServerState.attempted = true
+	if !rlm.validReason(reason) {
+		return
+	}
+	if rlm.logger != nil {
+		rlm.logger.LogAttrs(context.WithValue(context.Background(), logging.CallerAdditionalSkipKey, 1), slog.LevelInfo,
+			"attempt dynamic update server state",
+			logging.LogAttrReloadMgrAction(rlm.reload, reason, args...)) // TODO HELENE log meaningful info here
+	}
+}
+
+func (rlm *reloadMgr) SetDynamicServerStateUpdateFailure(reason string, args ...any) {
+	rlm.dynamicUpdateServerState.failed = true
+	if !rlm.validReason(reason) {
+		return
+	}
+	if rlm.logger != nil {
+		rlm.logger.LogAttrs(context.WithValue(context.Background(), logging.CallerAdditionalSkipKey, 1), slog.LevelInfo,
+			"dynamic update server state failed",
+			logging.LogAttrReloadMgrAction(rlm.reload, reason, args...)) // TODO HELENE log meaningful info here
+	}
+}
+
 func (rlm *reloadMgr) Reset() {
 	if rlm.reload && rlm.logger != nil {
 		rlm.logger.LogAttrs(context.WithValue(context.Background(), logging.CallerAdditionalSkipKey, 1), slog.LevelInfo,
@@ -64,10 +94,19 @@ func (rlm *reloadMgr) Reset() {
 		)
 	}
 	rlm.reload = false
+	rlm.dynamicUpdateServerState = dynamicUpdateServerState{}
 }
 
 func (rlm *reloadMgr) NeedReload() bool {
 	return rlm.reload
+}
+
+func (rlm *reloadMgr) DynamicUpdateServerStateFailed() bool {
+	return rlm.dynamicUpdateServerState.failed
+}
+
+func (rlm *reloadMgr) DynamicUpdateServerStateAttempted() bool {
+	return rlm.dynamicUpdateServerState.attempted
 }
 
 func (*reloadMgr) validReason(reason string) bool {
