@@ -103,15 +103,10 @@ tasks:
 
   k0s-delete:
     desc: 'delete a k0s cluster'
+    dir: 'ci/k0s' # this file is imported so its fine
     silent: true
-    deps:
-      - task: check-go-tool
-        vars:
-          TOOL: KIND
-    vars:
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
     cmds:
-      - "/{{.kind}} delete cluster --name {{.CLUSTER_NAME}}"
+      - sh stop-k0s.sh
 
   k0s-echo-create-tar:
     silent: true
