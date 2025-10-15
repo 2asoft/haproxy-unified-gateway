@@ -205,12 +205,12 @@ func (b *HaproxyConfMgrImpl) finalizeFrontendsByGateway() {
 }
 
 type newFrontendParams struct {
-	gwKey        k8stypes.NamespacedName
 	treeGw       *tree.Gateway
 	treeListener *tree.Listener
+	gwKey        k8stypes.NamespacedName
 }
 
-func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Frontend, error) {
+func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Frontend, error) { //revive:disable:function-length
 	gwKey := params.gwKey
 	treeGw := params.treeGw
 	treeListener := params.treeListener

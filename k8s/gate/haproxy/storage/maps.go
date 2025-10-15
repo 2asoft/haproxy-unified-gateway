@@ -41,9 +41,9 @@ var _ MapsStorage = &MapsStorageDefault{}
 type MapsStorageDefault struct {
 	logger     *slog.Logger
 	extractGVK utils.ExtractGVK
+	Maps       map[string]*maps.MapData
 	// MapsBaseDir the base directory to store maps
 	MapsBaseDir string
-	Maps        map[string]*maps.MapData
 }
 
 func NewMapsStorage(logger *slog.Logger, extractGVK utils.ExtractGVK, structureType StructureType, mapsBaseDir string) (MapsStorage, error) {
@@ -93,19 +93,18 @@ func (m *MapsStorageDefault) GetMapData(filePath futils.FilePath) *maps.MapData 
 
 func (m *MapsStorageDefault) EnsureMapData(filePath futils.FilePath) {
 	name := filePath.FullPath()
-	mapData, ok := m.Maps[name]
+	_, ok := m.Maps[name]
 	if ok {
 		return
 	}
 
-	mapData = &maps.MapData{
+	m.Maps[name] = &maps.MapData{
 		Data: map[string]string{},
 		Path: filePath,
 	}
-	m.Maps[name] = mapData
 }
 
-func (m *MapsStorageDefault) WriteOnDisk(data maps.MapData) error {
+func (MapsStorageDefault) WriteOnDisk(data maps.MapData) error {
 	var f *os.File
 	var err error
 	if _, err = os.Stat(data.Path.Dir); os.IsNotExist(err) {

@@ -39,7 +39,7 @@ func (b *RouteMgrImpl) processRoutes() error {
 		return nil
 	}
 
-	return errors.New("Runtime update not implemented")
+	return errors.New("runtime update not implemented")
 
 	// Process HTTPRoutes
 	// b.processHTTPRoutes()
@@ -128,69 +128,16 @@ func (b *RouteMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, rou
 	return b.onInvalidHTTPRouteUpserted(routeKey, route, mapExact, mapPrefix, mapRegex)
 }
 
-func (b *RouteMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
+func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
+	// func (b *RouteMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex *maps.MapData,
 ) error {
 	// TODO consider uniting this function with onUpsertedHTTPRoute basically the same
 	for _, rule := range route.Rules {
-		if !rule.Valid {
-			// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
-			// TODO
-		}
-		var routeValue string
-		var backendNames []string
-		var backendweights []int32
-		for _, backend := range rule.K8sResource.BackendRefs {
-			checkResult, ok := rule.CheckBackendRef.Get(backend.BackendObjectReference)
-			if !ok || !checkResult.Valid {
-				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Processing HTTPRoute [map update] - backend not valid",
-					logging.LogAttrBackendName(string(backend.Name)),
-				)
-				continue
-			}
-
-			backend := rule.K8sResource.BackendRefs[0]
-			svckey := k8stypes.NamespacedName{
-				Name: string(backend.Name),
-			}
-			if backend.Namespace == nil {
-				svckey.Namespace = route.K8sResource.Namespace
-			} else {
-				svckey.Namespace = string(*backend.Namespace)
-			}
-			svcPort := int32(0)
-			if backend.Port != nil {
-				svcPort = int32(*backend.Port)
-			}
-			filterHash := getFilterHash(backend.Filters)
-			backendName, err := b.topManager.getBackendName(svckey, int32(svcPort), filterHash)
-			if err != nil {
-				b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Processing HTTPRoute [map update]",
-					logging.LogAttrError(err),
-				)
-				continue
-			}
-			backendNames = append(backendNames, backendName)
-			weight := int32(0)
-			if backend.Weight != nil {
-				weight = *backend.Weight
-			}
-			backendweights = append(backendweights, weight)
-		}
-		if len(backendNames) == 1 {
-			routeValue = backendNames[0]
-		} else {
-			// a: algo, s: suffix, l: list of backend (format depends on algo)
-			// /wr_a70_b20_c10     {"a":"wr","l":"a:70,b:20,c:10"}
-			routeValue = `{"a":"wr","l":"`
-			for i, backendName := range backendNames {
-				if i > 0 {
-					routeValue += ","
-				}
-				routeValue += fmt.Sprintf("%s:%d", backendName, backendweights[i])
-			}
-			routeValue += `"}`
-		}
+		// if !rule.Valid {
+		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
+		// TODO
+		// }
 
 		for _, match := range rule.K8sResource.Matches {
 			path := "/"
@@ -221,14 +168,14 @@ func (b *RouteMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName, rout
 	return nil
 }
 
-func (b *RouteMgrImpl) onValidHTTPRouteUpserted(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
+func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex *maps.MapData,
 ) error {
 	for _, rule := range route.Rules {
-		if !rule.Valid {
-			// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
-			// TODO
-		}
+		// if !rule.Valid {
+		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
+		// TODO
+		// }
 		var routeValue string
 		var backendNames []string
 		var backendweights []int32
@@ -319,8 +266,10 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(routeKey k8stypes.NamespacedName
 	return nil
 }
 
-func (b *RouteMgrImpl) onInvalidHTTPRouteUpserted(routeKey k8stypes.NamespacedName, _ *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapData,
+func (RouteMgrImpl) onInvalidHTTPRouteUpserted(_ k8stypes.NamespacedName, _ *tree.HTTPRoute,
+	// func (RouteMgrImpl) onInvalidHTTPRouteUpserted(routeKey k8stypes.NamespacedName, _ *tree.HTTPRoute,
+	_, _, _ *maps.MapData,
+	// mapExact, mapPrefix, mapRegex *maps.MapData,
 ) error {
 	// TODO we might need to remove it from the maps
 

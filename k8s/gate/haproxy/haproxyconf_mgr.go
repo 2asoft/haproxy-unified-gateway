@@ -38,23 +38,23 @@ type HaproxyConfMgr interface {
 var _ HaproxyConfMgr = &HaproxyConfMgrImpl{}
 
 type HaproxyConfMgrImpl struct {
-	controllerStore tree.ControllerStore
+	// backendsImpactedInCycle are all the upserted/deleted backends in the refresh cycle
+	backendsImpactedInCycle BackendsImpactedInCycle
 	// frontendsOwnedbyGateway keeps track of frontends owned by each Gateway
 	// This is usefull to cleanup the frontends removed from a Gateway (some listeners removed)
 	frontendsOwnedbyGateway FrontendsOwnedbyGateway // map[gwKey] -> map[frontendName]struct{}
-	// Backend owners
-	backendOwners BackendReferencedBy // map[backendName] -> map[ownerType] -> map[ownerName] -> struct{}
-	// backendsImpactedInCycle are all the upserted/deleted backends in the refresh cycle
-	backendsImpactedInCycle BackendsImpactedInCycle
 	metadataManager         metadata.Manager
 	// haproxyClient is set if HaproxyConfMgrParams.UpdateHaproxyThroughRuntime is true
 	haproxyClient api.HAProxyClient
 	k8sClient     client.Client
-	logger        *slog.Logger
-	firstSync     FirstSync
-	mu            *sync.Mutex
-	configuration Configuration
-	params        HaproxyConfMgrParams
+	// Backend owners
+	backendOwners   BackendReferencedBy // map[backendName] -> map[ownerType] -> map[ownerName] -> struct{}
+	logger          *slog.Logger
+	mu              *sync.Mutex
+	controllerStore tree.ControllerStore
+	configuration   Configuration
+	firstSync       FirstSync
+	params          HaproxyConfMgrParams
 }
 
 type FirstSync struct {
@@ -63,13 +63,9 @@ type FirstSync struct {
 	frontends map[string]struct{}
 	// Same for backends
 	backends map[string]struct{}
-	mu       *sync.Mutex
 
 	// local managers
-	routeManager    RouteMgrImpl
-	controllerStore tree.ControllerStore
-	configuration   Configuration
-	params          HaproxyConfMgrParams
+	routeManager RouteMgrImpl
 	// If this is the initial sync, we will add to the diffs Deleted all items that are not upserted
 	flag bool // True if this is the initial sync
 }
