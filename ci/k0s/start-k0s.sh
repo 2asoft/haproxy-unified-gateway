@@ -13,7 +13,7 @@ SCRIPT_DIR=$(dirname "$0")
 docker network create --subnet=172.21.0.0/24 k0s-net
 
 # Start the controller
-docker run -d --name k0s-hug-controller --hostname k0s-hug-controller --privileged --ip 172.21.0.2 -v /var/lib/k0s -v /var/log/pods -v "$SCRIPT_DIR/k0s.yaml:/etc/k0s/k0s.yaml" -p 8443:6443 --net k0s-net docker.io/k0sproject/k0s:v1.33.4-k0s.0 k0s controller --single --config /etc/k0s/k0s.yaml
+docker run -d --name k0s-hug-controller --hostname k0s-hug-controller --privileged --ip 172.21.0.2 -v /var/lib/k0s -v /var/log/pods -v "$SCRIPT_DIR/k0s.yaml:/etc/k0s/k0s.yaml" -p 8443:6443 --net k0s-net docker.io/k0sproject/k0s:v1.34.1-k0s.0 k0s controller --single --config /etc/k0s/k0s.yaml
 
 # Wait for the controller to be ready
 echo -n "Waiting for controller to be ready "
