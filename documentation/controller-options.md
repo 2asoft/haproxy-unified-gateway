@@ -43,6 +43,7 @@ Available options:
 | ServerNameTemplate | `template`(string) |
 | StartupSyncPeriod | `syncPeriod`(time.Duration) |
 | StoreCertificateOnDisk | `structureType`(storage.StructureType) |
+| StoreMapsOnDisk | `structureType`(storage.StructureType) |
 | SyncPeriod | `syncPeriod`(time.Duration) |
 
 ### BackendNameTemplate
@@ -346,6 +347,19 @@ import (
 )
 
 controller, err := controller.New(opt.StoreCertificateOnDisk(structureType))
+```
+
+### StoreMapsOnDisk
+
+
+Example:
+```go
+import (
+  github.com/haproxytech/kubernetes-controller/k8s/gate
+  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+)
+
+controller, err := controller.New(opt.StoreMapsOnDisk(structureType))
 ```
 
 ### SyncPeriod

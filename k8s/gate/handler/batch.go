@@ -60,6 +60,8 @@ type GateTreeConfig struct {
 	ControllerName string
 	// StoreCertificatesOnDisk is a flag that indicates to the gate library to store certificates on disk
 	StoreCertificateOnDisk bool
+	// StoreMapsOnDisk is a flag that indicates to the gate library to store maps on disk
+	StoreMapsOnDisk bool
 	// RuntimeUpdateHaproxy
 	RuntimeUpdateHaproxy bool
 }

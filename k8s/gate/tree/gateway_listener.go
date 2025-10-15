@@ -39,8 +39,8 @@ type Listener struct {
 	// Final Conditions
 	Conditions     generic.Conditions
 	AttachedRoutes AttachedRoutes
-	// owner is the gateway that this listener is connected to
-	owner client.ObjectKey
+	// Owner is the gateway that this listener is connected to
+	Owner client.ObjectKey
 	// Checks results
 	CheckRouteGroupKind CheckResult
 	CheckProtocol       CheckResult
@@ -383,7 +383,7 @@ func (l *Listener) addAttachedRoute(routeKey client.ObjectKey, controllerStore C
 	l.AttachedRoutes[routeKey] = struct{}{}
 
 	// Find the corresponding Gateway and set it as upserted
-	gwKey := l.owner
+	gwKey := l.Owner
 	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
 	if treeGw.TreeStatus.Status == store.StatusDeleted || !ok {
 		// no action needed, Gateway is Deleted or not manager by our controller
@@ -401,7 +401,7 @@ func (l *Listener) deleteAttachedRoute(routeKey client.ObjectKey, controllerStor
 	delete(l.AttachedRoutes, routeKey)
 
 	// Find the corresponding Gateway and set it as upserted
-	gwKey := l.owner
+	gwKey := l.Owner
 	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
 	if treeGw.TreeStatus.Status == store.StatusDeleted || !ok {
 		// no action needed, Gateway is Deleted or not manager by our controller

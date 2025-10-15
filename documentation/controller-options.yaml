@@ -140,6 +140,12 @@ StoreCertificateOnDisk:
     args:
         - name: structureType
           type: storage.StructureType
+StoreMapsOnDisk:
+    name: StoreMapsOnDisk
+    comment: ""
+    args:
+        - name: structureType
+          type: storage.StructureType
 SyncPeriod:
     name: SyncPeriod
     comment: ""

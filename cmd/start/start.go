@@ -70,6 +70,7 @@ func SetupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 		opt.DefaultsSectionName(gateconfig.DefaultsSectionName),
 		opt.RuntimeUpdate(gateconfig.DefaultWaitForRuntimeTimeout),   // Send commands through runtime in Gate library
 		opt.StoreCertificateOnDisk(storage.StructureTypeCertDefault), // Store the certificates on disk
+		opt.StoreMapsOnDisk(storage.StructureTypeMapsDefault),        // Store the maps on disk
 	}
 	if hugConfig.DisableIPv4 {
 		opts = append(opts, opt.DisableIPv4())

@@ -23,6 +23,7 @@ import (
 
 type HaproxyConfMgrParams struct {
 	certificateStorage storage.CertificateStorage
+	mapsStorage        storage.MapsStorage
 	extractGVK         utils.ExtractGVK
 	HaproxyConfParams
 }
@@ -56,6 +57,8 @@ type HaproxyConfParams struct {
 	RuntimeUpdateHaproxy bool
 	// StoreCertificatesOnDisk is a flag that indicates to the gate library to store certificates on disk
 	StoreCertificateOnDisk bool
+	// StoreMapsOnDisk is a flag that indicates to the gate library to store maps on disk
+	StoreMapsOnDisk bool
 }
 
 type HaproxyDirs struct {
@@ -68,17 +71,20 @@ type HaproxyDirs struct {
 	PIDFile       string
 	RuntimeSocket string
 	MasterSocket  string
-	MapsDir       string
 	PatternDir    string
 	ErrFileDir    string
 	CertsDir      string
 	CertListDir   string
+	MapsDir       string
 }
 
-func NewHaproxyConfMgrParams(extractGVK utils.ExtractGVK, haproxyConfParams HaproxyConfParams, certificateStorage storage.CertificateStorage) (HaproxyConfMgrParams, error) {
+func NewHaproxyConfMgrParams(extractGVK utils.ExtractGVK, haproxyConfParams HaproxyConfParams,
+	certificateStorage storage.CertificateStorage, mapsStorage storage.MapsStorage,
+) (HaproxyConfMgrParams, error) {
 	return HaproxyConfMgrParams{
 		extractGVK:         extractGVK,
 		HaproxyConfParams:  haproxyConfParams,
 		certificateStorage: certificateStorage,
+		mapsStorage:        mapsStorage,
 	}, nil
 }

@@ -66,6 +66,7 @@ func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig
 	httpRouteBuilder := tree.NewHTTPRouteBuilder(tree.HTTPRouteBuilderParams{
 		ControllerStore: controllerStore,
 		MapsStorage:     cfg.MapsStorage,
+		RuntimeUpdate:   cfg.RuntimeUpdateHaproxy,
 	})
 
 	treeBuilder := GateTreeBuilder{

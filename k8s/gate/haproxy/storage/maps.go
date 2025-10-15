@@ -15,6 +15,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -26,53 +27,85 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 )
 
+//revive:disable:var-naming
+const (
+	PATH_EXACT_MAP  = "path_exact"
+	PATH_PREFIX_MAP = "path_prefix"
+	PATH_REGEX_MAP  = "path_regex"
+)
+
+//revive:enable:var-naming
+
 var _ MapsStorage = &MapsStorageDefault{}
 
 type MapsStorageDefault struct {
 	logger     *slog.Logger
 	extractGVK utils.ExtractGVK
-	mapsDir    string
+	// MapsBaseDir the base directory to store maps
+	MapsBaseDir string
+	Maps        map[string]*maps.MapData
 }
 
-func NewMapsStorage(logger *slog.Logger, extractGVK utils.ExtractGVK, structureType StructureType, mapsDir string) (MapsStorage, error) {
+func NewMapsStorage(logger *slog.Logger, extractGVK utils.ExtractGVK, structureType StructureType, mapsBaseDir string) (MapsStorage, error) {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogMapsStorage))
 
-	if mapsDir == "" {
-		mapsDir = "/usr/local/hug/maps"
-		// return nil, fmt.Errorf("maps directory is not set")
+	if mapsBaseDir == "" {
+		return nil, errors.New("maps directory is not set")
 	}
 
 	switch structureType {
 	case StructureTypeMapsDefault:
 		cs := MapsStorageDefault{
-			logger:     mylogger,
-			extractGVK: extractGVK,
-			mapsDir:    mapsDir,
+			logger:      mylogger,
+			extractGVK:  extractGVK,
+			MapsBaseDir: mapsBaseDir,
+			Maps:        map[string]*maps.MapData{},
 		}
-		cs.empty(mapsDir)
+		cs.empty(mapsBaseDir)
 		return &cs, nil
 	default:
 		return nil, fmt.Errorf("unknown structure type: %s", structureType)
 	}
 }
 
-func (m *MapsStorageDefault) MapPath(listener string) futils.FilePath {
-	// TODO
-	_ = listener
-	_ = m.mapsDir
-	return futils.FilePath{}
+// MapPath returns the FilePath for the map
+// Default algorithm for Maps Storage
+// - For directory: maps are grouped in directories based on:
+//   - namespace/frontend_name
+//   - /etc/unified.../maps/<frontend>/
+//   - /etc/unified.../maps/<frontend>/
+//   - /etc/unified.../maps/<frontend>/
+func (m *MapsStorageDefault) MapPath(frontendName string, mapName string) futils.FilePath {
+	return futils.FilePath{
+		Dir:      filepath.Join(m.MapsBaseDir, frontendName),
+		FileName: mapName + ".map",
+	}
 }
 
-func (MapsStorageDefault) NewMapData(key, value string) (maps.MapData, error) {
-	return maps.MapData{
-		Data: map[string]string{
-			key: value,
-		},
-	}, nil
+func (m *MapsStorageDefault) GetMaps() map[string]*maps.MapData {
+	return m.Maps
+}
+
+func (m *MapsStorageDefault) GetMapData(filePath futils.FilePath) *maps.MapData {
+	m.EnsureMapData(filePath)
+	return m.Maps[filePath.FullPath()]
+}
+
+func (m *MapsStorageDefault) EnsureMapData(filePath futils.FilePath) {
+	name := filePath.FullPath()
+	mapData, ok := m.Maps[name]
+	if ok {
+		return
+	}
+
+	mapData = &maps.MapData{
+		Data: map[string]string{},
+		Path: filePath,
+	}
+	m.Maps[name] = mapData
 }
 
 func (m *MapsStorageDefault) WriteOnDisk(data maps.MapData) error {
-	_ = m.mapsDir
 	var f *os.File
 	var err error
 	if _, err = os.Stat(data.Path.Dir); os.IsNotExist(err) {
@@ -86,7 +119,7 @@ func (m *MapsStorageDefault) WriteOnDisk(data maps.MapData) error {
 		return err
 	}
 	defer f.Close()
-	// TODO sort this
+	// TODO sort this maybe
 	for k, v := range data.Data {
 		_, err = f.WriteString(fmt.Sprintf("%s %s\n", k, v))
 		if err != nil {
@@ -101,7 +134,7 @@ func (MapsStorageDefault) DeleteFromDisk(data maps.MapData) error {
 }
 
 func (m *MapsStorageDefault) DeleteEmptyMapsDir() error {
-	entries, err := os.ReadDir(m.mapsDir)
+	entries, err := os.ReadDir(m.MapsBaseDir)
 	if err != nil {
 		return err
 	}
@@ -112,7 +145,7 @@ func (m *MapsStorageDefault) DeleteEmptyMapsDir() error {
 			continue // We only care about directories
 		}
 
-		subdirPath := filepath.Join(m.mapsDir, entry.Name())
+		subdirPath := filepath.Join(m.MapsBaseDir, entry.Name())
 		subEntries, err := os.ReadDir(subdirPath)
 		if err != nil {
 			return err

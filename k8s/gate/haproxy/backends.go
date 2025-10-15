@@ -123,19 +123,10 @@ func (b *HaproxyConfMgrImpl) processHTTPRoutes() error {
 }
 
 func (b *HaproxyConfMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute) error {
-	switch route.Valid {
-	case true:
-		err := b.onValidHTTPRouteUpserted(routeKey, route)
-		if err != nil {
-			return err
-		}
-	case false:
-		err := b.onInvalidHTTPRouteUpserted(routeKey, route)
-		if err != nil {
-			return err
-		}
+	if route.Valid {
+		return b.onValidHTTPRouteUpserted(routeKey, route)
 	}
-	return nil
+	return b.onInvalidHTTPRouteUpserted(routeKey, route)
 }
 
 func (b *HaproxyConfMgrImpl) onValidHTTPRouteUpserted(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute) error {

@@ -51,6 +51,19 @@ type HTTPRoute struct {
 
 // NewRoute creates a new Route for the GateTree.
 func NewRoute(k8sObject *gatewayv1.HTTPRoute, controllerName string) *HTTPRoute {
+	listeners := utils.NewKeyMap[gatewayv1.ParentReference, *Listener](func(pr gatewayv1.ParentReference) string {
+		var namespace string
+		if pr.Namespace != nil {
+			namespace = string(*pr.Namespace)
+		}
+		var sectionName string
+		if pr.SectionName != nil {
+			sectionName = string(*pr.SectionName)
+		}
+		return strings.Join([]string{namespace, string(pr.Name), sectionName}, "/")
+	})
+	_ = listeners // TODO
+
 	return &HTTPRoute{
 		K8sResource: k8sObject,
 		TreeStatus: TreeUpdate[HTTPRoute]{
@@ -100,14 +113,12 @@ func (r *HTTPRoute) DeepCopy() *HTTPRoute {
 	data, err := json.Marshal(r)
 	if err != nil {
 		// Restore before returning
-		r.Listeners = listeners
 		r.TreeStatus = treeStatus
 		return nil
 	}
 	_ = json.Unmarshal(data, &copied) // Deserialize to a new struct
 
 	// Restore the original object
-	r.Listeners = listeners
 	r.TreeStatus = treeStatus
 
 	// Manually copy the Listeners map

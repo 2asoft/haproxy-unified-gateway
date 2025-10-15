@@ -63,6 +63,13 @@ type FirstSync struct {
 	frontends map[string]struct{}
 	// Same for backends
 	backends map[string]struct{}
+	mu       *sync.Mutex
+
+	// local managers
+	routeManager    RouteMgrImpl
+	controllerStore tree.ControllerStore
+	configuration   Configuration
+	params          HaproxyConfMgrParams
 	// If this is the initial sync, we will add to the diffs Deleted all items that are not upserted
 	flag bool // True if this is the initial sync
 }
@@ -94,6 +101,7 @@ func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore
 		k8sClient:       k8sClient,
 		mu:              &sync.Mutex{},
 	}
+	impl.firstSync.routeManager = RouteMgrImpl{topManager: &impl}
 
 	return &impl
 }
@@ -134,6 +142,13 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 	}
 
 	b.configuration.diffs.ReloadNeed = reload.Instance().NeedReload()
+
+	// -----------
+	// Routes (All types)
+	if err := b.firstSync.routeManager.processRoutes(); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing routes",
+			logging.LogAttrError(err))
+	}
 
 	// Perform the needed cleanup after the first sync
 	// Remove frontends and backends that were present at startup but not anymore in the cluster

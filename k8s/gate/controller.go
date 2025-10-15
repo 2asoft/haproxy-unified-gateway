@@ -35,7 +35,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 
-	v1 "k8s.io/api/core/v1"
+	apiv1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -158,10 +158,10 @@ func Add(
 		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
 		Gateways:        make(map[types.NamespacedName]*gatewayv1.Gateway),
 		HTTPRoutes:      make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
-		Services:        make(map[types.NamespacedName]*v1.Service),
-		Namespaces:      make(map[types.NamespacedName]*v1.Namespace),
-		Secrets:         make(map[types.NamespacedName]*v1.Secret),
-		ConfigMaps:      make(map[types.NamespacedName]*v1.ConfigMap),
+		Services:        make(map[types.NamespacedName]*apiv1.Service),
+		Namespaces:      make(map[types.NamespacedName]*apiv1.Namespace),
+		Secrets:         make(map[types.NamespacedName]*apiv1.Secret),
+		ConfigMaps:      make(map[types.NamespacedName]*apiv1.ConfigMap),
 		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
 		HugGates:        make(map[types.NamespacedName]*v3.HugGate),
 		ControllerConfs: make(map[types.NamespacedName]*v3.HugConf),
@@ -192,12 +192,13 @@ func Add(
 		K8sClient:                  mgr.GetClient(),
 		K8sReader:                  mgr.GetAPIReader(),
 		StoreCertificateOnDisk:     cfg.HaproxyParams.StoreCertificateOnDisk,
+		StoreMapsOnDisk:            cfg.HaproxyParams.StoreMapsOnDisk,
 		RuntimeUpdateHaproxy:       cfg.HaproxyParams.RuntimeUpdateHaproxy,
 		CertificateStorage:         certificateStorage,
 		MapsStorage:                mapsStorage,
 		ControllerName:             cfg.ControllerName,
 	}
-	haproxyCfgMgrParams, err := haproxy.NewHaproxyConfMgrParams(extractGVK, cfg.HaproxyParams, certificateStorage)
+	haproxyCfgMgrParams, err := haproxy.NewHaproxyConfMgrParams(extractGVK, cfg.HaproxyParams, certificateStorage, mapsStorage)
 	if err != nil {
 		return err
 	}
@@ -334,7 +335,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "Namespace",
-			objectType: &v1.Namespace{},
+			objectType: &apiv1.Namespace{},
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
@@ -346,7 +347,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 		},
 		{
 			name:       "ConfigMap",
-			objectType: &v1.ConfigMap{},
+			objectType: &apiv1.ConfigMap{},
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(

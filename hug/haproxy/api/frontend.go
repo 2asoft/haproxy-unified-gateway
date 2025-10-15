@@ -44,6 +44,13 @@ func (c *clientNative) FrontendCreate(frontend models.Frontend) error {
 
 	// Binds
 	err = c.BindReplaceAll(parser.Frontends, frontend.Name, frontend.Binds)
+	if err != nil {
+		return err
+	}
+
+	// Http Requests
+	err = c.HTTPRequestReplaceAll(parser.Frontends, frontend.Name, frontend.HTTPRequestRuleList)
+
 	return err
 }
 

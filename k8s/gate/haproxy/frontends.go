@@ -22,6 +22,7 @@ import (
 	"log/slog"
 
 	"github.com/haproxytech/client-native/v6/models"
+	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/templates"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
@@ -152,7 +153,11 @@ func (b *HaproxyConfMgrImpl) upsertFrontends(gwKey k8stypes.NamespacedName, gw *
 			continue
 		}
 
-		newFe, err := b.newFrontend(gwKey, gw, listener)
+		newFe, err := b.newFrontend(newFrontendParams{
+			gwKey:        gwKey,
+			treeGw:       gw,
+			treeListener: listener,
+		})
 		if err != nil {
 			return err
 		}
@@ -199,11 +204,21 @@ func (b *HaproxyConfMgrImpl) finalizeFrontendsByGateway() {
 	}
 }
 
-func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *tree.Gateway, treeListener *tree.Listener) (*models.Frontend, error) {
+type newFrontendParams struct {
+	gwKey        k8stypes.NamespacedName
+	treeGw       *tree.Gateway
+	treeListener *tree.Listener
+}
+
+func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Frontend, error) {
+	gwKey := params.gwKey
+	treeGw := params.treeGw
+	treeListener := params.treeListener
+
 	listener := treeListener.K8sResource
 
 	// Create a frontend for each listener
-	feName, err := b.getFrontendName(gwKey, listener)
+	frontendName, err := b.getFrontendName(gwKey, listener)
 	if err != nil {
 		b.logger.LogAttrs(context.Background(), slog.LevelError,
 			"Failed to get frontend name",
@@ -213,9 +228,18 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 	}
 
 	md := b.metadataManager.FrontendMetaData(treeGw)
+
+	pathExactMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
+	pathPrefixMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
+	pathRegexMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
+
+	b.params.mapsStorage.EnsureMapData(pathExactMap)
+	b.params.mapsStorage.EnsureMapData(pathPrefixMap)
+	b.params.mapsStorage.EnsureMapData(pathRegexMap)
+
 	fe := &models.Frontend{
 		FrontendBase: models.FrontendBase{
-			Name:     feName,
+			Name:     frontendName,
 			From:     b.params.DefaultsSectionName,
 			Metadata: md,
 			// TODO: remove this, only temporary for test
@@ -231,9 +255,66 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 			}(),
 		},
 		HTTPRequestRuleList: []*models.HTTPRequestRule{
-			// TODO
+			{ // http-request set-var(txn.base) base
+				Type:     "set-var",
+				VarName:  "base",
+				VarScope: "txn",
+				VarExpr:  "base",
+			},
+			{ // http-request set-var(txn.path) path
+				Type:     "set-var",
+				VarName:  "path",
+				VarScope: "txn",
+				VarExpr:  "path",
+			},
+			{ // http-request set-var(txn.host) req.hdr(Host),field(1,:),lower
+				Type:     "set-var",
+				VarName:  "host",
+				VarScope: "txn",
+				VarExpr:  "req.hdr(Host),field(1,:),lower",
+			},
+
+			{ // http-request set-var(txn.routes) path,map(routes.map)
+				Type:     "set-var",
+				VarName:  "txn.routes",
+				VarScope: "txn",
+				VarExpr:  "path,map(" + pathExactMap.FullPath() + ")",
+			},
+
+			//  http-request set-var(txn.routes) path,map(routes.map)
+			//  http-request lua.route if { var(txn.routes),length gt 1 }
+			//  use_backend %[var(txn.backend)]
+
+			// TODO ZLATKO
+			// { // http-request set-var(txn.host_match) var(txn.host),map(/etc/haproxy/maps/host.map)
+			// 	Type:     "set-var",
+			// 	VarName:  "host_match",
+			// 	VarScope: "txn",
+			// 	VarExpr:  fmt.Sprintf("var(txn.host),map(%s)", hostMapPath),
+			// },
+			// { // http-request set-var(txn.host_match) var(txn.host),regsub(^[^.]*,,),map(/etc/haproxy/maps/host.map,'') if !{ var(txn.host_match) -m found }
+			// 	Type:     "set-var",
+			// 	VarName:  "host_match",
+			// 	VarScope: "txn",
+			// 	VarExpr:  fmt.Sprintf("var(txn.host),regsub(^[^.]*,,),map(%s,'')", hostMapPath),
+			// 	Cond:     "!{ var(txn.host_match) -m found }",
+			// },
+			// { // http-request set-var(txn.path_match) var(txn.host_match),concat(,txn.path,),map(/etc/haproxy/maps/path-exact.map)
+			// 	Type:     "set-var",
+			// 	VarName:  "path_match",
+			// 	VarScope: "txn",
+			// 	VarExpr:  fmt.Sprintf("var(txn.host_match),concat(,txn.path,),map(%s)", pathExactMapPath),
+			// },
+			// { // http-request set-var(txn.path_match) var(txn.host_match),concat(,txn.path,),map_beg(/etc/haproxy/maps/path-prefix.map) if !{ var(txn.path_match) -m found }
+			// 	Type:     "set-var",
+			// 	VarName:  "path_match",
+			// 	VarScope: "txn",
+			// 	VarExpr:  fmt.Sprintf("var(txn.host_match),concat(,txn.path,),map_beg(%s)", pathPrefixMapPath),
+			// 	Cond:     "!{ var(txn.path_match) -m found }",
+			// },
 		},
 	}
+
 	// Set other frontend properties based on the listener
 	port := int64(listener.Port)
 	if !b.params.DisableIPv4 {
@@ -245,7 +326,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 				}
 				return "0.0.0.0"
 			}(),
-			BindParams: b.bindParams(feName, "v4", treeGw, treeListener),
+			BindParams: b.bindParams(frontendName, "v4", treeGw, treeListener),
 		}
 		if fe.Binds == nil {
 			fe.Binds = make(map[string]models.Bind)
@@ -261,7 +342,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(gwKey k8stypes.NamespacedName, treeGw *
 				}
 				return "::"
 			}(),
-			BindParams: b.bindParams(feName, "v6", treeGw, treeListener),
+			BindParams: b.bindParams(frontendName, "v6", treeGw, treeListener),
 		}
 		if fe.Binds == nil {
 			fe.Binds = make(map[string]models.Bind)

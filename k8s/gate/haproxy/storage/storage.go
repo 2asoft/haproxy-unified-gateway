@@ -42,9 +42,11 @@ type CertificateStorage interface {
 
 type MapsStorage interface {
 	// MapPath returns the FilePath for a Map
-	MapPath(listener string) futils.FilePath
-	// NewMapData returns the new MapData for a given key and value
-	NewMapData(key, value string) (maps.MapData, error)
+	MapPath(frontendName string, mapName string) futils.FilePath
+	// NewMapData returns the new Map
+	GetMapData(filePath futils.FilePath) *maps.MapData
+	EnsureMapData(filePath futils.FilePath)
+	GetMaps() map[string]*maps.MapData
 	WriteOnDisk(data maps.MapData) error
 	DeleteFromDisk(data maps.MapData) error
 	// DeleteEmptyMapsDir checks and deletes subdirectories directly
