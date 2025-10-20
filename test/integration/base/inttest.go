@@ -63,6 +63,9 @@ import (
 //go:embed haproxy.cfg
 var initialHaproxyCfg string
 
+//go:embed route.lua
+var routeLua string
+
 func init() {
 	utilruntime.Must(v3.AddToScheme(scheme.Scheme))
 	utilruntime.Must(v1.AddToScheme(scheme.Scheme))
@@ -123,7 +126,7 @@ func NewIntTest(t *testing.T) (test IntTest, err error) {
 	return test, nil
 }
 
-func (test *IntTest) StartTestEnv(t *testing.T) {
+func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-length
 	// Bootstrapping test environment.
 	cfg, err := test.TestEnv.Start()
 	g := gomega.NewWithT(t)
@@ -142,9 +145,27 @@ func (test *IntTest) StartTestEnv(t *testing.T) {
 	// Controller HUGConfig
 	hugConfig := hugConfig(test)
 
-	// Cleanup inital haproxy.cfg
-	// and start with what is in /fs
-	err = writeInitalHaproxyCfg(hugConfig.HaproxyDirs.MainCfgFile, initialHaproxyCfg)
+	// Ensure route.lua is present in the test HAProxy cfg dir so HAProxy can load it when
+	// the controller emits `lua-load-per-thread route.lua` / `http-request lua.route`.
+	// We embed the repository copy of route.lua into the test binary so tests don't
+	// rely on the process working directory or external files. In CI the HAProxy process
+	// may be started with a different working directory, so we also rewrite the
+	// embedded haproxy.cfg to reference the absolute path to the copied route.lua file.
+	dstRoute := filepath.Join(hugConfig.HaproxyDirs.CfgDir, "route.lua")
+	if _, err := os.Stat(dstRoute); os.IsNotExist(err) {
+		err := os.WriteFile(dstRoute, []byte(routeLua), 0o644)
+		g.Expect(err).ToNot(gomega.HaveOccurred())
+	}
+
+	// Rewrite the embedded initial HAProxy config so lua-load-per-thread references
+	// the absolute path to the copied route.lua file. This guarantees HAProxy can
+	// open the file regardless of the process working directory in CI.
+	modifiedCfg := initialHaproxyCfg
+	// Replace the simple filename directive if present.
+	if strings.Contains(modifiedCfg, "lua-load-per-thread route.lua") {
+		modifiedCfg = strings.ReplaceAll(modifiedCfg, "lua-load-per-thread route.lua", fmt.Sprintf("lua-load-per-thread %s", dstRoute))
+	}
+	err = writeInitalHaproxyCfg(hugConfig.HaproxyDirs.MainCfgFile, modifiedCfg)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	// Setup Gate lib configuration from HUG binary configuration

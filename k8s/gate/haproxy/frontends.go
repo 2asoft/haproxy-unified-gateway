@@ -254,6 +254,16 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				return ""
 			}(),
 		},
+		ACLList: []*models.ACL{
+			{ // acl route_is_json var(txn.route),bytes(0,1) -m str {}
+				ACLName:   "route_is_json",
+				Criterion: "var(txn.route),bytes(0,1)",
+				Value:     "-m str {}",
+				Metadata: map[string]any{
+					"hug": "for lua routing",
+				},
+			},
+		},
 		HTTPRequestRuleList: []*models.HTTPRequestRule{
 			{ // http-request set-var(txn.base) base
 				Type:     "set-var",
@@ -274,44 +284,87 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				VarExpr:  "req.hdr(Host),field(1,:),lower",
 			},
 
-			{ // http-request set-var(txn.routes) path,map(routes.map)
+			{
+				// exact domain + exact path
+				// http-request set-var(txn.route) base,map(route_exact_match.map)
 				Type:     "set-var",
-				VarName:  "txn.routes",
+				VarName:  "route",
+				VarScope: "txn",
+				VarExpr:  "base,map(" + pathExactMap.FullPath() + ")",
+				Metadata: map[string]any{"hug": "exact domain + exact path"},
+			},
+			{
+				// # any domain + exact path
+				// http-request set-var(txn.route,ifnotexists) path,map(route_exact_match.map)
+				Type:     "set-var",
+				VarName:  "route,ifnotexists",
 				VarScope: "txn",
 				VarExpr:  "path,map(" + pathExactMap.FullPath() + ")",
+				Metadata: map[string]any{"hug": "any domain + exact path"},
 			},
-
-			//  http-request set-var(txn.routes) path,map(routes.map)
-			//  http-request lua.route if { var(txn.routes),length gt 1 }
-			//  use_backend %[var(txn.backend)]
-
-			// TODO ZLATKO
-			// { // http-request set-var(txn.host_match) var(txn.host),map(/etc/haproxy/maps/host.map)
-			// 	Type:     "set-var",
-			// 	VarName:  "host_match",
-			// 	VarScope: "txn",
-			// 	VarExpr:  fmt.Sprintf("var(txn.host),map(%s)", hostMapPath),
-			// },
-			// { // http-request set-var(txn.host_match) var(txn.host),regsub(^[^.]*,,),map(/etc/haproxy/maps/host.map,'') if !{ var(txn.host_match) -m found }
-			// 	Type:     "set-var",
-			// 	VarName:  "host_match",
-			// 	VarScope: "txn",
-			// 	VarExpr:  fmt.Sprintf("var(txn.host),regsub(^[^.]*,,),map(%s,'')", hostMapPath),
-			// 	Cond:     "!{ var(txn.host_match) -m found }",
-			// },
-			// { // http-request set-var(txn.path_match) var(txn.host_match),concat(,txn.path,),map(/etc/haproxy/maps/path-exact.map)
-			// 	Type:     "set-var",
-			// 	VarName:  "path_match",
-			// 	VarScope: "txn",
-			// 	VarExpr:  fmt.Sprintf("var(txn.host_match),concat(,txn.path,),map(%s)", pathExactMapPath),
-			// },
-			// { // http-request set-var(txn.path_match) var(txn.host_match),concat(,txn.path,),map_beg(/etc/haproxy/maps/path-prefix.map) if !{ var(txn.path_match) -m found }
-			// 	Type:     "set-var",
-			// 	VarName:  "path_match",
-			// 	VarScope: "txn",
-			// 	VarExpr:  fmt.Sprintf("var(txn.host_match),concat(,txn.path,),map_beg(%s)", pathPrefixMapPath),
-			// 	Cond:     "!{ var(txn.path_match) -m found }",
-			// },
+			{
+				// # exact domain + path prefix
+				// http-request set-var(txn.route,ifnotexists) base,map_beg(route_prefix_match.map)
+				Type:     "set-var",
+				VarName:  "route,ifnotexists",
+				VarScope: "txn",
+				VarExpr:  "base,map_beg(" + pathPrefixMap.FullPath() + ")",
+				Metadata: map[string]any{"hug": "exact domain + path prefix"},
+			},
+			{
+				//  # any domain + path prefix
+				// http-request set-var(txn.route,ifnotexists) path,map_beg(route_prefix_match.map)
+				Type:     "set-var",
+				VarName:  "route,ifnotexists",
+				VarScope: "txn",
+				VarExpr:  "path,map_beg(" + pathPrefixMap.FullPath() + ")",
+				Metadata: map[string]any{"hug": "exact domain + path prefix"},
+			},
+			// TODO
+			// # domain wildcard + exact path
+			// http-request set-var(txn.route,ifnotexists) base,map_end(route_dw_ep.map)
+			{
+				// # any domain + path regex
+				// http-request set-var(txn.route,ifnotexists) path,map_reg(route_regex.map) # ^/(foo|bar)/.*
+				Type:     "set-var",
+				VarName:  "route,ifnotexists",
+				VarScope: "txn",
+				VarExpr:  "path,map_reg(" + pathRegexMap.FullPath() + ")",
+				Metadata: map[string]any{"hug": "any domain + path regex"},
+			},
+			{
+				// # domain wildcard + path prefix. Example: ^[^.]+\.domain\.com/v1/foo/.*   # or map_sub
+				// # domain wildcard + path regex   Example: ^[^.]+\.domain\.com/v[1-3]/foo
+				// # exact domain + path regex      Example: ^www\.domain\.com/v[1-3]/foo
+				// http-request set-var(txn.route,ifnotexists) base,map_reg(route_regex.map)
+				Type:     "set-var",
+				VarName:  "route,ifnotexists",
+				VarScope: "txn",
+				VarExpr:  "base,map_reg(" + pathRegexMap.FullPath() + ")",
+				Metadata: map[string]any{"hug": "domain wildcard + path prefix or regex, exact domain + path regex"},
+			},
+			{
+				// http-request lua.route if route_is_json
+				Type:      "lua",
+				LuaAction: "route",
+				Cond:      "if",
+				CondTest:  "route_is_json",
+				Metadata: map[string]any{
+					"hug": "lua routing",
+				},
+			},
+		},
+		BackendSwitchingRuleList: []*models.BackendSwitchingRule{
+			// use_backend %[var(txn.backend)] if route_is_json
+			// use_backend %[var(txn.route)]
+			{
+				Name:     "%[var(txn.route)]",
+				Cond:     "if",
+				CondTest: "route_is_json",
+			},
+			{
+				Name: "%[var(txn.route)]",
+			},
 		},
 	}
 

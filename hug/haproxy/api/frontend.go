@@ -48,10 +48,25 @@ func (c *clientNative) FrontendCreate(frontend models.Frontend) error {
 		return err
 	}
 
+	// ACLs
+	err = c.ACLReplaceAll(parser.Frontends, frontend.Name, frontend.ACLList)
+	if err != nil {
+		return err
+	}
+
 	// Http Requests
 	err = c.HTTPRequestReplaceAll(parser.Frontends, frontend.Name, frontend.HTTPRequestRuleList)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// Use backend rules
+	err = c.UseBackendReplaceAll(frontend.Name, frontend.BackendSwitchingRuleList)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *clientNative) FrontendDelete(frontendName string) error {
@@ -135,5 +150,27 @@ func (c *clientNative) FrontendEdit(frontend models.Frontend) error {
 
 	// Binds
 	err = c.BindReplaceAll(parser.Frontends, frontend.Name, frontend.Binds)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// ACLs
+	err = c.ACLReplaceAll(parser.Frontends, frontend.Name, frontend.ACLList)
+	if err != nil {
+		return err
+	}
+
+	// Http Requests
+	err = c.HTTPRequestReplaceAll(parser.Frontends, frontend.Name, frontend.HTTPRequestRuleList)
+	if err != nil {
+		return err
+	}
+
+	// Use backend rules
+	err = c.UseBackendReplaceAll(frontend.Name, frontend.BackendSwitchingRuleList)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

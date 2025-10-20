@@ -19,4 +19,5 @@ type Params struct {
 	haproxy.HaproxyDirs
 	Test             bool
 	UseWiths6Overlay bool
+	UseWithPebble    bool
 }

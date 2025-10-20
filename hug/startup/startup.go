@@ -15,6 +15,7 @@ package startup
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/haproxytech/client-native/v6/configuration"
 	cfgoptions "github.com/haproxytech/client-native/v6/configuration/options"
@@ -66,6 +67,21 @@ func StructuredFromFile(cfgFile, transactionDir, haproxyBin string) (structured.
 			structuredCfg.Frontends[frontend.Name] = frontend
 		}
 	}
+
+	// check that we have correct settings in global part
+	_, global, err := confClient.GetGlobalConfiguration("")
+	if err != nil {
+		return structured.Structured{}, err
+	}
+	//  tune.lua.bool-sample-conversion normal
+	// lua-load-per-thread <path-to-route.lua>
+	// Ensure the configured LoadPerThread points to the route.lua next to the cfgFile
+	// so HAProxy can load it regardless of working directory (important for CI).
+	if global.LuaOptions == nil {
+		global.LuaOptions = &models.LuaOptions{}
+	}
+	cfgDir := filepath.Dir(cfgFile)
+	global.LuaOptions.LoadPerThread = filepath.Join(cfgDir, "route.lua")
 
 	return structuredCfg, nil
 }
