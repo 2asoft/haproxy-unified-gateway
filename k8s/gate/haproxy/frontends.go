@@ -255,10 +255,10 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 			}(),
 		},
 		ACLList: []*models.ACL{
-			{ // acl route_is_json var(txn.route),bytes(0,1) -m str {}
+			{ // acl route_is_json var(txn.route),bytes(0,1) -m str {
 				ACLName:   "route_is_json",
 				Criterion: "var(txn.route),bytes(0,1)",
-				Value:     "-m str {}",
+				Value:     "-m str {",
 				Metadata: map[string]any{
 					"hug": "for lua routing",
 				},
@@ -358,7 +358,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 			// use_backend %[var(txn.backend)] if route_is_json
 			// use_backend %[var(txn.route)]
 			{
-				Name:     "%[var(txn.route)]",
+				Name:     "%[var(txn.backend)]",
 				Cond:     "if",
 				CondTest: "route_is_json",
 			},
