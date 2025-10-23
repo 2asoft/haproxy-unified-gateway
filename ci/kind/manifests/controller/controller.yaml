@@ -40,8 +40,12 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           ports:
+            - name: http
+              containerPort: 30580
+            - name: https
+              containerPort: 30543
             - name: stat
-              containerPort: 31024
+              containerPort: 30524
           env:
             - name: POD_NAME
               valueFrom:
@@ -67,15 +71,15 @@ spec:
   type: NodePort
   ports:
     - name: stat
-      port: 1024
-      targetPort: 1024
+      port: 30524
+      targetPort: 30524
     - name: http
-      port: 80
+      port: 30580
       targetPort: 8080
-      nodePort: 31080
+      nodePort: 30580
       protocol: TCP
     - name: https
       port: 443
-      targetPort: 8443
-      nodePort: 31443
+      targetPort: 30543
+      nodePort: 30543
       protocol: TCP

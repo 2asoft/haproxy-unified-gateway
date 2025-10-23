@@ -8,14 +8,14 @@ nodes:
   - role: control-plane
     image: kindest/node:v1.33.1
     extraPortMappings:
-      - hostPort: 31080
-        containerPort: 31080
+      - hostPort: 30580
+        containerPort: 30580
         #listenAddress: "0.0.0.0" # Optional, defaults to "0.0.0.0"
         #protocol: udp # Optional, defaults to tcp
-      - hostPort: 31443
-        containerPort: 31443
-      - hostPort: 31025
-        containerPort: 31024
+      - hostPort: 30543
+        containerPort: 30543
+      - hostPort: 30524
+        containerPort: 30524
     kubeadmConfigPatches:
     - |
       kind: ClusterConfiguration
