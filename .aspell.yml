@@ -65,3 +65,4 @@ allowed:
   - workdir
   - yaml
   - kubectl
+  - hostname

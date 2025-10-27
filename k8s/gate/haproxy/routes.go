@@ -133,6 +133,7 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 	mapExact, mapPrefix, mapRegex *maps.MapData,
 ) error {
 	// TODO consider uniting this function with onUpsertedHTTPRoute basically the same
+	hostnames := route.K8sResource.Spec.Hostnames
 	for _, rule := range route.Rules {
 		// if !rule.Valid {
 		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
@@ -162,7 +163,10 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 			case gatewayv1.PathMatchRegularExpression:
 				mapData = mapRegex
 			}
-			delete(mapData.Data, path)
+			for _, hostname := range hostnames {
+				fullpath := string(hostname) + path
+				delete(mapData.Data, fullpath)
+			}
 		}
 	}
 	return nil
@@ -170,7 +174,8 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 
 func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex *maps.MapData,
-) error {
+) error { //revive:disable:function-length
+	hostnames := route.K8sResource.Spec.Hostnames
 	for _, rule := range route.Rules {
 		// if !rule.Valid {
 		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
@@ -256,9 +261,15 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 			}
 
 			if rule.Valid {
-				mapData.Data[path] = routeValue
+				for _, hostname := range hostnames {
+					fullpath := string(hostname) + path
+					mapData.Data[fullpath] = routeValue
+				}
 			} else {
-				delete(mapData.Data, path)
+				for _, hostname := range hostnames {
+					fullpath := string(hostname) + path
+					delete(mapData.Data, fullpath)
+				}
 			}
 		}
 	}
