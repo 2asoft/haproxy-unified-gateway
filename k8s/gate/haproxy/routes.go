@@ -62,28 +62,30 @@ func (b *RouteMgrImpl) fillMaps() {
 	// Managed HTTPRoutes => Create / update/ delete backends
 	for routeKey, route := range controllerStore.GateTree.HTTPRoutes {
 		for _, listener := range route.Listeners.Iterate {
-			frontendname, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
+			frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
 			if err != nil {
 				b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
 					logging.LogAttrError(err),
 				)
 			}
 
-			pathExactMap := mapsStorage.MapPath(frontendname, storage.PATH_EXACT_MAP)
-			pathPrefixMap := mapsStorage.MapPath(frontendname, storage.PATH_PREFIX_MAP)
-			pathregexMap := mapsStorage.MapPath(frontendname, storage.PATH_REGEX_MAP)
+			pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
+			pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
+			pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
+			pathregexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
 			mapExact := mapsStorage.GetMapData(pathExactMap)
 			mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
 			mapRegex := mapsStorage.GetMapData(pathregexMap)
+			mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
 
 			switch route.TreeStatus.Status {
 			case store.StatusUnchanged:
 				continue
 			case store.StatusUpserted:
-				err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex)
+				err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 				errs.Add(err)
 			case store.StatusDeleted:
-				err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex)
+				err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 				errs.Add(err)
 			}
 		}
@@ -120,17 +122,17 @@ func (b *RouteMgrImpl) writeMaps() {
 }
 
 func (b *RouteMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapData,
+	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData,
 ) error {
 	if route.Valid {
-		return b.onValidHTTPRouteUpserted(routeKey, route, mapExact, mapPrefix, mapRegex)
+		return b.onValidHTTPRouteUpserted(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 	}
-	return b.onInvalidHTTPRouteUpserted(routeKey, route, mapExact, mapPrefix, mapRegex)
+	return b.onInvalidHTTPRouteUpserted(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 }
 
 func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
 	// func (b *RouteMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapData,
+	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData,
 ) error {
 	// TODO consider uniting this function with onUpsertedHTTPRoute basically the same
 	hostnames := route.K8sResource.Spec.Hostnames
@@ -165,7 +167,11 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 			}
 			for _, hostname := range hostnames {
 				fullpath := string(hostname) + path
-				delete(mapData.Data, fullpath)
+				if pathType == gatewayv1.PathMatchExact && utils.IsDomainWildcard(string(hostname)) {
+					delete(mapDomainWPathExact.Data, fullpath)
+				} else {
+					delete(mapData.Data, fullpath)
+				}
 			}
 		}
 	}
@@ -173,8 +179,8 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 }
 
 func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapData,
-) error { //revive:disable:function-length
+	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData,
+) error { //revive:disable:function-length,cognitive-complexity
 	hostnames := route.K8sResource.Spec.Hostnames
 	for _, rule := range route.Rules {
 		// if !rule.Valid {
@@ -263,12 +269,20 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 			if rule.Valid {
 				for _, hostname := range hostnames {
 					fullpath := string(hostname) + path
-					mapData.Data[fullpath] = routeValue
+					if pathType == gatewayv1.PathMatchExact && utils.IsDomainWildcard(string(hostname)) {
+						mapDomainWPathExact.Data[fullpath] = routeValue
+					} else {
+						mapData.Data[fullpath] = routeValue
+					}
 				}
 			} else {
 				for _, hostname := range hostnames {
 					fullpath := string(hostname) + path
-					delete(mapData.Data, fullpath)
+					if pathType == gatewayv1.PathMatchExact && utils.IsDomainWildcard(string(hostname)) {
+						delete(mapDomainWPathExact.Data, fullpath)
+					} else {
+						delete(mapData.Data, fullpath)
+					}
 				}
 			}
 		}
@@ -279,7 +293,7 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 
 func (RouteMgrImpl) onInvalidHTTPRouteUpserted(_ k8stypes.NamespacedName, _ *tree.HTTPRoute,
 	// func (RouteMgrImpl) onInvalidHTTPRouteUpserted(routeKey k8stypes.NamespacedName, _ *tree.HTTPRoute,
-	_, _, _ *maps.MapData,
+	_, _, _, _ *maps.MapData,
 	// mapExact, mapPrefix, mapRegex *maps.MapData,
 ) error {
 	// TODO we might need to remove it from the maps

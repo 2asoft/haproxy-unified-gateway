@@ -29,9 +29,10 @@ import (
 
 //revive:disable:var-naming
 const (
-	PATH_EXACT_MAP  = "path_exact"
-	PATH_PREFIX_MAP = "path_prefix"
-	PATH_REGEX_MAP  = "path_regex"
+	PATH_EXACT_MAP                 = "path_exact"
+	PATH_EXACT_DOMAIN_WILDCARD_MAP = "domain_wildcard_path_exact"
+	PATH_PREFIX_MAP                = "path_prefix"
+	PATH_REGEX_MAP                 = "path_regex"
 )
 
 //revive:enable:var-naming

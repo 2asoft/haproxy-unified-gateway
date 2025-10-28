@@ -231,11 +231,13 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 
 	pathExactMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
 	pathPrefixMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
+	pathDomainWPathExactMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
 	pathRegexMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
 
 	b.params.mapsStorage.EnsureMapData(pathExactMap)
 	b.params.mapsStorage.EnsureMapData(pathPrefixMap)
 	b.params.mapsStorage.EnsureMapData(pathRegexMap)
+	b.params.mapsStorage.EnsureMapData(pathDomainWPathExactMap)
 
 	fe := &models.Frontend{
 		FrontendBase: models.FrontendBase{
@@ -320,9 +322,15 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				VarExpr:  "path,map_beg(" + pathPrefixMap.FullPath() + ")",
 				Metadata: map[string]any{"hug": "exact domain + path prefix"},
 			},
-			// TODO
-			// # domain wildcard + exact path
-			// http-request set-var(txn.route,ifnotexists) base,map_end(route_dw_ep.map)
+			{
+				//	# domain wildcard + exact path
+				//	 http-request set-var(txn.route,ifnotexists) base,map_end(route_dw_ep.map)
+				Type:     "set-var",
+				VarName:  "route,ifnotexists",
+				VarScope: "txn",
+				VarExpr:  "base,map_end(" + pathDomainWPathExactMap.FullPath() + ")",
+				Metadata: map[string]any{"hug": "domain wildcard + exact path"},
+			},
 			{
 				// # any domain + path regex
 				// http-request set-var(txn.route,ifnotexists) path,map_reg(route_regex.map) # ^/(foo|bar)/.*
