@@ -4,6 +4,9 @@ version: '3'
 env:
   TASK_INTERNAL: true
 
+dotenv:
+  - .env
+
 includes:
   vars:
     taskfile: taskfile/.vars.yml

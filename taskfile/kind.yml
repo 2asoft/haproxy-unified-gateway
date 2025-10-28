@@ -92,8 +92,8 @@ tasks:
     desc: 'create a KinD cluster with HUG and one example app'
     silent: true
     vars:
-      # can be set to 'kind-build-controller-image-build-in-docker' if you want to build in the docker image
-      CONTROLLER_BUILD_TASK: 'kind-build-controller-image-dev'
+      # set in .env CONTROLLER_BUILD_TASK=kind-build-controller-image-dev to speed build times
+      CONTROLLER_BUILD_TASK: '{{.CONTROLLER_BUILD_TASK | default "kind-build-controller-image-build-in-docker"}}'
       kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
       kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
     deps:
