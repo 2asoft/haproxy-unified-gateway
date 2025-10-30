@@ -80,7 +80,9 @@ func (b *HaproxyConfMgrImpl) getServerName(address string, port int32) (string, 
 }
 
 func (b *HaproxyConfMgrImpl) processEndpointSlices(ctx context.Context) error {
-	if len(b.controllerStore.ClusterStore.Updates.EndpointSlices) == 0 {
+	// If no update in EndpointSlices or no Created/Update Backend, we can skip the server update computation
+	if len(b.controllerStore.ClusterStore.Updates.EndpointSlices) == 0 &&
+		len(b.configuration.diffs.Created.Backends) == 0 && len(b.configuration.diffs.Updated.Backends) == 0 {
 		return nil
 	}
 
@@ -92,8 +94,20 @@ func (b *HaproxyConfMgrImpl) processEndpointSlices(ctx context.Context) error {
 	var errors utils.Errors
 	for svcKey, backends := range backendsByService {
 		// Find if there is any update in Endpoints for this service
+		// or if any of the backends has been created/updated
+		var beCreatedOrUpdated bool
+		for backendPort := range backends {
+			if _, ok := b.configuration.diffs.Created.Backends[backendPort.backendName]; ok {
+				beCreatedOrUpdated = true
+				break
+			}
+			if _, ok := b.configuration.diffs.Updated.Backends[backendPort.backendName]; ok {
+				beCreatedOrUpdated = true
+				break
+			}
+		}
 		_, ok := epsUpdatesByService[svcKey]
-		if !ok {
+		if !ok && !beCreatedOrUpdated {
 			// If not, nothing to do
 			continue
 		}

@@ -27,6 +27,7 @@ allowed:
   - haproxycfg
   - huggate
   - hugconf
+  - httproute
   - init
   - json
   - keymap
