@@ -18,7 +18,6 @@ package base
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,6 +31,7 @@ import (
 	"github.com/haproxytech/client-native/v6/runtime"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/cmd/start"
+	"github.com/haproxytech/kubernetes-controller/hug/configuration/defaults"
 	haproxymgr "github.com/haproxytech/kubernetes-controller/hug/haproxy"
 	hapapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	haproxyparams "github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
@@ -59,12 +59,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
-
-//go:embed haproxy.cfg
-var initialHaproxyCfg string
-
-//go:embed route.lua
-var routeLua string
 
 func init() {
 	utilruntime.Must(v3.AddToScheme(scheme.Scheme))
@@ -153,17 +147,20 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	// embedded haproxy.cfg to reference the absolute path to the copied route.lua file.
 	dstRoute := filepath.Join(hugConfig.HaproxyDirs.CfgDir, "route.lua")
 	if _, err := os.Stat(dstRoute); os.IsNotExist(err) {
-		err := os.WriteFile(dstRoute, []byte(routeLua), 0o644)
+		err := os.WriteFile(dstRoute, []byte(defaults.RouteLua), 0o644)
 		g.Expect(err).ToNot(gomega.HaveOccurred())
 	}
 
 	// Rewrite the embedded initial HAProxy config so lua-load-per-thread references
 	// the absolute path to the copied route.lua file. This guarantees HAProxy can
 	// open the file regardless of the process working directory in CI.
-	modifiedCfg := initialHaproxyCfg
+	modifiedCfg := defaults.HaproxyCfg
 	// Replace the simple filename directive if present.
 	if strings.Contains(modifiedCfg, "lua-load-per-thread route.lua") {
 		modifiedCfg = strings.ReplaceAll(modifiedCfg, "lua-load-per-thread route.lua", fmt.Sprintf("lua-load-per-thread %s", dstRoute))
+	}
+	if strings.Contains(modifiedCfg, "/var/run/haproxy-runtime-api.sock") {
+		modifiedCfg = strings.ReplaceAll(modifiedCfg, "/var/run/haproxy-runtime-api.sock", hugConfig.HaproxyDirs.RuntimeSocket)
 	}
 	err = writeInitalHaproxyCfg(hugConfig.HaproxyDirs.MainCfgFile, modifiedCfg)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
