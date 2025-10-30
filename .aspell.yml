@@ -68,3 +68,4 @@ allowed:
   - kubectl
   - hostname
   - dereference
+  - darwin

@@ -27,7 +27,9 @@ tasks:
       - cmd: curl -sLo /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/amd64/kubectl"
         platforms: [linux/amd64, darwin/amd64]
       - cmd: curl -sLo /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/linux/arm64/kubectl"
-        platforms: [linux/arm64, darwin/arm64]
+        platforms: [linux/arm64]
+      - cmd: curl -sLo /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl "https://dl.k8s.io/release/{{.KUBECTL_VERSION}}/bin/darwin/arm64/kubectl"
+        platforms: [darwin/arm64]
       - cmd: chmod +x /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl
       - cmd: /{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl version --client=true
 
