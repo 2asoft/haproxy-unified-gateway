@@ -108,7 +108,7 @@ func (b *HTTPRouteBuilderImpl) computeGateTreeUpdates() {
 	}
 
 	for _, httpRoute := range b.ControllerStore.GateTree.HTTPRoutes {
-		if httpRoute.TreeStatus.Status != store.StatusUpserted {
+		if httpRoute == nil || httpRoute.TreeStatus.Status != store.StatusUpserted {
 			continue
 		}
 		if httpRoute.isManaged() {

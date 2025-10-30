@@ -385,7 +385,7 @@ func (l *Listener) addAttachedRoute(routeKey client.ObjectKey, controllerStore C
 	// Find the corresponding Gateway and set it as upserted
 	gwKey := l.Owner
 	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
-	if treeGw.TreeStatus.Status == store.StatusDeleted || !ok {
+	if !ok || treeGw.TreeStatus.Status == store.StatusDeleted {
 		// no action needed, Gateway is Deleted or not manager by our controller
 		return
 	}
@@ -403,7 +403,7 @@ func (l *Listener) deleteAttachedRoute(routeKey client.ObjectKey, controllerStor
 	// Find the corresponding Gateway and set it as upserted
 	gwKey := l.Owner
 	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
-	if treeGw.TreeStatus.Status == store.StatusDeleted || !ok {
+	if !ok || treeGw.TreeStatus.Status == store.StatusDeleted {
 		// no action needed, Gateway is Deleted or not manager by our controller
 		return
 	}

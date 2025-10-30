@@ -108,6 +108,9 @@ func (g *GatewayClass) GetName() string {
 }
 
 func (g *GatewayClass) checkParametersRef(controllerStore ControllerStore) {
+	if g == nil {
+		return
+	}
 	switch g.TreeStatus.Status {
 	case store.StatusUpserted:
 		paramRef := g.K8sResource.Spec.ParametersRef

@@ -139,7 +139,7 @@ func (b *GatewayBuilderImpl) computeGateTreeUpdates() {
 	b.checkListenerConflicts()
 
 	for _, treeGw := range b.ControllerStore.GateTree.Gateways {
-		if treeGw.TreeStatus.Status != store.StatusUpserted {
+		if treeGw == nil || treeGw.TreeStatus.Status != store.StatusUpserted {
 			continue
 		}
 
@@ -301,7 +301,10 @@ func (b *GatewayBuilderImpl) checkListenerConflicts() {
 		oldAndNewGwWithPortConflicts[gwKey] = struct{}{}
 	}
 	for gwKey := range oldAndNewGwWithPortConflicts {
-		treeGw := b.ControllerStore.GateTree.Gateways[gwKey]
+		treeGw, ok := b.ControllerStore.GateTree.Gateways[gwKey]
+		if !ok {
+			continue
+		}
 		// Set the treeGw as UPSERTED
 		if treeGw.TreeStatus.Status != store.StatusUpserted && treeGw.TreeStatus.Status != store.StatusDeleted {
 			treeGw.SetAsUpserted(b.Logger, treeGw.K8sResource)
