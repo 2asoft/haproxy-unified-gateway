@@ -64,6 +64,7 @@ type HaproxyConfParams struct {
 type HaproxyDirs struct {
 	CfgDir        string
 	MainCfgFile   string
+	RouteLuaFile  string
 	HaproxyBinary string
 	RuntimeDir    string
 	StateDir      string

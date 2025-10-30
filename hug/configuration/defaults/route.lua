@@ -151,10 +151,10 @@ local function clear_cache()
         local count = count_keys(cache)
         local str = core.concat()
         cache = {}
-        str:add('cleared ')
-        str:add(count)
-        str:add(' entries')
-        print(str:dump())
+        -- str:add('cleared ')
+        -- str:add(count)
+        -- str:add(' entries')
+        -- print(str:dump())
         core.sleep(60)
     end
 end

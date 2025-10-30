@@ -42,6 +42,7 @@ func SetupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 		hugConfig.HaproxyDirs.MainCfgFile,
 		hugConfig.HaproxyDirs.CfgDir,
 		hugConfig.HaproxyDirs.HaproxyBinary,
+		hugConfig.RuntimeSocket,
 	)
 	if err != nil {
 		panic(err)

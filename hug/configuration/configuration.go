@@ -23,6 +23,7 @@ import (
 	"time"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	"github.com/haproxytech/kubernetes-controller/hug/configuration/defaults"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -214,6 +215,7 @@ func (c *HUGConfig) Init(external External) error {
 
 	// Binary and main files
 	c.MainCfgFile = filepath.Join(c.HaproxyDirs.CfgDir, "haproxy.cfg")
+	c.RouteLuaFile = filepath.Join(c.HaproxyDirs.CfgDir, "route.lua")
 	c.PIDFile = filepath.Join(c.HaproxyDirs.RuntimeDir, "haproxy.pid")
 	c.RuntimeSocket = filepath.Join(c.HaproxyDirs.RuntimeDir, "haproxy-runtime-api.sock")
 	c.MasterSocket = filepath.Join(c.HaproxyDirs.RuntimeDir, "haproxy-master.sock")
@@ -228,13 +230,23 @@ func (c *HUGConfig) Init(external External) error {
 	// Create haproxy.cfg if not exists
 	_, err = os.Stat(c.MainCfgFile)
 	if os.IsNotExist(err) {
-		// Create an empty file. The second argument is the file permissions.
-		// 0644 means the owner can read and write, and others can read.
-		file, createErr := os.Create(c.MainCfgFile)
-		if createErr != nil {
-			return createErr
+		defaultCfg := defaults.HaproxyCfg
+		err = os.WriteFile(c.MainCfgFile, []byte(defaultCfg), 0o644)
+		if err != nil {
+			return err
 		}
-		defer file.Close() // Ensure the file is closed when the function exits.
+	} else if err != nil {
+		// Handle other potential errors, like permission denied.
+		return err
+	}
+	// Create route.lua if not exists
+	_, err = os.Stat(c.RouteLuaFile)
+	if os.IsNotExist(err) {
+		defaultRouteLua := defaults.RouteLua
+		err = os.WriteFile(c.RouteLuaFile, []byte(defaultRouteLua), 0o644)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		// Handle other potential errors, like permission denied.
 		return err

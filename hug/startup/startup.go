@@ -33,7 +33,7 @@ type ownerMetaData interface {
 // Frontends/Backends
 // that have the unified gateway metadata
 // (the objects that the gateway manages)
-func StructuredFromFile(cfgFile, transactionDir, haproxyBin string) (structured.Structured, error) {
+func StructuredFromFile(cfgFile, transactionDir, haproxyBin, runtimeSocket string) (structured.Structured, error) {
 	confClient, err := configuration.New(context.Background(),
 		cfgoptions.ConfigurationFile(cfgFile),
 		cfgoptions.TransactionsDir(transactionDir),
@@ -82,6 +82,31 @@ func StructuredFromFile(cfgFile, transactionDir, haproxyBin string) (structured.
 	}
 	cfgDir := filepath.Dir(cfgFile)
 	global.LuaOptions.LoadPerThread = filepath.Join(cfgDir, "route.lua")
+	// check if we have runtime option enabled
+	if len(global.RuntimeAPIs) == 0 {
+		global.RuntimeAPIs = []*models.RuntimeAPI{
+			{
+				Address: &runtimeSocket,
+			},
+		}
+	} else {
+		// check if the first one is the correct one, otherwise add it as first
+		if global.RuntimeAPIs[0].Address == nil || *global.RuntimeAPIs[0].Address != runtimeSocket {
+			global.RuntimeAPIs = append([]*models.RuntimeAPI{
+				{
+					Address: &runtimeSocket,
+				},
+			}, global.RuntimeAPIs...)
+		}
+	}
+	version, err := confClient.GetVersion("")
+	if err != nil {
+		return structured.Structured{}, err
+	}
+	err = confClient.PushGlobalConfiguration(global, "", version)
+	if err != nil {
+		return structured.Structured{}, err
+	}
 
 	return structuredCfg, nil
 }
