@@ -72,9 +72,7 @@ func NewMapsStorage(logger *slog.Logger, extractGVK utils.ExtractGVK, structureT
 // MapPath returns the FilePath for the map
 // Default algorithm for Maps Storage
 // - For directory: maps are grouped in directories based on:
-//   - namespace/frontend_name
-//   - /etc/unified.../maps/<frontend>/
-//   - /etc/unified.../maps/<frontend>/
+//   - frontend_name
 //   - /etc/unified.../maps/<frontend>/
 func (m *MapsStorageDefault) MapPath(frontendName string, mapName string) futils.FilePath {
 	return futils.FilePath{
@@ -100,7 +98,11 @@ func (m *MapsStorageDefault) EnsureMapData(filePath futils.FilePath) {
 	}
 
 	m.Maps[name] = &maps.MapData{
-		Data: map[string]string{},
+		DynamicUpdates: maps.DynamicMapUpdates{
+			Add:    map[string]string{},
+			Update: map[string]string{},
+			Delete: []string{},
+		},
 		Path: filePath,
 	}
 }
@@ -120,7 +122,7 @@ func (MapsStorageDefault) WriteOnDisk(data maps.MapData) error {
 	}
 	defer f.Close()
 	// TODO sort this maybe
-	for k, v := range data.Data {
+	for k, v := range data.Data() {
 		_, err = f.WriteString(fmt.Sprintf("%s %s\n", k, v))
 		if err != nil {
 			return err

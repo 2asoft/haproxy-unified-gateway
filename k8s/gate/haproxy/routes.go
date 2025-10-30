@@ -15,22 +15,28 @@ package haproxy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func (b *RouteMgrImpl) processRoutes() error {
 	// var err error
+
+	// before the sync, clear the dynamic updates
+	// we do that before and not later to allow
+	// using that data for diff later
+	mapsStorage := b.topManager.params.mapsStorage
+	for _, mapData := range mapsStorage.GetMaps() {
+		mapData.DynamicUpdates.Add = map[string]string{}
+		mapData.DynamicUpdates.Update = map[string]string{}
+		mapData.DynamicUpdates.Delete = []string{}
+	}
 
 	b.fillMaps()
 	b.writeMaps()
@@ -39,86 +45,11 @@ func (b *RouteMgrImpl) processRoutes() error {
 		return nil
 	}
 
-	return errors.New("runtime update not implemented")
-
-	// Process HTTPRoutes
-	// b.processHTTPRoutes()
-
-	// b.runtimeCertificatesPrechecks()
-
-	// err := b.executeRuntimeCertCommands()
-	// return err
+	return b.runtimeMapSync()
 }
 
 type RouteMgrImpl struct {
 	topManager *HaproxyConfMgrImpl
-}
-
-func (b *RouteMgrImpl) fillMaps() {
-	var errs utils.Errors
-	controllerStore := b.topManager.controllerStore
-	mapsStorage := b.topManager.params.mapsStorage
-
-	// Managed HTTPRoutes => Create / update/ delete backends
-	for routeKey, route := range controllerStore.GateTree.HTTPRoutes {
-		for _, listener := range route.Listeners.Iterate {
-			frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
-			if err != nil {
-				b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-					logging.LogAttrError(err),
-				)
-			}
-
-			pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
-			pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
-			pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
-			pathregexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
-			mapExact := mapsStorage.GetMapData(pathExactMap)
-			mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
-			mapRegex := mapsStorage.GetMapData(pathregexMap)
-			mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
-
-			switch route.TreeStatus.Status {
-			case store.StatusUnchanged:
-				continue
-			case store.StatusUpserted:
-				err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
-				errs.Add(err)
-			case store.StatusDeleted:
-				err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
-				errs.Add(err)
-			}
-		}
-	}
-
-	// Cleanup Backends that are not referenced anymore TODO
-	// if err := b.cleanupUnreferencedBackends(); err != nil {
-	// 	b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to cleanup unreferenced backends",
-	// 		logging.LogAttrError(err),
-	// 	)
-	// 	errs.Add(err)
-	// }
-
-	// // Now we have the list of upserted + delete BE with the correct list of routes pointing to them
-	// if err := b.processBackendsModifiedInCycle(); err != nil {
-	// 	b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to process backends modified in cycle",
-	// 		logging.LogAttrError(err),
-	// 	)
-	// 	errs.Add(err)
-	// }
-
-	// return errs.Result()
-}
-
-func (b *RouteMgrImpl) writeMaps() {
-	if !b.topManager.params.StoreMapsOnDisk {
-		return
-	}
-
-	mapsStorage := b.topManager.params.mapsStorage
-	for _, mapData := range mapsStorage.GetMaps() {
-		mapsStorage.WriteOnDisk(*mapData)
-	}
 }
 
 func (b *RouteMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
@@ -167,10 +98,10 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 			}
 			for _, hostname := range hostnames {
 				fullpath := string(hostname) + path
-				if pathType == gatewayv1.PathMatchExact && utils.IsDomainWildcard(string(hostname)) {
-					delete(mapDomainWPathExact.Data, fullpath)
+				if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
+					mapDomainWPathExact.DeleteData(fullpath)
 				} else {
-					delete(mapData.Data, fullpath)
+					mapData.DeleteData(fullpath)
 				}
 			}
 		}
@@ -269,19 +200,20 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 			if rule.Valid {
 				for _, hostname := range hostnames {
 					fullpath := string(hostname) + path
-					if pathType == gatewayv1.PathMatchExact && utils.IsDomainWildcard(string(hostname)) {
-						mapDomainWPathExact.Data[fullpath] = routeValue
+					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
+						mapDomainWPathExact.AddData(fullpath, routeValue)
 					} else {
-						mapData.Data[fullpath] = routeValue
+						mapData.AddData(fullpath, routeValue)
+						// I need to create a runtime command to add the map entry
 					}
 				}
 			} else {
 				for _, hostname := range hostnames {
 					fullpath := string(hostname) + path
-					if pathType == gatewayv1.PathMatchExact && utils.IsDomainWildcard(string(hostname)) {
-						delete(mapDomainWPathExact.Data, fullpath)
+					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
+						mapDomainWPathExact.DeleteData(fullpath)
 					} else {
-						delete(mapData.Data, fullpath)
+						mapData.DeleteData(fullpath)
 					}
 				}
 			}
