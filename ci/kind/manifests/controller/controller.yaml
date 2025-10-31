@@ -75,11 +75,11 @@ spec:
       targetPort: 30524
     - name: http
       port: 30580
-      targetPort: 8080
+      targetPort: 30580
       nodePort: 30580
       protocol: TCP
     - name: https
-      port: 443
+      port: 30543
       targetPort: 30543
       nodePort: 30543
       protocol: TCP
