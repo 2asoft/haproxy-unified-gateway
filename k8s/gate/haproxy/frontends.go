@@ -279,13 +279,12 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				VarScope: "txn",
 				VarExpr:  "path",
 			},
-			{ // http-request set-var(txn.host) req.hdr(Host),field(1,:),lower
+			{ // http-request set-var(txn.host) req.hdr(Host),host_only
 				Type:     "set-var",
 				VarName:  "host",
 				VarScope: "txn",
-				VarExpr:  "req.hdr(Host),field(1,:),lower",
+				VarExpr:  "req.hdr(Host),host_only",
 			},
-
 			{
 				// exact domain + exact path
 				// http-request set-var(txn.route) base,map(route_exact_match.map)

@@ -69,3 +69,4 @@ allowed:
   - hostname
   - dereference
   - darwin
+  - performant
