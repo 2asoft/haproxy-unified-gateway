@@ -121,7 +121,7 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 		var routeValue string
 		var backendNames []string
 		var backendweights []int32
-		for _, backend := range rule.K8sResource.BackendRefs {
+		for index, backend := range rule.K8sResource.BackendRefs {
 			checkResult, ok := rule.CheckBackendRef.Get(backend.BackendObjectReference)
 			if !ok || !checkResult.Valid {
 				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Processing HTTPRoute [map update] - backend not valid",
@@ -130,7 +130,7 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 				continue
 			}
 
-			backend := rule.K8sResource.BackendRefs[0]
+			backend := rule.K8sResource.BackendRefs[index]
 			svckey := k8stypes.NamespacedName{
 				Name: string(backend.Name),
 			}
