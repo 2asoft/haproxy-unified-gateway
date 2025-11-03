@@ -52,7 +52,7 @@ tasks:
     status:
       - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
     cmds:
-      - docker build -t haproxytech/kubernetes-controller -f build/Dockerfile.dev .
+      - docker build -t haproxytech/haproxy-unified-gateway -f build/Dockerfile.dev .
       - rm build/kubernetes-controller
 
   kind-build-controller-image-build-in-docker:
@@ -63,7 +63,7 @@ tasks:
     status:
       - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
     cmds:
-      - docker build -t haproxytech/kubernetes-controller -f build/Dockerfile .
+      - docker build -t haproxytech/haproxy-unified-gateway -f build/Dockerfile .
       - rm build/kubernetes-controller
 
   kind-build-echo-image:
@@ -108,11 +108,11 @@ tasks:
       - task: '{{ .CONTROLLER_BUILD_TASK }}'
       - task: kind-build-echo-image
       - task: delimiter
-      - cmd: /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.kind}} load docker-image haproxytech/haproxy-unified-gateway:latest --name={{.CLUSTER_NAME}}
       - cmd: /{{.kind}} load docker-image haproxytech/http-echo:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
       - echo "Create HAProxy namespace ..."
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/namespace.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/namespace.yaml
       - task: delimiter
       - echo "Install custom resource definitions ..."
       - echo "Install Gateway API CRDs"
@@ -122,18 +122,18 @@ tasks:
       - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_huggates.yaml
       #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/rbac.yaml
       #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/job-crd.yaml
-      #- /{{.kubectl}} wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-controller
+      #- /{{.kubectl}} wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-unified-gateway
       - task: delimiter
       - echo "deploying Controller ..."
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/hugconf.yaml
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/rbac.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/hugconf.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/controller.yaml
       - task: delimiter
       - echo "deploying echo service ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/echo/echo.yaml
-      - /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - /{{.kind}} load docker-image haproxytech/haproxy-unified-gateway:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
-      - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
+      - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-unified-gateway -n haproxy-unified-gateway
 
   kind-redeploy-controller:
     deps:
@@ -149,11 +149,11 @@ tasks:
     cmds:
       - task: kind-build-controller-image-dev
       - task: delimiter
-      - cmd: /{{.kind}} load docker-image haproxytech/kubernetes-controller:latest --name={{.CLUSTER_NAME}}
+      - cmd: /{{.kind}} load docker-image haproxytech/haproxy-unified-gateway:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
       - echo "deploying Controller ..."
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/rbac.yaml
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/controller/controller.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/rbac.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/controller.yaml
       - task: delimiter
-      - /{{.kubectl}} delete pods -l run=haproxy-controller -n haproxy-controller
-      - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-controller -n haproxy-controller
+      - /{{.kubectl}} delete pods -l run=haproxy-unified-gateway -n haproxy-unified-gateway
+      - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-unified-gateway -n haproxy-unified-gateway

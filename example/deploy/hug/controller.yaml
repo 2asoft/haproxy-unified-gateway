@@ -2,23 +2,28 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    run: haproxy-controller
-  name: haproxy-controller
-  namespace: haproxy-controller
+    run: haproxy-unified-gateway
+  name: haproxy-unified-gateway
+  namespace: haproxy-unified-gateway
 spec:
+  # specify the number of controller replicas
   replicas: 1
   selector:
     matchLabels:
-      run: haproxy-controller
+      run: haproxy-unified-gateway
   template:
     metadata:
       labels:
-        run: haproxy-controller
+        run: haproxy-unified-gateway
     spec:
-      serviceAccountName: haproxy-kubernetes-controller
+      serviceAccountName: haproxy-unified-gateway
       containers:
-        - name: haproxy-controller
-          image: haproxytech/kubernetes-controller:latest
+        - name: haproxy-unified-gateway
+          # specify the container image, tag and pull policy
+          # image: docker.io/haproxytech/haproxy-unified-gateway:latest
+          image: haproxytech/haproxy-unified-gateway:latest
+          # imagePullPolicy: this is set to never for kind cluster usage
+          # imagePullPolicy: Always for other environments
           imagePullPolicy: Never
           resources:
             limits:
@@ -26,7 +31,8 @@ spec:
             requests:
               memory: 2048Mi
           args:
-            - --hugconf-crd=haproxy-controller/hugconf
+            # specify the hugconf CRD location, all other params are in configuration file
+            - --hugconf-crd=haproxy-unified-gateway/hugconf
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
@@ -40,13 +46,16 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           ports:
+            # specify the container ports, it needs to align with gateway configuration
             - name: http
               containerPort: 30580
             - name: https
               containerPort: 30543
+            # additional container port to specify the stats port
             - name: stat
               containerPort: 30524
           env:
+            # specify the environment variables needed for logs and metrics
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -63,23 +72,25 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: haproxy-kubernetes-controller
-  namespace: haproxy-controller
+  name: haproxy-unified-gateway
+  namespace: haproxy-unified-gateway
 spec:
   selector:
-    run: haproxy-controller
+    run: haproxy-unified-gateway
   type: NodePort
   ports:
-    - name: stat
-      port: 30524
-      targetPort: 30524
     - name: http
       port: 30580
       targetPort: 30580
+      # nodePort is needed for NodePort service type
       nodePort: 30580
       protocol: TCP
     - name: https
       port: 30543
       targetPort: 30543
+      # nodePort is needed for NodePort service type
       nodePort: 30543
       protocol: TCP
+    - name: stat
+      port: 30524
+      targetPort: 30524

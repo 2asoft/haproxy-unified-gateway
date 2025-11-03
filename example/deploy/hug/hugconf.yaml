@@ -2,7 +2,7 @@ apiVersion: gate.v3.haproxy.org/v3
 kind: HugConf
 metadata:
   name: hugconf
-  namespace: haproxy-controller
+  namespace: haproxy-unified-gateway
 spec:
   logging:
     defaultLevel: "Debug"

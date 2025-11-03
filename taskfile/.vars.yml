@@ -11,5 +11,5 @@ env:
   GATEWAYAPI_CRDS_DOWNLOAD_URL: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
 
 vars:
-  CONFIG_DIR: "ci/kind/manifests"
+  CONFIG_DIR: "example/deploy"
   API_DEFINITION_DIR: "api/definition"
