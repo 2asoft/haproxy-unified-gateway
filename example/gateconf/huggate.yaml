@@ -1,6 +1,0 @@
-apiVersion: gate.v3.haproxy.org/v3
-kind: HugGate
-metadata:
-  name: huggate
-spec:
-  mworkerMaxReload: 7
