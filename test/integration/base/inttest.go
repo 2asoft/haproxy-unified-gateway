@@ -162,6 +162,9 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	if strings.Contains(modifiedCfg, "/var/run/haproxy-runtime-api.sock") {
 		modifiedCfg = strings.ReplaceAll(modifiedCfg, "/var/run/haproxy-runtime-api.sock", hugConfig.HaproxyDirs.RuntimeSocket)
 	}
+	if strings.Contains(modifiedCfg, "/var/run/haproxy.pid") {
+		modifiedCfg = strings.ReplaceAll(modifiedCfg, "/var/run/haproxy.pid", hugConfig.HaproxyDirs.PIDFile)
+	}
 	err = writeInitalHaproxyCfg(hugConfig.HaproxyDirs.MainCfgFile, modifiedCfg)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 

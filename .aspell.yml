@@ -46,6 +46,8 @@ allowed:
   - namespaces
   - parallelize
   - passthrough
+  - pid
+  - pidfile
   - readme
   - reconciler
   - releaser
