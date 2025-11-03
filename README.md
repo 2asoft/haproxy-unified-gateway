@@ -13,18 +13,26 @@ HAProxy Unified Gateway for k8s monitors [Gateway API](https://gateway-api.sigs.
 Docker image is available on [Docker Hub](https://hub.docker.com/r/haproxytech/haproxy-unified-gateway)
 
 If you prefer to build it from source use
+
 ```sh
 task kind-build-controller-image-build-in-docker
 ```
 
 Example environment can be created with
+
 ```sh
 task kind-create
 ```
+
 or
+
 ```sh
 task k0s-create
 ```
+
+## Examples
+
+Examples about deployment can be seen in [example](./example/README.md) folder.
 
 ## HAProxy Helm Charts
 

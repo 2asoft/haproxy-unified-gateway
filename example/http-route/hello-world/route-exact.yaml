@@ -1,0 +1,18 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-hello-world-exact
+spec:
+  parentRefs:
+  - name: hug-gateway
+    sectionName: http
+  hostnames:
+  - "exact.haproxy.local"
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /hostname
+    backendRefs:
+    - name: hello-world-exact
+      port: 8888

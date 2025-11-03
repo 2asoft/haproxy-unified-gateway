@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-blue-green
+spec:
+  parentRefs:
+  - name: hug-gateway
+    sectionName: http
+  hostnames:
+  - "blue-green.haproxy.local"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: blue
+      port: 8888
+      weight: 9
+    - name: green
+      port: 8888
+      weight: 1
