@@ -48,12 +48,12 @@ spec:
           ports:
             # specify the container ports, it needs to align with gateway configuration
             - name: http
-              containerPort: 30580
+              containerPort: 31080
             - name: https
-              containerPort: 30543
+              containerPort: 31443
             # additional container port to specify the stats port
             - name: stat
-              containerPort: 30524
+              containerPort: 31024
           env:
             # specify the environment variables needed for logs and metrics
             - name: POD_NAME
@@ -80,17 +80,17 @@ spec:
   type: NodePort
   ports:
     - name: http
-      port: 30580
-      targetPort: 30580
+      port: 31080
+      targetPort: 31080
       # nodePort is needed for NodePort service type
-      nodePort: 30580
+      nodePort: 31080
       protocol: TCP
     - name: https
-      port: 30543
-      targetPort: 30543
+      port: 31443
+      targetPort: 31443
       # nodePort is needed for NodePort service type
-      nodePort: 30543
+      nodePort: 31043
       protocol: TCP
     - name: stat
-      port: 30524
-      targetPort: 30524
+      port: 31024
+      targetPort: 31024
