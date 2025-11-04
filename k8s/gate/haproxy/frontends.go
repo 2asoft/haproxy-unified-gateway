@@ -507,10 +507,11 @@ func (b *HaproxyConfMgrImpl) bindParams(_, bindName string, treeGw *tree.Gateway
 	}
 
 	// TLS terminate
-	listenerKey := tree.ListenerKey(treeGw.K8sResource, treeListener.K8sResource)
-	certFileDir := b.params.certificateStorage.CertListPath(listenerKey)
-	params.CrtList = certFileDir.FullPath()
-	params.Ssl = true
-
+	if utils.PointerDefaultValueIfNil((*treeListener.K8sResource.TLS).Mode) == gatewayv1.TLSModeTerminate {
+		listenerKey := tree.ListenerKey(treeGw.K8sResource, treeListener.K8sResource)
+		certFileDir := b.params.certificateStorage.CertListPath(listenerKey)
+		params.CrtList = certFileDir.FullPath()
+		params.Ssl = true
+	}
 	return params
 }

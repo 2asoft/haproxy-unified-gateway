@@ -42,6 +42,7 @@ type StatusUpdaterImpl struct {
 	GatewayClasses map[types.NamespacedName]*tree.GatewayClass
 	Gateways       map[types.NamespacedName]*tree.Gateway
 	HTTPRoutes     map[types.NamespacedName]*tree.HTTPRoute
+	TLSRoutes      map[types.NamespacedName]*tree.TLSRoute
 	config         StatusUpdaterConf
 }
 
@@ -50,12 +51,14 @@ func NewStatusUpdater(
 	gatewayClasses map[types.NamespacedName]*tree.GatewayClass,
 	gateways map[types.NamespacedName]*tree.Gateway,
 	httpRoutes map[types.NamespacedName]*tree.HTTPRoute,
+	tlsRoutes map[types.NamespacedName]*tree.TLSRoute,
 ) StatusUpdater {
 	return &StatusUpdaterImpl{
 		config:         cfg,
 		GatewayClasses: gatewayClasses,
 		Gateways:       gateways,
 		HTTPRoutes:     httpRoutes,
+		TLSRoutes:      tlsRoutes,
 	}
 }
 
@@ -143,6 +146,26 @@ func (s *StatusUpdaterImpl) UpdateStatus(ctx context.Context) {
 			logging.LogAttrResource(route.K8sResource, s.config.extractGVK(route.K8sResource)),
 		)
 		s.writeHTTPRouteStatus(ctx, route)
+	}
+
+	// TLSRoutes
+	for _, tlsRoute := range s.TLSRoutes {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		// Do not set Status for Deleted or unchanged HTTPRoutes
+		if tlsRoute.TreeStatus.Status == store.StatusDeleted || tlsRoute.TreeStatus.Status == "" {
+			continue
+		}
+
+		s.config.logger.LogAttrs(context.Background(), slog.LevelDebug,
+			"Updating status for resource",
+			logging.LogAttrResource(tlsRoute.K8sResource, s.config.extractGVK(tlsRoute.K8sResource)),
+		)
+		s.writeTLSRouteStatus(ctx, tlsRoute)
 	}
 }
 

@@ -65,9 +65,9 @@ func (c RouteConditions) SetGeneration(generation int64) {
 	})
 }
 
-func NewRouteConditionsFromV1RouteConditions(routeStatus gatewayv1.HTTPRouteStatus, controllerName string) RouteConditions {
+func NewRouteConditionsFromV1RouteConditions(parents []gatewayv1.RouteParentStatus, controllerName string) RouteConditions {
 	conditionsMap := utils.NewKeyMap[gatewayv1.ParentReference, generic.Conditions](utils.ParentRefToKey)
-	for _, parentConditions := range routeStatus.Parents {
+	for _, parentConditions := range parents {
 		parentRef := parentConditions.ParentRef
 		if parentConditions.ControllerName != gatewayv1.GatewayController(controllerName) {
 			continue

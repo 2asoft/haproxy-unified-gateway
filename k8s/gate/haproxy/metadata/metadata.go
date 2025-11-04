@@ -33,7 +33,7 @@ type K8sObjectInfo struct {
 
 type Manager interface {
 	FrontendMetaData(treeGw *tree.Gateway) MetaData
-	BackendMetaData(routesInfo map[string]HTTPRouteMetadaInfo) MetaData
+	BackendMetaData(routesInfo map[string]RouteMetadaInfo) MetaData
 }
 
 type ManagerImpl struct {

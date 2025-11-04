@@ -184,6 +184,7 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 		gatetree.GatewayClasses,
 		gatetree.Gateways,
 		gatetree.HTTPRoutes,
+		gatetree.TLSRoutes,
 	)
 
 	statusUpdater.UpdateStatus(ctx)

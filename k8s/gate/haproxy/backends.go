@@ -36,12 +36,14 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 type BackendOwnerType string
 
 const (
 	BackendOwnerTypeHTTPRoute BackendOwnerType = "HTTPRoute"
+	BackendOwnerTypeTLSRoute  BackendOwnerType = "TLSRoute"
 )
 
 type BackendReferencedBy struct {
@@ -132,7 +134,7 @@ func (b *HaproxyConfMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedNam
 
 func (b *HaproxyConfMgrImpl) onValidHTTPRouteUpserted(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute) error {
 	b.logHTTPRouteUpdate("upserted", routeKey)
-	err := b.upsertBackends(routeKey, route)
+	err := b.upsertHTTPRouteBackends(routeKey, route)
 	return err
 }
 
@@ -156,13 +158,29 @@ func (b *HaproxyConfMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName
 	return nil
 }
 
+func (b *HaproxyConfMgrImpl) onDeletedTLSRoute(routeKey k8stypes.NamespacedName, _ *tree.TLSRoute) error {
+	b.logTLSRouteUpdate("deleted", routeKey)
+	impactedBackends := b.backendOwners.getBackendsReferencedByTLSRoute(routeKey)
+	for beName := range impactedBackends {
+		b.backendOwners.removeTLSRoute(beName, routeKey)
+		b.addImpactedBackendDeleted(beName)
+	}
+	return nil
+}
+
 func (b *HaproxyConfMgrImpl) logHTTPRouteUpdate(action string, key k8stypes.NamespacedName) {
 	b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Processing HTTPRoute ["+action+"]",
 		logging.LogAttrKey(key),
 	)
 }
 
-func (b *HaproxyConfMgrImpl) upsertBackends(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute) error {
+func (b *HaproxyConfMgrImpl) logTLSRouteUpdate(action string, key k8stypes.NamespacedName) {
+	b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Processing TLSRoute ["+action+"]",
+		logging.LogAttrKey(key),
+	)
+}
+
+func (b *HaproxyConfMgrImpl) upsertHTTPRouteBackends(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute) error {
 	var errs utils.Errors
 	upsertedBackendsReferencedByRoute := make(map[string]struct{})
 	for _, rule := range route.Rules {
@@ -172,7 +190,7 @@ func (b *HaproxyConfMgrImpl) upsertBackends(routeKey k8stypes.NamespacedName, ro
 			for _, backendRef := range k8sRule.BackendRefs {
 				filterHash := getFilterHash(backendRef.Filters)
 				var svcPort int32
-				svcNsName := tree.ServiceNsNameKey(route.K8sResource, backendRef.BackendObjectReference)
+				svcNsName := tree.ServiceNsNameKey(route.K8sResource.Namespace, backendRef.BackendObjectReference)
 				if backendRef.Port != nil {
 					svcPort = int32(*backendRef.Port)
 				}
@@ -197,7 +215,7 @@ func (b *HaproxyConfMgrImpl) upsertBackends(routeKey k8stypes.NamespacedName, ro
 						errs.Add(err)
 						continue
 					}
-					b.addImpactedBackendUpserted(beName, routeKey, route.K8sResource, backendRef)
+					b.addImpactedHTTPBackendUpserted(beName, routeKey, backendRef)
 					upsertedBackendsReferencedByRoute[beName] = struct{}{}
 				}
 			}
@@ -219,13 +237,152 @@ func (b *HaproxyConfMgrImpl) upsertBackends(routeKey k8stypes.NamespacedName, ro
 	return errs.Result()
 }
 
-func (b *HaproxyConfMgrImpl) addImpactedBackendUpserted(backendName string, routeKey client.ObjectKey,
-	httpRoute *gatewayv1.HTTPRoute, httpBackendRef gatewayv1.HTTPBackendRef,
+func (b *HaproxyConfMgrImpl) upsertTLSRouteBackends(routeKey k8stypes.NamespacedName, route *tree.TLSRoute) error {
+	var errs utils.Errors
+	upsertedBackendsReferencedByRoute := make(map[string]struct{})
+	for _, rule := range route.Rules {
+		if rule.Valid {
+			k8sRule := rule.K8sResource
+			// Iterate now on each referenced Backend
+			for _, backendRef := range k8sRule.BackendRefs {
+				var svcPort int32
+				svcNsName := tree.ServiceNsNameKey(route.K8sResource.Namespace, backendRef.BackendObjectReference)
+				if backendRef.Port != nil {
+					svcPort = int32(*backendRef.Port)
+				}
+				beName, err := b.getBackendName(svcNsName, svcPort, "")
+				if err != nil {
+					b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to compute backendName",
+						logging.LogAttrError(err))
+					errs.Add(err)
+					continue
+				}
+
+				// Check if backendRef is valid
+				checkResult, ok := rule.CheckBackendRef.Get(backendRef.BackendObjectReference)
+				if !ok {
+					b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to check backendRef")
+					continue
+				}
+				// If the specific backendCheck result is ok, add the BE
+				if checkResult.Valid {
+					err := b.backendOwners.addTLSRoute(beName, routeKey, route.K8sResource)
+					if err != nil {
+						errs.Add(err)
+						continue
+					}
+					b.addImpactedLTSBackendUpserted(beName, routeKey, backendRef)
+					upsertedBackendsReferencedByRoute[beName] = struct{}{}
+				}
+			}
+		}
+	}
+
+	// Now cleanup the referenced Backends
+	// For example:
+	// Scenario:
+	// Step1: Route1 references BE1, BE2, BE3
+	// Step2: Update Route1 references BE1, BE2
+	// Action: We have to remove BE3 from Backends referenced by Route1
+	backendsReferencedByRoute := b.backendOwners.getBackendsReferencedByTLSRoute(routeKey)
+	unreferenced := utils.SetDifference(backendsReferencedByRoute, upsertedBackendsReferencedByRoute)
+	for unreferencedBeName := range unreferenced {
+		b.backendOwners.removeTLSRoute(unreferencedBeName, routeKey)
+		b.backendsImpactedInCycle.Unreferenced[unreferencedBeName] = struct{}{}
+	}
+	return errs.Result()
+
+}
+
+func (b *HaproxyConfMgrImpl) processTLSRoutes() error {
+	var errs utils.Errors
+	// Managed HTTPRoutes => Create / update/ delete backends
+	for routeKey, tlsRoute := range b.controllerStore.GateTree.TLSRoutes {
+		switch tlsRoute.TreeStatus.Status {
+		case store.StatusUnchanged:
+			continue
+		case store.StatusUpserted:
+			err := b.onUpsertedTLSRoute(routeKey, tlsRoute)
+			errs.Add(err)
+		case store.StatusDeleted:
+			err := b.onDeletedTLSRoute(routeKey, tlsRoute)
+			errs.Add(err)
+		}
+	}
+
+	// Cleanup Backends that are not referenced anymore
+	if err := b.cleanupUnreferencedBackends(); err != nil {
+		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to cleanup unreferenced backends",
+			logging.LogAttrError(err),
+		)
+		errs.Add(err)
+	}
+
+	// Now we have the list of upserted + delete BE with the correct list of routes pointing to them
+	if err := b.processBackendsModifiedInCycle(); err != nil {
+		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to process backends modified in cycle",
+			logging.LogAttrError(err),
+		)
+		errs.Add(err)
+	}
+
+	return errs.Result()
+}
+
+func (b *HaproxyConfMgrImpl) onUpsertedTLSRoute(routeKey k8stypes.NamespacedName, tlsRoute *tree.TLSRoute) error {
+	switch tlsRoute.Valid {
+	case true:
+		err := b.onValidTLSRouteUpserted(routeKey, tlsRoute)
+		if err != nil {
+			return err
+		}
+	case false:
+		err := b.onInvalidTLSRouteUpserted(routeKey, tlsRoute)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *HaproxyConfMgrImpl) onValidTLSRouteUpserted(routeKey k8stypes.NamespacedName, route *tree.TLSRoute) error {
+	b.logTLSRouteUpdate("upserted", routeKey)
+	err := b.upsertTLSRouteBackends(routeKey, route)
+	return err
+}
+
+func (b *HaproxyConfMgrImpl) onInvalidTLSRouteUpserted(routeKey k8stypes.NamespacedName, _ *tree.TLSRoute) error {
+	b.logTLSRouteUpdate("upserted-invalid", routeKey)
+	impactedBackends := b.backendOwners.getBackendsReferencedByTLSRoute(routeKey)
+	for beName := range impactedBackends {
+		b.backendOwners.removeTLSRoute(beName, routeKey)
+		b.addImpactedBackendDeleted(beName)
+	}
+	return nil
+}
+
+func (b *HaproxyConfMgrImpl) addImpactedHTTPBackendUpserted(backendName string, routeKey client.ObjectKey,
+	httpBackendRef gatewayv1.HTTPBackendRef,
 ) {
 	impactedBe := BackendImpactedInCycle{
 		Name:         backendName,
-		HTTPRouteKey: client.ObjectKeyFromObject(httpRoute),
+		HTTPRouteKey: routeKey,
 		BackendRef:   httpBackendRef,
+	}
+
+	if _, ok := b.backendsImpactedInCycle.Upserted[backendName]; !ok {
+		b.backendsImpactedInCycle.Upserted[backendName] = make(map[client.ObjectKey]BackendImpactedInCycle)
+	}
+	b.backendsImpactedInCycle.Upserted[backendName][routeKey] = impactedBe
+}
+
+func (b *HaproxyConfMgrImpl) addImpactedLTSBackendUpserted(backendName string, routeKey client.ObjectKey,
+	tlsBackendRef gatewayv1alpha2.BackendRef,
+) {
+	impactedBe := BackendImpactedInCycle{
+		Name:         backendName,
+		HTTPRouteKey: routeKey,
+		//BackendRef:   tlsBackendRef,
 	}
 
 	if _, ok := b.backendsImpactedInCycle.Upserted[backendName]; !ok {
@@ -246,6 +403,14 @@ func (bo *BackendReferencedBy) addHTTPRoute(backendName string, routeKey k8stype
 	return nil
 }
 
+func (bo *BackendReferencedBy) addTLSRoute(backendName string, routeKey k8stypes.NamespacedName, route *gatewayv1alpha2.TLSRoute) error {
+	if route == nil {
+		return errors.New("nil route")
+	}
+	bo.add(backendName, BackendOwnerTypeTLSRoute, routeKey, route.Generation)
+	return nil
+}
+
 func (bo *BackendReferencedBy) add(backendName string, ownerType BackendOwnerType, ownerKey client.ObjectKey, generation int64) {
 	if _, ok := bo.owners[backendName]; !ok {
 		bo.owners[backendName] = make(map[BackendOwnerType]map[client.ObjectKey]int64)
@@ -258,6 +423,10 @@ func (bo *BackendReferencedBy) add(backendName string, ownerType BackendOwnerTyp
 
 func (bo *BackendReferencedBy) removeHTTPRoute(backendName string, routeKey k8stypes.NamespacedName) {
 	bo.remove(backendName, BackendOwnerTypeHTTPRoute, routeKey)
+}
+
+func (bo *BackendReferencedBy) removeTLSRoute(backendName string, routeKey k8stypes.NamespacedName) {
+	bo.remove(backendName, BackendOwnerTypeTLSRoute, routeKey)
 }
 
 func (bo *BackendReferencedBy) remove(backendName string, ownerType BackendOwnerType, ownerKey client.ObjectKey) {
@@ -274,6 +443,10 @@ func (bo *BackendReferencedBy) remove(backendName string, ownerType BackendOwner
 
 func (bo *BackendReferencedBy) getBackendsReferencedByHTTPRoute(ownerKey client.ObjectKey) map[string]struct{} { // map[beName] -> struct{}
 	return bo.getBackendsReferencedBy(BackendOwnerTypeHTTPRoute, ownerKey)
+}
+
+func (bo *BackendReferencedBy) getBackendsReferencedByTLSRoute(ownerKey client.ObjectKey) map[string]struct{} { // map[beName] -> struct{}
+	return bo.getBackendsReferencedBy(BackendOwnerTypeTLSRoute, ownerKey)
 }
 
 func (bo *BackendReferencedBy) getBackendsReferencedBy(ownerType BackendOwnerType, ownerKey client.ObjectKey) map[string]struct{} { // map[beName] -> struct{}
@@ -311,15 +484,21 @@ func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType 
 	return nil
 }
 
-func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData, backendRef gatewayv1.HTTPBackendRef, namespace string) (*models.Backend, error) {
+func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData,
+	backendRef gatewayv1.HTTPBackendRef, namespace string, isHTTPBackend bool) (*models.Backend, error) {
 	// First, we merge the Backend CRDs from filters, if there are some
 	// Backend CRDs are defined in the Filters of type: ExtensionRef
 	// We gather all those filters, merge them and apply them
 	newBackend := &models.Backend{
 		BackendBase: models.BackendBase{
-			Metadata:      md,
-			Name:          backendName,
-			Mode:          "http",
+			Metadata: md,
+			Name:     backendName,
+			Mode: func() string {
+				if isHTTPBackend {
+					return "http"
+				}
+				return "tcp"
+			}(),
 			From:          b.params.DefaultsSectionName,
 			Balance:       &models.Balance{Algorithm: utils.Ptr("roundrobin")},
 			Abortonclose:  "disabled",
@@ -449,22 +628,31 @@ func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
 	var errs utils.Errors
 
 	for backendName, mapImpactedBEs := range b.backendsImpactedInCycle.Upserted {
-		routesInfo := make(map[string]metadata.HTTPRouteMetadaInfo)
+		routesInfo := make(map[string]metadata.RouteMetadaInfo)
 		owners, ok := b.backendOwners.owners[backendName]
 		if !ok {
 			err := fmt.Errorf("could not find owner for backend %s", backendName)
 			errs.Add(err)
 			continue
 		}
-		ownersForHTTPRoute, ok := owners[BackendOwnerTypeHTTPRoute]
+		isHTTPBackend := true
+		ownerType := BackendOwnerTypeHTTPRoute
+		ownersForRoute, ok := owners[BackendOwnerTypeHTTPRoute]
 		if !ok {
-			err := fmt.Errorf("could not find owners for type %s", BackendOwnerTypeHTTPRoute)
+			ownersForRoute, ok = owners[BackendOwnerTypeTLSRoute]
+			if ok {
+				isHTTPBackend = false
+				ownerType = BackendOwnerTypeTLSRoute
+			}
+		}
+		if !ok {
+			err := fmt.Errorf("could not find owners for type %s/%s", BackendOwnerTypeHTTPRoute, BackendOwnerTypeTLSRoute)
 			errs.Add(err)
 			continue
 		}
-		for routeKey, generation := range ownersForHTTPRoute {
-			routesInfo[routeKey.String()] = metadata.HTTPRouteMetadaInfo{
-				OwnerType:  string(BackendOwnerTypeHTTPRoute),
+		for routeKey, generation := range ownersForRoute {
+			routesInfo[routeKey.String()] = metadata.RouteMetadaInfo{
+				OwnerType:  string(ownerType),
 				Generation: generation,
 			}
 		}
@@ -477,12 +665,12 @@ func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
 		}
 		// Same for Namespace, it should be the same for all
 		var namespace string
-		for owner := range ownersForHTTPRoute {
+		for owner := range ownersForRoute {
 			namespace = owner.Namespace
 			break
 		}
 
-		be, err := b.newBackend(backendName, beMd, backendRef, namespace)
+		be, err := b.newBackend(backendName, beMd, backendRef, namespace, isHTTPBackend)
 		if err != nil {
 			errs.Add(err)
 			continue
@@ -504,7 +692,7 @@ func (b *HaproxyConfMgrImpl) processBackendsUnreferencedInCycle() utils.Errors {
 
 	for backendName := range b.backendsImpactedInCycle.Unreferenced {
 		// Recompute Metadata and update BE
-		routesInfo := make(map[string]metadata.HTTPRouteMetadaInfo)
+		routesInfo := make(map[string]metadata.RouteMetadaInfo)
 		owners, ok := b.backendOwners.owners[backendName]
 		if !ok {
 			// This is not an error, this can happen, especially if unreferenced
@@ -514,7 +702,12 @@ func (b *HaproxyConfMgrImpl) processBackendsUnreferencedInCycle() utils.Errors {
 			//
 			continue
 		}
-		ownersForHTTPRoute, ok := owners[BackendOwnerTypeHTTPRoute]
+		ownerType := BackendOwnerTypeHTTPRoute
+		ownersForRoute, ok := owners[BackendOwnerTypeHTTPRoute]
+		if !ok {
+			ownersForRoute, ok = owners[BackendOwnerTypeTLSRoute]
+			ownerType = BackendOwnerTypeTLSRoute
+		}
 		if !ok {
 			// No more owners, delete it
 			if err := b.configuration.deleteBackend(b.logger, backendName); err != nil {
@@ -527,9 +720,9 @@ func (b *HaproxyConfMgrImpl) processBackendsUnreferencedInCycle() utils.Errors {
 			continue
 		}
 
-		for routeKey, generation := range ownersForHTTPRoute {
-			routesInfo[routeKey.String()] = metadata.HTTPRouteMetadaInfo{
-				OwnerType:  string(BackendOwnerTypeHTTPRoute),
+		for routeKey, generation := range ownersForRoute {
+			routesInfo[routeKey.String()] = metadata.RouteMetadaInfo{
+				OwnerType:  string(ownerType),
 				Generation: generation,
 			}
 		}

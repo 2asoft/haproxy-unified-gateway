@@ -44,7 +44,7 @@ func (b *BaseSuite) YamlToRouteConditions(yamlPath string) rc.RouteConditions {
 	var expectedConditionsV1 gatewayv1.HTTPRouteStatus
 	err = yaml.Unmarshal(yamlFile, &expectedConditionsV1)
 	assert.NoError(b.T(), err, "Failed to unmarshal YAML")
-	return rc.NewRouteConditionsFromV1RouteConditions(expectedConditionsV1, TestControllerName)
+	return rc.NewRouteConditionsFromV1RouteConditions(expectedConditionsV1.Parents, TestControllerName)
 }
 
 func (b *BaseSuite) YamlToListenerStatuses(yamlPath string) []gatewayv1.ListenerStatus {

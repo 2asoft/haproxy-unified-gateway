@@ -28,7 +28,7 @@ type HTTPRouteConditionImpl struct {
 }
 
 func (r *HTTPRouteConditionImpl) GetConditions(obj *gatewayv1.HTTPRoute) RouteConditions {
-	return NewRouteConditionsFromV1RouteConditions(obj.Status, r.ControllerName)
+	return NewRouteConditionsFromV1RouteConditions(obj.Status.Parents, r.ControllerName)
 }
 
 func (*HTTPRouteConditionImpl) SetConditions(obj *gatewayv1.HTTPRoute, conds RouteConditions) {

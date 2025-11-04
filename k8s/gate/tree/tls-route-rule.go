@@ -21,16 +21,17 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-type HTTPRouteRule struct {
-	K8sResource gatewayv1.HTTPRouteRule
+type TLSRouteRule struct {
+	K8sResource v1alpha2.TLSRouteRule
 	// CheckBackendRef contains the result of the BackendRef checks for each BackendRef
 	CheckBackendRef utils.KeyMap[gatewayv1.BackendObjectReference, CheckResult]
 	Valid           bool
 }
 
-func (r *HTTPRouteRule) checkBackendRef(httpRoute *HTTPRoute, controllerStore ControllerStore) {
+func (r *TLSRouteRule) checkBackendRef(tlsRoute *TLSRoute, controllerStore ControllerStore) {
 	routeValid := true
 	for _, backendRef := range r.K8sResource.BackendRefs {
 		// 1- Check is the Kind/Group is supported
@@ -45,7 +46,7 @@ func (r *HTTPRouteRule) checkBackendRef(httpRoute *HTTPRoute, controllerStore Co
 		}
 
 		// 2- Check if the Service does exists
-		serviceKey := ServiceNsNameKey(httpRoute.K8sResource.Namespace, backendRef.BackendObjectReference)
+		serviceKey := ServiceNsNameKeyTlsRoute(tlsRoute.K8sResource, backendRef.BackendObjectReference)
 		service, ok := controllerStore.GateTree.Services[serviceKey]
 		if !ok || service.TreeStatus.Status == store.StatusDeleted {
 			cond := rc.ConditionKOResolvedRefNotFound(utils.BackendObjectReferenceToKey(backendRef.BackendObjectReference))
@@ -68,10 +69,10 @@ func (r *HTTPRouteRule) checkBackendRef(httpRoute *HTTPRoute, controllerStore Co
 
 // ServiceNsNameKey returns the service Ns/Name
 // If the backendRef namespace is empty or nil, fills with the Route Namesapce
-func ServiceNsNameKey(routeNs string, backendRef gatewayv1.BackendObjectReference) client.ObjectKey {
+func ServiceNsNameKeyTlsRoute(tlsRoute *v1alpha2.TLSRoute, backendRef gatewayv1.BackendObjectReference) client.ObjectKey {
 	if backendRef.Namespace == nil || *backendRef.Namespace == "" {
 		return types.NamespacedName{
-			Namespace: routeNs,
+			Namespace: tlsRoute.Namespace,
 			Name:      string(backendRef.Name),
 		}
 	}

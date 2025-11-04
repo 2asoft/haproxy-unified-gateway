@@ -137,6 +137,13 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 			logging.LogAttrError(err))
 	}
 
+	// ------------
+	// TLSRoutes
+	if err := b.processTLSRoutes(); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing TLSRoutes",
+			logging.LogAttrError(err))
+	}
+
 	b.configuration.diffs.ReloadNeed = reload.Instance().NeedReload()
 
 	// -----------

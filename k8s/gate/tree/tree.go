@@ -47,6 +47,7 @@ type GateTree struct {
 	Gateways       map[types.NamespacedName]*Gateway
 	Secrets        map[types.NamespacedName]*Secret
 	HTTPRoutes     map[types.NamespacedName]*HTTPRoute
+	TLSRoutes      map[types.NamespacedName]*TLSRoute
 	Services       map[types.NamespacedName]*Service
 }
 
@@ -92,13 +93,14 @@ func NewGateTree() *GateTree {
 		Gateways:       make(map[types.NamespacedName]*Gateway),
 		Secrets:        make(map[types.NamespacedName]*Secret),
 		HTTPRoutes:     make(map[types.NamespacedName]*HTTPRoute),
+		TLSRoutes:      make(map[types.NamespacedName]*TLSRoute),
 		Services:       make(map[types.NamespacedName]*Service),
 	}
 }
 
 // TreeResource is a constraint that permits any of the tree's resource types.
 type TreeResource interface {
-	GatewayClass | Gateway | Secret | HTTPRoute | Service
+	GatewayClass | Gateway | Secret | HTTPRoute | Service | TLSRoute
 }
 
 type TreeObject[T TreeResource] interface {

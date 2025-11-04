@@ -39,6 +39,7 @@ import (
 	discoveryV1 "k8s.io/api/discovery/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -158,6 +159,7 @@ func Add(
 		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
 		Gateways:        make(map[types.NamespacedName]*gatewayv1.Gateway),
 		HTTPRoutes:      make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
+		TLSRoutes:       make(map[types.NamespacedName]*gatewayv1alpha2.TLSRoute),
 		Services:        make(map[types.NamespacedName]*apiv1.Service),
 		Namespaces:      make(map[types.NamespacedName]*apiv1.Namespace),
 		Secrets:         make(map[types.NamespacedName]*apiv1.Secret),
@@ -392,6 +394,18 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
+						predicate.NewNamespacePredicate(cfg.Namespaces),
+					),
+				),
+			},
+		},
+		{
+			name:       "TLSRoute",
+			objectType: objtypes.ObjectTypeTLSRoute,
+			options: []Option{
+				WithK8sPredicate(
+					k8spredicate.And(
+						k8spredicate.GenerationChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),

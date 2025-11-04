@@ -179,3 +179,19 @@ func ComparePointers[T cmp.Ordered](a, b *T) int {
 	// Both are nil, so they are equal.
 	return 0
 }
+
+// PointerDefaultValueIfNil dereferences a pointer and returns its value.
+// If the pointer is nil, the zero value of T is returned instead.
+//
+// Example:
+//
+//	x := 42
+//	v := PointerDefaultValueIfNil(&x)  // returns 42
+//	v := PointerDefaultValueIfNil(nil) // returns 0 (zero value of int)
+func PointerDefaultValueIfNil[T any](arg *T) T {
+	if arg == nil {
+		var a T
+		return a
+	}
+	return *arg
+}

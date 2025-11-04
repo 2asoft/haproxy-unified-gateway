@@ -18,6 +18,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	v1 "k8s.io/api/core/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 var (
@@ -28,6 +29,7 @@ var (
 	ObjectTypeSecret       = &v1.Secret{}
 	ObjectTypeHugGate      = &v3.HugGate{}
 	ObjectTypeBackend      = &v3.Backend{}
+	ObjectTypeTLSRoute     = &gatewayv1alpha2.TLSRoute{}
 )
 
 var (

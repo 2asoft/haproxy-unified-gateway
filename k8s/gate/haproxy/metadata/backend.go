@@ -17,15 +17,15 @@ import (
 	"encoding/json"
 )
 
-// map[HTTPRoute] -> map [routeKey]K8sObjectInfo
+// map[Route] -> map [routeKey]K8sObjectInfo
 type BackendMetaData map[string]map[string]K8sObjectInfo // map[kind] -> map[objectKey]K8sObjectInfo
 
-type HTTPRouteMetadaInfo struct {
+type RouteMetadaInfo struct {
 	OwnerType  string
 	Generation int64
 }
 
-func (mm *ManagerImpl) BackendMetaData(routesInfo map[string]HTTPRouteMetadaInfo) MetaData {
+func (mm *ManagerImpl) BackendMetaData(routesInfo map[string]RouteMetadaInfo) MetaData {
 	md := make(MetaData)
 
 	backendMetadata := make(BackendMetaData)

@@ -26,6 +26,7 @@ import (
 	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 type StatusPatcher interface {
@@ -185,7 +186,7 @@ func (sp *httpRouteStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
 		return false, fmt.Errorf("wrong type %T", obj)
 	}
 	filteredCondFromClusterRoute := FilterStatusByControllerName(route.Status, sp.controllerName)
-	clusterConds := rc.NewRouteConditionsFromV1RouteConditions(filteredCondFromClusterRoute, sp.controllerName)
+	clusterConds := rc.NewRouteConditionsFromV1RouteConditions(filteredCondFromClusterRoute.Parents, sp.controllerName)
 
 	// conditions from the sp
 	expectedConds := sp.conditions
@@ -259,4 +260,71 @@ func FilterStatusByControllerName(routeStatus gatewayv1.HTTPRouteStatus, control
 
 func RouteStatusesEqual(a, b rc.RouteConditions) bool {
 	return a.Equal(b)
+}
+
+// ---------------------------
+// TLSRoute
+func newTLSRouteStatusPatcher(tlsRoute *tree.TLSRoute) StatusPatcher {
+	return &tlsRouteStatusPatcher{
+		controllerName: tlsRoute.ControllerName,
+		conditions:     tlsRoute.Conditions,
+	}
+}
+
+var _ StatusPatcher = &tlsRouteStatusPatcher{}
+
+type tlsRouteStatusPatcher struct {
+	controllerName string
+	conditions     rc.RouteConditions
+}
+
+func (sp *tlsRouteStatusPatcher) StatusEqual(obj client.Object) (bool, error) {
+	tlsRoute, ok := obj.(*v1alpha2.TLSRoute)
+	if !ok {
+		return false, fmt.Errorf("wrong type %T", obj)
+	}
+	filteredCondFromClusterRoute := FilterTLSRouteStatusByControllerName(tlsRoute.Status, sp.controllerName)
+	clusterConds := rc.NewRouteConditionsFromV1RouteConditions(filteredCondFromClusterRoute.Parents, sp.controllerName)
+
+	// conditions from the sp
+	expectedConds := sp.conditions
+	// should be equal to conditions from the clusterObj
+
+	return RouteStatusesEqual(clusterConds, expectedConds), nil
+}
+
+func (sp *tlsRouteStatusPatcher) SetStatus(obj client.Object) error {
+	tlsRoute, ok := obj.(*v1alpha2.TLSRoute)
+	if !ok {
+		return fmt.Errorf("wrong type %T", obj)
+	}
+
+	// Start with a list of statuses from other controllers.
+	preservedStatuses := make([]gatewayv1.RouteParentStatus, 0, len(tlsRoute.Status.Parents))
+	for _, parentStatus := range tlsRoute.Status.Parents {
+		if parentStatus.ControllerName != gatewayv1.GatewayController(sp.controllerName) {
+			preservedStatuses = append(preservedStatuses, parentStatus)
+		}
+	}
+
+	// Append our controller's new statuses.
+	newParentStatuses := append(preservedStatuses, sp.conditions.ToV1RouteConditions().Parents...)
+	sortRouteParentStatusByParentRef(newParentStatuses)
+	tlsRoute.Status.Parents = newParentStatuses
+	return nil
+}
+
+// sortRouteParentStatusByParentRef sorts a slice of RouteParentStatus by a
+// deterministic order based on their ParentReference fields.
+
+func FilterTLSRouteStatusByControllerName(tlsRouteStatus v1alpha2.TLSRouteStatus, controllerName string) v1alpha2.TLSRouteStatus {
+	filtered := make([]gatewayv1.RouteParentStatus, 0, len(tlsRouteStatus.RouteStatus.Parents))
+	for _, parent := range tlsRouteStatus.RouteStatus.Parents {
+		if parent.ControllerName == gatewayv1.GatewayController(controllerName) {
+			filtered = append(filtered, parent)
+		}
+	}
+	return v1alpha2.TLSRouteStatus{
+		RouteStatus: gatewayv1.RouteStatus{Parents: filtered},
+	}
 }

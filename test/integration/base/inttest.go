@@ -59,6 +59,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 func init() {
@@ -68,6 +69,7 @@ func init() {
 	utilruntime.Must(apiext.AddToScheme(scheme.Scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme.Scheme))
 	utilruntime.Must(gatewayv1.Install(scheme.Scheme))
+	utilruntime.Must(v1alpha2.Install(scheme.Scheme))
 }
 
 const (

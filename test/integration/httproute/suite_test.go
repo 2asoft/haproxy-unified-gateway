@@ -47,7 +47,7 @@ func (s *HTTPRouteSuite) expectConditionsUpdated(ctx context.Context, namespace,
 			return false
 		}
 
-		gotConditions = rc.NewRouteConditionsFromV1RouteConditions(route.Status, base.TestControllerName)
+		gotConditions = rc.NewRouteConditionsFromV1RouteConditions(route.Status.Parents, base.TestControllerName)
 
 		res := gotConditions.Equal(expectedConditions)
 

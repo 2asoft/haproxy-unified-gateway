@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 var scheme = runtime.NewScheme()
@@ -47,6 +48,7 @@ func init() { //nolint:gochecknoinits
 	utilruntime.Must(apiext.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))
 	utilruntime.Must(haproxyapiv3.AddToScheme(scheme))
+	utilruntime.Must(v1alpha2.Install(scheme))
 }
 
 func createManager(cfg config.Configuration) (manager.Manager, error) {
