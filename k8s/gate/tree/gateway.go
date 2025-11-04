@@ -180,6 +180,9 @@ func (g *Gateway) checkParametersRef(controllerStore ControllerStore) {
 			gwcGate := treeGwc.HugGate
 			if gwcGate != nil {
 				mergedHugGate := &v3.HugGate{}
+				if g.HugGate != nil {
+					mergedHugGate = g.HugGate
+				}
 				err := mergo.Merge(mergedHugGate, hugGate)
 				if err != nil {
 					controllerStore.Logger.LogAttrs(context.Background(), slog.LevelError, "error merging haproxy gate",

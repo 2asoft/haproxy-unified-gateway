@@ -31,6 +31,7 @@ import (
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/imdario/mergo"
 
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -310,8 +311,11 @@ func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType 
 	return nil
 }
 
-func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData, _ gatewayv1.HTTPBackendRef) (*models.Backend, error) {
-	return &models.Backend{
+func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData, backendRef gatewayv1.HTTPBackendRef, namespace string) (*models.Backend, error) {
+	// First, we merge the Backend CRDs from filters, if there are some
+	// Backend CRDs are defined in the Filters of type: ExtensionRef
+	// We gather all those filters, merge them and apply them
+	newBackend := &models.Backend{
 		BackendBase: models.BackendBase{
 			Metadata:      md,
 			Name:          backendName,
@@ -327,7 +331,71 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 				ServerParams: models.ServerParams{Check: "enabled"},
 			},
 		},
-	}, nil
+	}
+
+	// Now Merge with the Backend CRs
+	errs := b.mergeWithBackendCRs(backendRef, newBackend, namespace)
+
+	return newBackend, errs.Result()
+}
+
+func (b *HaproxyConfMgrImpl) mergeWithBackendCRs(backendRef gatewayv1.HTTPBackendRef, newBackend *models.Backend, namespace string) utils.Errors {
+	var errs utils.Errors
+
+	// Now Merge with the Backend CRs
+	// Default Merge options is : Append
+	opts := []func(*mergo.Config){mergo.WithOverride, mergo.WithAppendSlice}
+
+	for _, filter := range backendRef.Filters {
+		if filter.Type != gatewayv1.HTTPRouteFilterExtensionRef {
+			continue
+		}
+		// We only accept v3.Backend or MergeType
+		// Note that MergType is not a real CRD, it's only a way to configure how the merge behaves.
+		// There is no:
+		// - Group: gate.v3.haproxy.org
+		// - Kind: MergeType CRDs
+		// Name can only have 2 values:
+		// - Name: Override || Append
+		isFilterExtensionRefKindSupported := tree.IsFilterExtensionRefKindSupported(filter.ExtensionRef, b.params.extractGVK)
+		isFilterExtensionRefKindMergeType := tree.IsFilterExtensionRefKindMergeType(filter.ExtensionRef, b.params.extractGVK)
+
+		if !(isFilterExtensionRefKindSupported || isFilterExtensionRefKindMergeType) {
+			continue
+		}
+
+		// MergeType is set if present
+		if isFilterExtensionRefKindMergeType {
+			// If it's a MergeType, then we just set the correct merge type for next Merges
+			switch filter.ExtensionRef.Name {
+			case "Override":
+				opts = []func(*mergo.Config){mergo.WithOverride, mergo.WithOverrideEmptySlice}
+				continue
+			case "Append":
+				opts = []func(*mergo.Config){mergo.WithOverride, mergo.WithAppendSlice}
+				continue
+			}
+		}
+
+		nsName := k8stypes.NamespacedName{
+			Namespace: namespace,
+			Name:      string(filter.ExtensionRef.Name),
+		}
+		_ = nsName
+		beCR, ok := b.controllerStore.ClusterStore.BackendCRs[nsName]
+		if !ok {
+			continue
+		}
+		beCR.Spec.BackendBase.Name = ""
+		// At this point we have or a Backend custom ExtensionRef or a MergType
+
+		err := mergo.Merge(newBackend, &beCR.Spec.Backend, opts...)
+		if err != nil {
+			errs.Add(err)
+			continue
+		}
+	}
+	return errs
 }
 
 func getFilterHash(filters []gatewayv1.HTTPRouteFilter) string {
@@ -363,9 +431,25 @@ func DeepCopyBackend(original *models.Backend) (*models.Backend, error) {
 func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 	var errs utils.Errors
 	// UPSERTED
-	for backendName := range b.backendsImpactedInCycle.Upserted {
+	errsUpserted := b.processBackendsUpsertedInCycle()
+	errs.AddErrors(errsUpserted)
+
+	// UNREFERENCED
+	errsUnreferenced := b.processBackendsUnreferencedInCycle()
+	errs.AddErrors(errsUnreferenced)
+
+	// DELETED
+	errsDel := b.processBackendsDeletedInCycle()
+	errs.AddErrors(errsDel)
+
+	return errs.Result()
+}
+
+func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
+	var errs utils.Errors
+
+	for backendName, mapImpactedBEs := range b.backendsImpactedInCycle.Upserted {
 		routesInfo := make(map[string]metadata.HTTPRouteMetadaInfo)
-		var backendRef gatewayv1.HTTPBackendRef
 		owners, ok := b.backendOwners.owners[backendName]
 		if !ok {
 			err := fmt.Errorf("could not find owner for backend %s", backendName)
@@ -386,7 +470,19 @@ func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 		}
 		beMd := b.metadataManager.BackendMetaData(routesInfo)
 
-		be, err := b.newBackend(backendName, beMd, backendRef)
+		var backendRef gatewayv1.HTTPBackendRef
+		for _, impactedBE := range mapImpactedBEs {
+			// They should all have the same filters as the backend name is computed from the Backend + Filters hash
+			backendRef = impactedBE.BackendRef
+		}
+		// Same for Namespace, it should be the same for all
+		var namespace string
+		for owner := range ownersForHTTPRoute {
+			namespace = owner.Namespace
+			break
+		}
+
+		be, err := b.newBackend(backendName, beMd, backendRef, namespace)
 		if err != nil {
 			errs.Add(err)
 			continue
@@ -400,8 +496,12 @@ func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 			b.firstSync.backends[be.Name] = struct{}{}
 		}
 	}
+	return errs
+}
 
-	// UNREFERENCED
+func (b *HaproxyConfMgrImpl) processBackendsUnreferencedInCycle() utils.Errors {
+	var errs utils.Errors
+
 	for backendName := range b.backendsImpactedInCycle.Unreferenced {
 		// Recompute Metadata and update BE
 		routesInfo := make(map[string]metadata.HTTPRouteMetadaInfo)
@@ -442,8 +542,12 @@ func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 			b.firstSync.backends[backendName] = struct{}{}
 		}
 	}
+	return errs
+}
 
-	// DELETED
+func (b *HaproxyConfMgrImpl) processBackendsDeletedInCycle() utils.Errors {
+	var errs utils.Errors
+
 	for backendName := range b.backendsImpactedInCycle.Deleted {
 		if err := b.configuration.deleteBackend(b.logger, backendName); err != nil {
 			errs.Add(err)
@@ -453,6 +557,5 @@ func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 			delete(b.firstSync.backends, backendName)
 		}
 	}
-
-	return errs.Result()
+	return errs
 }

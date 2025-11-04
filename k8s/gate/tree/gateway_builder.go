@@ -149,7 +149,6 @@ func (b *GatewayBuilderImpl) computeGateTreeUpdates() {
 
 			// Compute status only if managed Gateway
 			// If not managed, then we should not update the status
-			// treeGw.BuildManagementConditions()
 			// Build Listener conditions
 			for _, listener := range treeGw.Listeners {
 				listener.BuildConditions(treeGw)

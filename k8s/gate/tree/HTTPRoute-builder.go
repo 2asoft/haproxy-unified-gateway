@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
@@ -66,6 +67,8 @@ func (b *HTTPRouteBuilderImpl) addIndirectClusterStoreUpdates() {
 	b.addIndirectMapsFromServices()
 	// Indirect from Gateways
 	b.addIndirectMapsFromGateways()
+	// Indirect from Backend CR
+	b.addIndirectMapsFromBackendCRs()
 }
 
 func (b *HTTPRouteBuilderImpl) addIndirectMapsFromServices() {
@@ -95,6 +98,23 @@ func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateway(gatewayUpdate store.Up
 	addIndirectFromReferenced(
 		gatewayUpdate,
 		b.ReferencedObjects.ReferencedGateways,
+		b.ClusterStore.HTTPRoutes,
+		b.ClusterStore.Updates.HTTPRoutes,
+		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),
+		nil,
+	)
+}
+
+func (b *HTTPRouteBuilderImpl) addIndirectMapsFromBackendCRs() {
+	for _, backendCR := range b.ClusterStore.Updates.BackendCRs {
+		b.addIndirectMapsFromBackendCR(backendCR)
+	}
+}
+
+func (b *HTTPRouteBuilderImpl) addIndirectMapsFromBackendCR(backendCRUpdate store.Update[*v3.Backend]) {
+	addIndirectFromReferenced(
+		backendCRUpdate,
+		b.ReferencedObjects.ReferencedBackendCRs,
 		b.ClusterStore.HTTPRoutes,
 		b.ClusterStore.Updates.HTTPRoutes,
 		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),

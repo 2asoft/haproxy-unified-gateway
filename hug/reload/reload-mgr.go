@@ -71,7 +71,7 @@ func (rlm *reloadMgr) AttemptDynamicServerStateUpdate(reason string, args ...any
 	if rlm.logger != nil {
 		rlm.logger.LogAttrs(context.WithValue(context.Background(), logging.CallerAdditionalSkipKey, 1), slog.LevelInfo,
 			"attempt dynamic update server state",
-			logging.LogAttrReloadMgrAction(rlm.reload, reason, args...)) // TODO HELENE log meaningful info here
+			logging.LogAttrReloadMgrAction(rlm.reload, reason, args...))
 	}
 }
 
@@ -83,7 +83,7 @@ func (rlm *reloadMgr) SetDynamicServerStateUpdateFailure(reason string, args ...
 	if rlm.logger != nil {
 		rlm.logger.LogAttrs(context.WithValue(context.Background(), logging.CallerAdditionalSkipKey, 1), slog.LevelInfo,
 			"dynamic update server state failed",
-			logging.LogAttrReloadMgrAction(rlm.reload, reason, args...)) // TODO HELENE log meaningful info here
+			logging.LogAttrReloadMgrAction(rlm.reload, reason, args...))
 	}
 }
 

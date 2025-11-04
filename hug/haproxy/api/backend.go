@@ -45,6 +45,18 @@ func (c *clientNative) BackendCreate(backend models.Backend) error {
 	}
 	reload.Instance().SetReload("Backend upserted %s", backend.Name)
 
+	// ACLs
+	err = c.ACLReplaceAll(parser.Backends, backend.Name, backend.ACLList)
+	if err != nil {
+		return err
+	}
+
+	// Http Requests
+	err = c.HTTPRequestReplaceAll(parser.Backends, backend.Name, backend.HTTPRequestRuleList)
+	if err != nil {
+		return err
+	}
+
 	// Servers
 	err = c.ServerReplaceAll(parser.Backends, backend.Name, backend.Servers)
 	return err
@@ -67,13 +79,31 @@ func (c *clientNative) BackendsGet() (models.Backends, error) {
 	// TODO: complete with children
 	_, backends, err := configuration.GetBackends(c.activeTransaction)
 
+	// ACLS
+	for _, backend := range backends {
+		_, acls, err := configuration.GetACLs(string(parser.Backends), backend.Name, c.activeTransaction)
+		if err != nil {
+			return nil, err
+		}
+		backend.ACLList = append(backend.ACLList, acls...)
+	}
+
+	// HTTPRequest
+	for _, backend := range backends {
+		_, httpRequests, err := configuration.GetHTTPRequestRules(string(parser.Backends), backend.Name, c.activeTransaction)
+		if err != nil {
+			return nil, err
+		}
+		backend.HTTPRequestRuleList = append(backend.HTTPRequestRuleList, httpRequests...)
+	}
+
 	// Servers
 	for _, backend := range backends {
 		_, servers, err := configuration.GetServers(string(parser.Backends), backend.Name, c.activeTransaction)
 		if err != nil {
 			return nil, err
 		}
-		if len(backends) != 0 {
+		if len(servers) != 0 {
 			backend.Servers = make(map[string]models.Server)
 		}
 		for _, server := range servers {
@@ -96,6 +126,20 @@ func (c *clientNative) BackendGet(backendName string) (models.Backend, error) {
 	if err != nil {
 		return models.Backend{}, err
 	}
+
+	// ACLS
+	_, acls, err := configuration.GetACLs(string(parser.Backends), backend.Name, c.activeTransaction)
+	if err != nil {
+		return models.Backend{}, err
+	}
+	backend.ACLList = append(backend.ACLList, acls...)
+
+	// HTTPRequest
+	_, httpRequests, err := configuration.GetHTTPRequestRules(string(parser.Backends), backend.Name, c.activeTransaction)
+	if err != nil {
+		return models.Backend{}, err
+	}
+	backend.HTTPRequestRuleList = append(backend.HTTPRequestRuleList, httpRequests...)
 
 	// Servers
 	_, servers, err := configuration.GetServers(string(parser.Backends), backend.Name, c.activeTransaction)
@@ -139,6 +183,18 @@ func (c *clientNative) BackendEdit(backend models.Backend) error {
 			logging.LogAttrError(err),
 			slog.String("backend", backend.Name),
 		)
+		return err
+	}
+
+	// ACLs
+	err = c.ACLReplaceAll(parser.Backends, backend.Name, backend.ACLList)
+	if err != nil {
+		return err
+	}
+
+	// Http Requests
+	err = c.HTTPRequestReplaceAll(parser.Backends, backend.Name, backend.HTTPRequestRuleList)
+	if err != nil {
 		return err
 	}
 

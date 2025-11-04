@@ -64,6 +64,8 @@ type ReferencedObjects struct {
 	ReferencedGateways references.ReferencedBy
 	// ReferencedServices includes the Services that are references by HTTPRoutes
 	ReferencedServices references.ReferencedBy
+	// ReferencedBackendCRs includes the Backends CR that are referenced by HTTPRoutes
+	ReferencedBackendCRs references.ReferencedBy
 }
 
 type CheckResult struct {
@@ -120,6 +122,7 @@ func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),
 		ReferencedGateways:        references.NewReferencedBy("gateway", extractGVK),
 		ReferencedServices:        references.NewReferencedBy("service", extractGVK),
+		ReferencedBackendCRs:      references.NewReferencedBy("backend", extractGVK),
 	}
 }
 

@@ -120,6 +120,7 @@ tasks:
       - echo "Install Gateway API Controller CRDs"
       - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_hugconfs.yaml
       - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_huggates.yaml
+      - /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_backends.yaml
       #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/rbac.yaml
       #- /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd/job-crd.yaml
       #- /{{.kubectl}} wait --for=condition=complete --timeout=60s job/haproxy-ingress-crd -n haproxy-unified-gateway

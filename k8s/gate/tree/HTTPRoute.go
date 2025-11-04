@@ -491,6 +491,41 @@ func isBackendRefGroupKindSupported(backendRef gatewayv1.BackendObjectReference,
 	return true
 }
 
+// IsFilterExtensionRefKindSupported checks if the provided filter ExtensionRef has a supported Group and Kind.
+// It only supports `v3.Backend` resources.
+func IsFilterExtensionRefKindSupported(extensionRef *gatewayv1.LocalObjectReference, extractGVK utils.ExtractGVK) bool {
+	backendCRType := objtypes.ObjectTypeBackend
+	backendGVK := extractGVK(backendCRType)
+	if extensionRef == nil {
+		return false
+	}
+	if !strings.EqualFold(backendGVK.Kind, string(extensionRef.Kind)) {
+		return false
+	}
+	if backendGVK.Group != string(extensionRef.Group) {
+		return false
+	}
+	return true
+}
+
+func IsFilterExtensionRefKindMergeType(extensionRef *gatewayv1.LocalObjectReference, extractGVK utils.ExtractGVK) bool {
+	backendCRType := objtypes.ObjectTypeBackend
+	backendGVK := extractGVK(backendCRType)
+	if extensionRef == nil {
+		return false
+	}
+	if !strings.EqualFold("MergeType", string(extensionRef.Kind)) {
+		return false
+	}
+	if backendGVK.Group != string(extensionRef.Group) {
+		return false
+	}
+	if !(strings.EqualFold("Override", string(extensionRef.Name)) || strings.EqualFold("Append", string(extensionRef.Name))) {
+		return false
+	}
+	return true
+}
+
 func (r *HTTPRoute) mergeBackendConditions() {
 	// Complete the RouteConditions with the BackendRef check results
 	// The rules checks result will apply to each parent

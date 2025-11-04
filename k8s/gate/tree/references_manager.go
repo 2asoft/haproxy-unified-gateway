@@ -15,7 +15,10 @@ package tree
 
 import (
 	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
+	"k8s.io/apimachinery/pkg/types"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type ReferenceManager struct {
@@ -56,6 +59,9 @@ func (rm *ReferenceManager) UpdateRefences() {
 
 	// Services refs
 	rm.buildServiceReferences()
+
+	// BackendCR refs
+	rm.buildBackendCRReferences()
 }
 
 func (rm *ReferenceManager) needsReferencedHugGatesRebuild() bool {
@@ -79,6 +85,10 @@ func (rm *ReferenceManager) needsReferencedGatewaysRebuild() bool {
 
 func (rm *ReferenceManager) needsReferencedServicesRebuild() bool {
 	return len(rm.ClusterStore.Updates.Services) > 0
+}
+
+func (rm *ReferenceManager) needsReferencedBackendCRsRebuild() bool {
+	return len(rm.ClusterStore.Updates.HTTPRoutes) > 0
 }
 
 func (rm *ReferenceManager) buildHugGatesReferences() {
@@ -181,6 +191,34 @@ func (rm *ReferenceManager) buildServiceReferences() {
 	}
 }
 
+func (rm *ReferenceManager) buildBackendCRReferences() {
+	if !rm.needsReferencedBackendCRsRebuild() {
+		return
+	}
+
+	for _, route := range rm.ClusterStore.HTTPRoutes {
+		for _, rule := range route.Spec.Rules {
+			// BackendRef Filters
+			for _, backendRef := range rule.BackendRefs {
+				for _, filter := range backendRef.Filters {
+					if filter.Type != gatewayv1.HTTPRouteFilterExtensionRef {
+						continue
+					}
+					// We only accept v3.Backend
+					if !IsFilterExtensionRefKindSupported(filter.ExtensionRef, rm.ControllerStore.ExtractGVK) {
+						continue
+					}
+					nsName := types.NamespacedName{
+						Namespace: route.Namespace,
+						Name:      string(filter.ExtensionRef.Name),
+					}
+					rm.ReferencedObjects.ReferencedBackendCRs.AddReferencedBy(rm.Logger, nsName, route)
+				}
+			}
+		}
+	}
+}
+
 func (rm *ReferenceManager) cleanReferencedObjects() {
 	if rm.needsReferencedGatewayClassesRebuild() {
 		rm.ReferencedObjects.ReferencedGatewayClasses.CleanOwners()
@@ -197,5 +235,9 @@ func (rm *ReferenceManager) cleanReferencedObjects() {
 	}
 	if rm.needsReferencedServicesRebuild() {
 		rm.ReferencedObjects.ReferencedServices.CleanOwners()
+	}
+
+	if rm.needsReferencedBackendCRsRebuild() {
+		rm.ReferencedObjects.ReferencedBackendCRs.CleanOwners()
 	}
 }

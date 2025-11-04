@@ -48,6 +48,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&HugGateList{},
 		&HugConf{},
 		&HugConfList{},
+		&Backend{},
+		&BackendList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

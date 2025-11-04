@@ -166,6 +166,7 @@ func Add(
 		HugGates:        make(map[types.NamespacedName]*v3.HugGate),
 		ControllerConfs: make(map[types.NamespacedName]*v3.HugConf),
 		EndpointSlices:  make(map[types.NamespacedName]*discoveryV1.EndpointSlice),
+		BackendCRs:      make(map[types.NamespacedName]*v3.Backend),
 		Updates:         store.NewClusterUpdates(),
 	}
 
@@ -380,6 +381,18 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 						predicate.ControllerConfPredicate{
 							ControllerConfName: cfg.HugConfCRD,
 						},
+					),
+				),
+			},
+		},
+		{
+			name:       "BackendCR",
+			objectType: objtypes.ObjectTypeBackend,
+			options: []Option{
+				WithK8sPredicate(
+					k8spredicate.And(
+						k8spredicate.ResourceVersionChangedPredicate{},
+						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
 			},

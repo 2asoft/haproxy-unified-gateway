@@ -27,6 +27,7 @@ var (
 	ObjectTypeService      = &v1.Service{}
 	ObjectTypeSecret       = &v1.Secret{}
 	ObjectTypeHugGate      = &v3.HugGate{}
+	ObjectTypeBackend      = &v3.Backend{}
 )
 
 var (
