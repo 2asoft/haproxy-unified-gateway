@@ -29,7 +29,6 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/index"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 
 	discoveryV1 "k8s.io/api/discovery/v1"
@@ -312,52 +311,114 @@ func (b *HaproxyConfMgrImpl) getSvcEndpoints(ctx context.Context, svcKey client.
 	return svcEndpoints, err
 }
 
+func (b *HaproxyConfMgrImpl) backendsByServiceForHTTPRoute(routeOwners map[client.ObjectKey]int64,
+	beName string,
+	servicesByBackend map[client.ObjectKey]map[BackendPort]struct{}) {
+	for ownerRouteKey := range routeOwners {
+		// Find the route in controllerStore GateTree
+		treeHTTPRoute, ok := b.controllerStore.GateTree.HTTPRoutes[ownerRouteKey]
+		if !ok {
+			b.logger.LogAttrs(context.Background(), slog.LevelError, "could not find HTTPRoute in GateTree", logging.LogAttrKey(ownerRouteKey))
+			continue
+		}
+		// Iterate over each rule, extract the service name
+		for _, rule := range treeHTTPRoute.Rules {
+			if !rule.Valid {
+				continue
+			}
+			for _, hBackendRef := range rule.K8sResource.BackendRefs {
+				backendRef := hBackendRef.BackendObjectReference
+				nsName := utils.GetNamespacedName(string(backendRef.Name),
+					string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
+					treeHTTPRoute.K8sResource.Namespace)
+				filterHash := getFilterHash(hBackendRef.Filters)
+				var svcPort int32
+				if backendRef.Port != nil {
+					svcPort = int32(*backendRef.Port)
+				}
+				ruleBeName, err := b.getBackendName(nsName, svcPort, filterHash)
+				if err != nil {
+					continue
+				}
+				if ruleBeName != beName {
+					continue
+				}
+				if servicesByBackend[nsName] == nil {
+					servicesByBackend[nsName] = make(map[BackendPort]struct{})
+				}
+				backendPort := BackendPort{
+					backendName: beName,
+					svcPort:     svcPort,
+				}
+				servicesByBackend[nsName][backendPort] = struct{}{}
+			}
+		}
+	}
+}
+
+func (b *HaproxyConfMgrImpl) backendsByServiceForTLSRoute(routeOwners map[client.ObjectKey]int64,
+	beName string,
+	servicesByBackend map[client.ObjectKey]map[BackendPort]struct{}) {
+	for ownerRouteKey := range routeOwners {
+		// Find the route in controllerStore GateTree
+		treeTLSRoute, ok := b.controllerStore.GateTree.TLSRoutes[ownerRouteKey]
+		if !ok {
+			b.logger.LogAttrs(context.Background(), slog.LevelError, "could not find TLSRoute in GateTree", logging.LogAttrKey(ownerRouteKey))
+			continue
+		}
+		// Iterate over each rule, extract the service name
+		for _, rule := range treeTLSRoute.Rules {
+			if !rule.Valid {
+				continue
+			}
+			for _, hBackendRef := range rule.K8sResource.BackendRefs {
+				backendRef := hBackendRef.BackendObjectReference
+				nsName := utils.GetNamespacedName(string(backendRef.Name),
+					string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
+					treeTLSRoute.K8sResource.Namespace)
+				var svcPort int32
+				if backendRef.Port != nil {
+					svcPort = int32(*backendRef.Port)
+				}
+				ruleBeName, err := b.getBackendName(nsName, svcPort, "")
+				if err != nil {
+					continue
+				}
+				if ruleBeName != beName {
+					continue
+				}
+				if servicesByBackend[nsName] == nil {
+					servicesByBackend[nsName] = make(map[BackendPort]struct{})
+				}
+				backendPort := BackendPort{
+					backendName: beName,
+					svcPort:     svcPort,
+				}
+				servicesByBackend[nsName][backendPort] = struct{}{}
+			}
+		}
+	}
+}
+
 // backendsByService returns a:
 // map[service key]map[backendName] struct{} for all referenced backend
 func (b *HaproxyConfMgrImpl) backendsByService() map[client.ObjectKey]map[BackendPort]struct{} {
 	servicesByBackend := make(map[client.ObjectKey]map[BackendPort]struct{})
 	for beName := range b.backendOwners.owners {
-		httpRouteOwners, ok := b.backendOwners.owners[beName][BackendOwnerTypeHTTPRoute]
+		routeType := BackendOwnerTypeHTTPRoute
+		routeOwners, ok := b.backendOwners.owners[beName][routeType]
+		if !ok {
+			routeOwners, ok = b.backendOwners.owners[beName][BackendOwnerTypeTLSRoute]
+			routeType = BackendOwnerTypeTLSRoute
+		}
 		if !ok {
 			continue
 		}
-		for ownerHTTPRouteKey := range httpRouteOwners {
-			// Find the route in controllerStore GateTree
-			treeHTTPRoute, ok := b.controllerStore.GateTree.HTTPRoutes[ownerHTTPRouteKey]
-			if !ok {
-				b.logger.LogAttrs(context.Background(), slog.LevelError, "could not find HTTPRoute in GateTree", logging.LogAttrKey(ownerHTTPRouteKey))
-				continue
-			}
-			// Iterate over each rule, extract the service name
-			for _, rule := range treeHTTPRoute.Rules {
-				if !rule.Valid {
-					continue
-				}
-				for _, hBackendRef := range rule.K8sResource.BackendRefs {
-					backendRef := hBackendRef.BackendObjectReference
-					nsName := tree.GetBackendRefNamespacedName(backendRef, treeHTTPRoute.K8sResource)
-					filterHash := getFilterHash(hBackendRef.Filters)
-					var svcPort int32
-					if backendRef.Port != nil {
-						svcPort = int32(*backendRef.Port)
-					}
-					ruleBeName, err := b.getBackendName(nsName, svcPort, filterHash)
-					if err != nil {
-						continue
-					}
-					if ruleBeName != beName {
-						continue
-					}
-					if servicesByBackend[nsName] == nil {
-						servicesByBackend[nsName] = make(map[BackendPort]struct{})
-					}
-					backendPort := BackendPort{
-						backendName: beName,
-						svcPort:     svcPort,
-					}
-					servicesByBackend[nsName][backendPort] = struct{}{}
-				}
-			}
+		switch routeType {
+		case BackendOwnerTypeHTTPRoute:
+			b.backendsByServiceForHTTPRoute(routeOwners, beName, servicesByBackend)
+		case BackendOwnerTypeTLSRoute:
+			b.backendsByServiceForTLSRoute(routeOwners, beName, servicesByBackend)
 		}
 	}
 	return servicesByBackend

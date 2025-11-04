@@ -195,3 +195,10 @@ func PointerDefaultValueIfNil[T any](arg *T) T {
 	}
 	return *arg
 }
+
+func GetNamespacedName(name, namespace, defaultNamespace string) types.NamespacedName {
+	if namespace == "" {
+		namespace = defaultNamespace
+	}
+	return types.NamespacedName{Name: name, Namespace: namespace}
+}

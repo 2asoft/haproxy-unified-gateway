@@ -211,6 +211,14 @@ func (r *TLSRoute) checkParentRef(parentRef gatewayv1.ParentReference, controlle
 				Conditions: rc.ConditionNotAcceptedNoMatchingParent(),
 			}
 		}
+		tlsMode := utils.PointerDefaultValueIfNil(listener.K8sResource.TLS).Mode
+		if tlsMode == nil || *tlsMode != gatewayv1.TLSModePassthrough {
+			return checkParentRefResult{
+				Managed:    true,
+				Valid:      false,
+				Conditions: rc.ConditionNotAcceptedRouteReasonNotAllowedByListeners(),
+			}
+		}
 		// We found the listener, it does exists
 		attachableListeners = append(attachableListeners, listener)
 	} else {
