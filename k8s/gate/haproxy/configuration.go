@@ -130,6 +130,7 @@ func (c *Configuration) upsertBackend(logger *slog.Logger, be *models.Backend) e
 			)
 			return nil
 		}
+		be.Servers = previousBe.Servers
 
 		// Update existing backend
 		logger.LogAttrs(context.Background(), slog.LevelInfo, "Backend [UPDATE]",
