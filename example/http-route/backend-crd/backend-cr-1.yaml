@@ -1,0 +1,20 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Backend
+metadata:
+  name: backend-cr-1
+spec:
+  server_timeout: 70000
+  balance:
+    algorithm: roundrobin
+  http_request_rule_list:
+  - cond: unless
+    cond_test: '{ src 192.168.1.0/16 }'
+    hdr_format: '%T'
+    hdr_name: X-Haproxy-Current-Date
+    type: add-header
+  - cond: unless
+    cond_test: '{ src 192.168.1.0/16 }'
+    hdr_format: '%[ssl_fc]'
+    hdr_name: X_Is_Secure
+    type: add-header
+  name: backend-cr-1
