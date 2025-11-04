@@ -60,6 +60,12 @@ func (c *clientNative) FrontendCreate(frontend models.Frontend) error {
 		return err
 	}
 
+	// TCP Requests
+	err = c.TCPRequestReplaceAll(parser.Frontends, frontend.Name, frontend.TCPRequestRuleList)
+	if err != nil {
+		return err
+	}
+
 	// Use backend rules
 	err = c.UseBackendReplaceAll(frontend.Name, frontend.BackendSwitchingRuleList)
 	if err != nil {
@@ -162,6 +168,12 @@ func (c *clientNative) FrontendEdit(frontend models.Frontend) error {
 
 	// Http Requests
 	err = c.HTTPRequestReplaceAll(parser.Frontends, frontend.Name, frontend.HTTPRequestRuleList)
+	if err != nil {
+		return err
+	}
+
+	// TCP Requests
+	err = c.TCPRequestReplaceAll(parser.Frontends, frontend.Name, frontend.TCPRequestRuleList)
 	if err != nil {
 		return err
 	}

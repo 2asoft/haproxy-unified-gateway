@@ -377,7 +377,7 @@ func (b *HaproxyConfMgrImpl) addImpactedHTTPBackendUpserted(backendName string, 
 }
 
 func (b *HaproxyConfMgrImpl) addImpactedLTSBackendUpserted(backendName string, routeKey client.ObjectKey,
-	tlsBackendRef gatewayv1alpha2.BackendRef,
+	_ gatewayv1alpha2.BackendRef,
 ) {
 	impactedBe := BackendImpactedInCycle{
 		Name:         backendName,

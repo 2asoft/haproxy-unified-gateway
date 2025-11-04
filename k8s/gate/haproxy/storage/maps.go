@@ -33,6 +33,7 @@ const (
 	PATH_EXACT_DOMAIN_WILDCARD_MAP = "domain_wildcard_path_exact"
 	PATH_PREFIX_MAP                = "path_prefix"
 	PATH_REGEX_MAP                 = "path_regex"
+	SNI_MAP                        = "sni"
 )
 
 //revive:enable:var-naming

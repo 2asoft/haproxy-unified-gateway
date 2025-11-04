@@ -233,39 +233,90 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 	pathPrefixMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
 	pathDomainWPathExactMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
 	pathRegexMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
+	sniMap := b.params.mapsStorage.MapPath(frontendName, storage.SNI_MAP)
 
 	b.params.mapsStorage.EnsureMapData(pathExactMap)
 	b.params.mapsStorage.EnsureMapData(pathPrefixMap)
 	b.params.mapsStorage.EnsureMapData(pathRegexMap)
 	b.params.mapsStorage.EnsureMapData(pathDomainWPathExactMap)
+	b.params.mapsStorage.EnsureMapData(sniMap)
 
-	fe := &models.Frontend{
-		FrontendBase: models.FrontendBase{
-			Name:           frontendName,
-			From:           b.params.DefaultsSectionName,
-			Metadata:       md,
-			DefaultBackend: "backend_not_found",
-			Mode: func() string {
-				if listener.Protocol == gatewayv1.HTTPProtocolType || listener.Protocol == gatewayv1.HTTPSProtocolType {
-					return "http"
-				}
-				if listener.Protocol == gatewayv1.TCPProtocolType {
-					return "tcp"
-				}
-				return ""
-			}(),
-		},
-		ACLList: []*models.ACL{
-			{ // acl route_is_json var(txn.route),bytes(0,1) -m str {
+	var tcpRules []*models.TCPRequestRule
+	var httpRules []*models.HTTPRequestRule
+	var backendSwitchingRules []*models.BackendSwitchingRule
+	var aclList []*models.ACL
+	switch {
+	case listener.TLS != nil && utils.PointerDefaultValueIfNil(listener.TLS.Mode) == gatewayv1.TLSModePassthrough:
+		tcpRules = []*models.TCPRequestRule{
+			{ // tcp-request content reject if !{ req_ssl_hello_type 1 }
+				Type:     "content",
+				Action:   "reject",
+				Cond:     "if",
+				CondTest: "!{ req_ssl_hello_type 1 }",
+			},
+			{
+				//tcp-request inspect-delay 50000
+				Type:    "inspect-delay",
+				Timeout: utils.PtrInt64(50000),
+			},
+			{
+				//tcp-request content set-var(sess.sni) req_ssl_sni
+				Type:     "content",
+				Action:   "set-var",
+				VarName:  "sni",
+				VarScope: "sess",
+				Expr:     "req_ssl_sni",
+			},
+			{
+				// tcp-request content set-var(txn.sni_match) req_ssl_sni,map(sni.map)
+				Type:     "content",
+				Action:   "set-var",
+				VarName:  "sni_match",
+				VarScope: "txn",
+				Expr:     "req_ssl_sni,map(" + sniMap.FullPath() + ")",
+			},
+			{
+				// tcp-request content set-var(txn.sni_match) req_ssl_sni,regsub(^[^.]*,,),map(sni.map)
+				Type:     "content",
+				Action:   "set-var",
+				VarName:  "sni_match",
+				VarScope: "txn",
+				Expr:     "req_ssl_sni,regsub(^[^.]*,,),map(" + sniMap.FullPath() + ")",
+			},
+			{
+				// http-request lua.route if route_is_json
+				Type:      "lua",
+				LuaAction: "route",
+				Cond:      "if",
+				CondTest:  "route_is_json",
+				Metadata: map[string]any{
+					"hug": "lua routing",
+				},
+			},
+		}
+		backendSwitchingRules = []*models.BackendSwitchingRule{
+			{
+				Name:     "%[var(txn.backend)]",
+				Cond:     "if",
+				CondTest: "route_is_json",
+			},
+			{
+				Name: "%[var(txn.sni_match),field(1,.)]",
+			},
+		}
+		aclList = []*models.ACL{
+			{ // acl route_is_json var(txn.sni_match),bytes(0,1) -m str
 				ACLName:   "route_is_json",
-				Criterion: "var(txn.route),bytes(0,1)",
+				Criterion: "var(txn.sni_match),bytes(0,1)",
 				Value:     "-m str {",
 				Metadata: map[string]any{
 					"hug": "for lua routing",
 				},
 			},
-		},
-		HTTPRequestRuleList: []*models.HTTPRequestRule{
+		}
+
+	default:
+		httpRules = []*models.HTTPRequestRule{
 			{ // http-request set-var(txn.base) base
 				Type:     "set-var",
 				VarName:  "base",
@@ -359,10 +410,8 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 					"hug": "lua routing",
 				},
 			},
-		},
-		BackendSwitchingRuleList: []*models.BackendSwitchingRule{
-			// use_backend %[var(txn.backend)] if route_is_json
-			// use_backend %[var(txn.route)]
+		}
+		backendSwitchingRules = []*models.BackendSwitchingRule{
 			{
 				Name:     "%[var(txn.backend)]",
 				Cond:     "if",
@@ -371,7 +420,39 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 			{
 				Name: "%[var(txn.route)]",
 			},
+		}
+		aclList = []*models.ACL{
+			{ // acl route_is_json var(txn.route),bytes(0,1) -m str {
+				ACLName:   "route_is_json",
+				Criterion: "var(txn.route),bytes(0,1)",
+				Value:     "-m str {",
+				Metadata: map[string]any{
+					"hug": "for lua routing",
+				},
+			},
+		}
+	}
+
+	fe := &models.Frontend{
+		FrontendBase: models.FrontendBase{
+			Name:           frontendName,
+			From:           b.params.DefaultsSectionName,
+			Metadata:       md,
+			DefaultBackend: "backend_not_found",
+			Mode: func() string {
+				if listener.Protocol == gatewayv1.HTTPProtocolType || listener.Protocol == gatewayv1.HTTPSProtocolType {
+					return "http"
+				}
+				if listener.Protocol == gatewayv1.TCPProtocolType {
+					return "tcp"
+				}
+				return ""
+			}(),
 		},
+		ACLList:                  aclList,
+		TCPRequestRuleList:       tcpRules,
+		HTTPRequestRuleList:      httpRules,
+		BackendSwitchingRuleList: backendSwitchingRules,
 	}
 
 	// Set other frontend properties based on the listener
