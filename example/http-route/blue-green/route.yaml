@@ -15,8 +15,8 @@ spec:
         value: /
     backendRefs:
     - name: blue
-      port: 8888
+      port: 80
       weight: 9
     - name: green
-      port: 8888
+      port: 80
       weight: 1

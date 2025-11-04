@@ -205,18 +205,23 @@ func (b *HaproxyConfMgrImpl) getServersForBackend(svcKey client.ObjectKey, be Ba
 		}
 
 		// Check if the targetPort is part of endpoint ports
-		foundPort := true
+		foundPort := false
+		var serverPort int32
 		for _, epPort := range endpointsForAddressType.ports {
 			switch targetPort.Type {
 			case intstr.Int:
 				targetPortInt := targetPort.IntVal
 				if epPort.Port != nil && targetPortInt == *epPort.Port {
 					foundPort = true
+					serverPort = *epPort.Port
 				}
 			case intstr.String:
 				targetPortStr := targetPort.String()
 				if epPort.Name != nil && targetPortStr == *epPort.Name {
 					foundPort = true
+					if epPort.Port != nil {
+						serverPort = *epPort.Port
+					}
 				}
 			}
 			if foundPort {
@@ -242,7 +247,7 @@ func (b *HaproxyConfMgrImpl) getServersForBackend(svcKey client.ObjectKey, be Ba
 						Maintenance: "disabled",
 					},
 					Address: address,
-					Port:    utils.Ptr(int64(bePort)),
+					Port:    utils.Ptr(int64(serverPort)),
 					Name:    serverName,
 				}
 				servers[serverName] = server
