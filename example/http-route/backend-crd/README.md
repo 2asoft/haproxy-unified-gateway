@@ -6,7 +6,7 @@ This example demonstrates how to use an HTTPRoute to expose simple "hello world"
 
 Adding a Filter of type `ExtensionRef` with:
 - `Group=gate.v3.haproxy.org`
-- `Kind=Backend
+- `Kind=Backend`
 to the Route `.BackendRef` allow to customize how the backend is generated in `haproxy.cfg` configuration and to benefit from haproxy full flexibility.
 ```filters:
       - type: ExtensionRef
