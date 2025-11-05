@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
@@ -70,7 +69,7 @@ func NewClusterUpdates() ClusterUpdates {
 		GatewayClasses: make(map[types.NamespacedName]Update[*gatewayv1.GatewayClass]),
 		Gateways:       make(map[types.NamespacedName]Update[*gatewayv1.Gateway]),
 		HTTPRoutes:     make(map[types.NamespacedName]Update[*gatewayv1.HTTPRoute]),
-		TLSRoutes:      make(map[types.NamespacedName]Update[*v1alpha2.TLSRoute]),
+		TLSRoutes:      make(map[types.NamespacedName]Update[*gatewayv1alpha2.TLSRoute]),
 		Services:       make(map[types.NamespacedName]Update[*v1.Service]),
 		Namespaces:     make(map[types.NamespacedName]Update[*v1.Namespace]),
 		Secrets:        make(map[types.NamespacedName]Update[*v1.Secret]),

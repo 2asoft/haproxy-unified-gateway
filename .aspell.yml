@@ -76,3 +76,4 @@ allowed:
   - darwin
   - performant
   - dockerhub
+  - SNI

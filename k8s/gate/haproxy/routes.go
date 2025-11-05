@@ -61,6 +61,106 @@ func (b *RouteMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, rou
 	return b.onInvalidHTTPRouteUpserted(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 }
 
+func (b *RouteMgrImpl) onUpsertedTLSRoute(routeKey k8stypes.NamespacedName, route *tree.TLSRoute,
+	sni *maps.MapData, acceptedHostnamesForRoute []string,
+) error {
+	if route.Valid {
+		return b.onValidTLSRouteUpserted(routeKey, route, sni, acceptedHostnamesForRoute)
+	}
+	return b.onInvalidTLSRouteUpserted(routeKey, route, sni)
+}
+
+func (b *RouteMgrImpl) onValidTLSRouteUpserted(_ k8stypes.NamespacedName,
+	tlsRoute *tree.TLSRoute, mapSNI *maps.MapData, acceptedHostnamesForRoute []string) error {
+
+	for _, tlsRouteRule := range tlsRoute.Rules {
+		// if !rule.Valid {
+		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
+		// TODO
+		// }
+		var routeValue string
+		var backendNames []string
+		var backendweights []int32
+		hostnamesInserted := map[string]struct{}{}
+		for _, backend := range tlsRouteRule.K8sResource.BackendRefs {
+			checkResult, ok := tlsRouteRule.CheckBackendRef.Get(backend.BackendObjectReference)
+			if !ok || !checkResult.Valid {
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Processing TLSRoute [map update] - backend not valid",
+					logging.LogAttrBackendName(string(backend.Name)),
+				)
+				continue
+			}
+
+			// backend := rule.K8sResource.BackendRefs[index]
+			svckey := k8stypes.NamespacedName{
+				Name: string(backend.Name),
+			}
+			if backend.Namespace == nil {
+				svckey.Namespace = tlsRoute.K8sResource.Namespace
+			} else {
+				svckey.Namespace = string(*backend.Namespace)
+			}
+			svcPort := int32(0)
+			if backend.Port != nil {
+				svcPort = int32(*backend.Port)
+			}
+
+			backendName, err := b.topManager.getBackendName(svckey, int32(svcPort), "")
+			if err != nil {
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Processing TLSRoute [map update]",
+					logging.LogAttrError(err),
+				)
+				continue
+			}
+			backendNames = append(backendNames, backendName)
+			weight := int32(0)
+			if backend.Weight != nil {
+				weight = *backend.Weight
+			}
+			backendweights = append(backendweights, weight)
+		}
+		if len(backendNames) == 1 {
+			routeValue = backendNames[0]
+		} else {
+			// a: algo, s: suffix, l: list of backend (format depends on algo)
+			// /wr_a70_b20_c10     {"a":"wr","l":"a:70,b:20,c:10"}
+			routeValue = `{"a":"wr","l":"`
+			for i, backendName := range backendNames {
+				if i > 0 {
+					routeValue += ","
+				}
+				routeValue += fmt.Sprintf("%s:%d", backendName, backendweights[i])
+			}
+			routeValue += `"}`
+		}
+
+		for _, hostname := range acceptedHostnamesForRoute {
+			if tlsRouteRule.Valid {
+				mapSNI.AddData(string(hostname), routeValue)
+				hostnamesInserted[string(hostname)] = struct{}{}
+			} else if _, ok := hostnamesInserted[string(hostname)]; !ok {
+				mapSNI.DeleteData(string(hostname))
+			}
+		}
+	}
+	return nil
+}
+
+func (RouteMgrImpl) onInvalidTLSRouteUpserted(_ k8stypes.NamespacedName, _ *tree.TLSRoute, _ *maps.MapData) error {
+	// TODO we might need to remove it from the maps
+	return nil
+}
+
+func (RouteMgrImpl) onDeletedTLSRoute(_ k8stypes.NamespacedName, route *tree.TLSRoute,
+	mapSNI *maps.MapData,
+) error {
+	hostnames := route.K8sResource.Spec.Hostnames
+	for _, hostname := range hostnames {
+		mapSNI.DeleteData(string(hostname))
+	}
+	return nil
+}
+
 func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
 	// func (b *RouteMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData,
@@ -119,7 +219,7 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 		// TODO
 		// }
 		var routeValue string
-		var backendNames []string
+		var backendNamesForRule []string
 		var backendweights []int32
 		for index, backend := range rule.K8sResource.BackendRefs {
 			checkResult, ok := rule.CheckBackendRef.Get(backend.BackendObjectReference)
@@ -151,20 +251,20 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 				)
 				continue
 			}
-			backendNames = append(backendNames, backendName)
+			backendNamesForRule = append(backendNamesForRule, backendName)
 			weight := int32(0)
 			if backend.Weight != nil {
 				weight = *backend.Weight
 			}
 			backendweights = append(backendweights, weight)
 		}
-		if len(backendNames) == 1 {
-			routeValue = backendNames[0]
-		} else {
+		if len(backendNamesForRule) == 1 {
+			routeValue = backendNamesForRule[0]
+		} else if len(backendNamesForRule) > 1 {
 			// a: algo, s: suffix, l: list of backend (format depends on algo)
 			// /wr_a70_b20_c10     {"a":"wr","l":"a:70,b:20,c:10"}
 			routeValue = `{"a":"wr","l":"`
-			for i, backendName := range backendNames {
+			for i, backendName := range backendNamesForRule {
 				if i > 0 {
 					routeValue += ","
 				}

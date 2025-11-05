@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 vars:
   YQ_NAME: yq
   YQ_VERSION: v4.47.1

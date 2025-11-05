@@ -166,6 +166,7 @@ func (r *TLSRoute) checkParentRefs(controllerStore ControllerStore) {
 	r.CheckParentRefs = checkParentsRefs
 }
 
+//revive:disable:function-length
 func (r *TLSRoute) checkParentRef(parentRef gatewayv1.ParentReference, controllerStore ControllerStore) checkParentRefResult {
 	if !isParentRefGroupKindSupported(parentRef, controllerStore.ExtractGVK) {
 		return checkParentRefResult{

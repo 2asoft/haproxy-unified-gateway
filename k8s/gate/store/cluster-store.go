@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
@@ -78,7 +77,7 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&gatewayv1.GatewayClass{}):          newObjectStoreImpl(clusterStore.GatewayClasses, clusterStore.Updates.GatewayClasses, logger),
 				extractGVK(&gatewayv1.Gateway{}):               newObjectStoreImpl(clusterStore.Gateways, clusterStore.Updates.Gateways, logger),
 				extractGVK(&gatewayv1.HTTPRoute{}):             newObjectStoreImpl(clusterStore.HTTPRoutes, clusterStore.Updates.HTTPRoutes, logger),
-				extractGVK(&v1alpha2.TLSRoute{}):               newObjectStoreImpl(clusterStore.TLSRoutes, clusterStore.Updates.TLSRoutes, logger),
+				extractGVK(&gatewayv1alpha2.TLSRoute{}):        newObjectStoreImpl(clusterStore.TLSRoutes, clusterStore.Updates.TLSRoutes, logger),
 				extractGVK(&v1.Service{}):                      newObjectStoreImpl(clusterStore.Services, clusterStore.Updates.Services, logger),
 				extractGVK(&v1.Namespace{}):                    newObjectStoreImpl(clusterStore.Namespaces, clusterStore.Updates.Namespaces, logger),
 				extractGVK(&v1.Secret{}):                       newObjectStoreImpl(clusterStore.Secrets, clusterStore.Updates.Secrets, logger),

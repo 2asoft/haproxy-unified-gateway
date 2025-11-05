@@ -291,7 +291,6 @@ func (b *HaproxyConfMgrImpl) upsertTLSRouteBackends(routeKey k8stypes.Namespaced
 		b.backendsImpactedInCycle.Unreferenced[unreferencedBeName] = struct{}{}
 	}
 	return errs.Result()
-
 }
 
 func (b *HaproxyConfMgrImpl) processTLSRoutes() error {
@@ -382,7 +381,7 @@ func (b *HaproxyConfMgrImpl) addImpactedLTSBackendUpserted(backendName string, r
 	impactedBe := BackendImpactedInCycle{
 		Name:         backendName,
 		HTTPRouteKey: routeKey,
-		//BackendRef:   tlsBackendRef,
+		// BackendRef:   tlsBackendRef,
 	}
 
 	if _, ok := b.backendsImpactedInCycle.Upserted[backendName]; !ok {
@@ -607,6 +606,7 @@ func DeepCopyBackend(original *models.Backend) (*models.Backend, error) {
 	return &copied, nil
 }
 
+//revive:disable:function-length
 func (b *HaproxyConfMgrImpl) processBackendsModifiedInCycle() error {
 	var errs utils.Errors
 	// UPSERTED

@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 // Ptr return pointer to a given value
@@ -201,4 +202,47 @@ func GetNamespacedName(name, namespace, defaultNamespace string) types.Namespace
 		namespace = defaultNamespace
 	}
 	return types.NamespacedName{Name: name, Namespace: namespace}
+}
+
+// matchTLSHostnames checks if a route's hostnames match a listener's hostname.
+// The rules are based on the Gateway API specification.
+// If the listener hostname is not set, it matches any route hostname.
+// If the listener hostname is a wildcard, it checks if it matches any route hostname.
+// If the route hostnames are empty, the listener hostname matches the route hostnames.
+func MatchTLSHostnames(listenerHostname *string, routeHostnames []string) []string {
+	// If the listener hostname is not set, it matches any route hostname.
+	if listenerHostname == nil {
+
+		return routeHostnames
+	}
+
+	lh := strings.TrimPrefix(*listenerHostname, "*.")
+
+	// If the route hostnames are empty, the listener hostname matches the route hostnames.
+	if len(routeHostnames) == 0 {
+		return []string{*listenerHostname}
+	}
+
+	// If the listener hostname is a wildcard, check if it matches any route hostname.
+	var matched []string
+	for _, rh := range routeHostnames {
+		rhTrim := strings.TrimPrefix(rh, "*.")
+		if rhTrim == lh || strings.HasSuffix(lh, "."+rhTrim) || strings.HasSuffix(rhTrim, "."+lh) {
+			matched = append(matched, rh)
+		}
+	}
+
+	return matched
+}
+
+func ConvertSliceWithFunc[U, V any](arg []U, f func(U) V) []V {
+	result := make([]V, len(arg))
+	for i, v := range arg {
+		result[i] = f(v)
+	}
+	return result
+}
+
+func ConvertV1Alpha2HostnameToString(hostname v1alpha2.Hostname) string {
+	return string(hostname)
 }

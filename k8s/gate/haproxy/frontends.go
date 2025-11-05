@@ -255,12 +255,12 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				CondTest: "!{ req_ssl_hello_type 1 }",
 			},
 			{
-				//tcp-request inspect-delay 50000
+				// tcp-request inspect-delay 50000
 				Type:    "inspect-delay",
 				Timeout: utils.PtrInt64(50000),
 			},
 			{
-				//tcp-request content set-var(sess.sni) req_ssl_sni
+				// tcp-request content set-var(sess.sni) req_ssl_sni
 				Type:     "content",
 				Action:   "set-var",
 				VarName:  "sni",

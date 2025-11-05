@@ -1,5 +1,5 @@
 #https://taskfile.dev/
-version: '3'
+version: "3"
 
 env:
   TASK_INTERNAL: true
@@ -42,9 +42,8 @@ includes:
 vars:
 
 tasks:
-
   ci:
-    desc: 'do almost all the checks'
+    desc: "do almost all the checks"
     cmds:
       - task: check-commit
       - task: tidy
@@ -55,7 +54,7 @@ tasks:
       - task: test
 
   test:
-    desc: 'run Go tests'
+    desc: "run Go tests"
     deps:
       - task: check-go-tool
         vars:
@@ -80,12 +79,12 @@ tasks:
 
   tidy:
     internal: true
-    desc: 'run Go mod tidy'
+    desc: "run Go mod tidy"
     cmds:
       - go mod tidy
 
   lint:
-    desc: 'run Go linters'
+    desc: "run Go linters"
     deps:
       - task: check-go-tools
         vars:
@@ -97,7 +96,7 @@ tasks:
 
   format:
     internal: true
-    desc: 'formats the code'
+    desc: "formats the code"
     deps:
       - task: check-go-tools
         vars:
@@ -111,20 +110,20 @@ tasks:
   licenses:
     internal: true
     dir: cmd/controller
-    desc: 'check licenses'
+    desc: "check licenses"
     deps:
       - task: check-go-tool
         vars:
           TOOL: GO_LICENSES
     cmds:
       - |
-          PROJECT="$(go list -m)"
-          ALLOWED_LICENSES="$(<../../.allowed_license_types)"
-          /{{.TMP}}/go-licenses/{{.GO_LICENSES_VERSION}}/go-licenses report --ignore "$PROJECT" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys" --ignore "golang.org/x/sys/unix"  .
-          /{{.TMP}}/go-licenses/{{.GO_LICENSES_VERSION}}/go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/modern-go/reflect2" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys/unix"  .
+        PROJECT="$(go list -m)"
+        ALLOWED_LICENSES="$(<../../.allowed_license_types)"
+        /{{.TMP}}/go-licenses/{{.GO_LICENSES_VERSION}}/go-licenses report --ignore "$PROJECT" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys" --ignore "golang.org/x/sys/unix"  .
+        /{{.TMP}}/go-licenses/{{.GO_LICENSES_VERSION}}/go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/modern-go/reflect2" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys/unix"  .
 
   check-commit:
-    #internal: true
+    internal: true
     deps:
       - task: check-go-tool
         vars:
@@ -142,7 +141,7 @@ tasks:
       - /{{.TMP}}/govulncheck/{{.GOVULNCHECK_VERSION}}/govulncheck -show verbose ./...
 
   legal:
-    desc: 'check legal'
+    desc: "check legal"
     cmds:
       - task: govulncheck
       - task: licenses

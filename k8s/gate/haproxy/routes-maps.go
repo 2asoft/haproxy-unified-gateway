@@ -40,10 +40,78 @@ func (e *ErrMapRuntimeUpdate) Error() string {
 }
 
 func (b *RouteMgrImpl) fillMaps() {
+	b.fillMapsForHTTPRoutes()
+	b.fillMapsForTLSRoutes()
+}
+
+func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 	var errs utils.Errors
 	controllerStore := b.topManager.controllerStore
 	mapsStorage := b.topManager.params.mapsStorage
+	// Managed TLSRoutes => if there is a old resource, clean the state before update
+	for routeKey, route := range controllerStore.GateTree.TLSRoutes {
+		if route.TreeStatus.OldTreeResource == nil {
+			continue
+		}
+		route = route.TreeStatus.OldTreeResource
+		for _, listeners := range route.Listeners.Iterate {
+			for _, listener := range listeners {
+				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
+				if err != nil {
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
+						logging.LogAttrError(err),
+					)
+				}
 
+				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
+				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
+				err = b.onDeletedTLSRoute(routeKey, route, mapSNIMap)
+				// errs.Add(err)
+				_ = err // TODO ignore error for now
+			}
+		}
+	}
+	// Managed TLSRoutes => Create / update/ delete backends
+	for routeKey, route := range controllerStore.GateTree.TLSRoutes {
+		for _, listeners := range route.Listeners.Iterate {
+			for _, listener := range listeners {
+				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
+				if err != nil {
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
+						logging.LogAttrError(err),
+					)
+				}
+				routesHosnames := utils.ConvertSliceWithFunc(route.K8sResource.Spec.Hostnames, utils.ConvertV1Alpha2HostnameToString)
+				listenerHostname := (*string)(listener.K8sResource.Hostname)
+				acceptedHostnamesForRoute := utils.MatchTLSHostnames(listenerHostname, routesHosnames)
+				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
+				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
+
+				switch route.TreeStatus.Status {
+				case store.StatusUnchanged:
+					continue
+				case store.StatusUpserted:
+					err := b.onUpsertedTLSRoute(routeKey, route, mapSNIMap, acceptedHostnamesForRoute)
+					errs.Add(err)
+				case store.StatusDeleted:
+					err := b.onDeletedTLSRoute(routeKey, route, mapSNIMap)
+					errs.Add(err)
+				}
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to fill maps for TLS routes",
+			logging.LogAttrError(errs.Result()),
+		)
+	}
+}
+
+func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
+	var errs utils.Errors
+	controllerStore := b.topManager.controllerStore
+	mapsStorage := b.topManager.params.mapsStorage
 	// Managed HTTPRoutes => if there is a old resource, clean the state before update
 	for routeKey, route := range controllerStore.GateTree.HTTPRoutes {
 		if route.TreeStatus.OldTreeResource == nil {
@@ -107,24 +175,11 @@ func (b *RouteMgrImpl) fillMaps() {
 			}
 		}
 	}
-
-	// Cleanup Backends that are not referenced anymore TODO
-	// if err := b.cleanupUnreferencedBackends(); err != nil {
-	// 	b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to cleanup unreferenced backends",
-	// 		logging.LogAttrError(err),
-	// 	)
-	// 	errs.Add(err)
-	// }
-
-	// // Now we have the list of upserted + delete BE with the correct list of routes pointing to them
-	// if err := b.processBackendsModifiedInCycle(); err != nil {
-	// 	b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to process backends modified in cycle",
-	// 		logging.LogAttrError(err),
-	// 	)
-	// 	errs.Add(err)
-	// }
-
-	// return errs.Result()
+	if len(errs) > 0 {
+		b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to fill maps for HTTP routes",
+			logging.LogAttrError(errs.Result()),
+		)
+	}
 }
 
 func (b *RouteMgrImpl) writeMaps() {

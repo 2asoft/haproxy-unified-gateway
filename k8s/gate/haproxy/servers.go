@@ -313,7 +313,8 @@ func (b *HaproxyConfMgrImpl) getSvcEndpoints(ctx context.Context, svcKey client.
 
 func (b *HaproxyConfMgrImpl) backendsByServiceForHTTPRoute(routeOwners map[client.ObjectKey]int64,
 	beName string,
-	servicesByBackend map[client.ObjectKey]map[BackendPort]struct{}) {
+	servicesByBackend map[client.ObjectKey]map[BackendPort]struct{},
+) {
 	for ownerRouteKey := range routeOwners {
 		// Find the route in controllerStore GateTree
 		treeHTTPRoute, ok := b.controllerStore.GateTree.HTTPRoutes[ownerRouteKey]
@@ -358,7 +359,8 @@ func (b *HaproxyConfMgrImpl) backendsByServiceForHTTPRoute(routeOwners map[clien
 
 func (b *HaproxyConfMgrImpl) backendsByServiceForTLSRoute(routeOwners map[client.ObjectKey]int64,
 	beName string,
-	servicesByBackend map[client.ObjectKey]map[BackendPort]struct{}) {
+	servicesByBackend map[client.ObjectKey]map[BackendPort]struct{},
+) {
 	for ownerRouteKey := range routeOwners {
 		// Find the route in controllerStore GateTree
 		treeTLSRoute, ok := b.controllerStore.GateTree.TLSRoutes[ownerRouteKey]

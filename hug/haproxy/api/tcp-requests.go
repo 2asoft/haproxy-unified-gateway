@@ -18,7 +18,7 @@ import (
 
 	parser "github.com/haproxytech/client-native/v6/config-parser"
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 func (c *clientNative) TCPRequestDeleteAll(parentType parser.Section, name string) error {
