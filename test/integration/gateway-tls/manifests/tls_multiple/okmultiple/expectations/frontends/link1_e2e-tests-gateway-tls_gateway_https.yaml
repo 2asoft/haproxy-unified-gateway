@@ -20,4 +20,4 @@ binds:
     ssl: true
     address: '::'
     port: 8443
-default_backend: be_tmp_test
+default_backend: backend_not_found

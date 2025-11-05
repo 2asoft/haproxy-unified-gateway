@@ -241,11 +241,10 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 
 	fe := &models.Frontend{
 		FrontendBase: models.FrontendBase{
-			Name:     frontendName,
-			From:     b.params.DefaultsSectionName,
-			Metadata: md,
-			// TODO: remove this, only temporary for test
-			DefaultBackend: "be_tmp_test",
+			Name:           frontendName,
+			From:           b.params.DefaultsSectionName,
+			Metadata:       md,
+			DefaultBackend: "backend_not_found",
 			Mode: func() string {
 				if listener.Protocol == gatewayv1.HTTPProtocolType || listener.Protocol == gatewayv1.HTTPSProtocolType {
 					return "http"
