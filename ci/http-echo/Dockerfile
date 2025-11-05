@@ -3,7 +3,7 @@ FROM golang:1.24-alpine AS builder
 COPY *.go /src/
 COPY go.mod /src/go.mod
 
-RUN cd /src && go build -o echo-http
+RUN cd /src && go build -buildvcs=true -o echo-http
 
 FROM alpine:3
 RUN apk --no-cache add openssl

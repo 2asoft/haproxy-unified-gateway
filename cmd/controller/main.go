@@ -21,13 +21,13 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/haproxytech/kubernetes-controller/cmd/controller/version"
 	"github.com/haproxytech/kubernetes-controller/cmd/start"
 	hugconfig "github.com/haproxytech/kubernetes-controller/hug/configuration"
 	haproxymgr "github.com/haproxytech/kubernetes-controller/hug/haproxy"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	haproxyparams "github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
 	"github.com/haproxytech/kubernetes-controller/hug/haproxy/process"
+	"github.com/haproxytech/kubernetes-controller/hug/version"
 	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
 
@@ -36,7 +36,7 @@ import (
 
 func main() {
 	_ = godotenv.Load()
-	fmt.Println(string(version.Info))
+	_ = version.Set()
 	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGUSR1)
 
 	// Controller HUGConfig from Flags
@@ -44,6 +44,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println(string(version.Logo))
+	version.PrintVersion()
 
 	// Setup Gate lib configuration from HUG binary configuration
 	opts := start.SetupGateConfig(hugConfig)

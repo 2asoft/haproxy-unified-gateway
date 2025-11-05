@@ -24,6 +24,7 @@ import (
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/hug/configuration/defaults"
+	"github.com/haproxytech/kubernetes-controller/hug/version"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
@@ -36,11 +37,11 @@ type HUGConfig struct {
 	LogSettings map[v3.Category]slog.Level
 	haproxy.HaproxyDirs
 	External
-	ControllerConfCRD     NamespaceNameValue   `ff:"          long: hugconf-crd,     usage: 'namespace/name of the HugConf CRD'"`
-	ControllerName        string               `ff:"          long: controller-name,         usage: 'spec.controllerName' GatewayClass selector'"`
-	IPV4BindAddr          string               `ff:"          long: ipv4-bind-address,       usage: 'IPv4 address to bind to'"`
-	IPV6BindAddr          string               `ff:"          long: ipv6-bind-address,	   usage: 'IPv6 address to bind to'"`
-	LogType               string               `ff:"          long: log-type,	      		 usage: 'sets up the log output type (possible values: text, json)"`
+	ControllerConfCRD     NamespaceNameValue   `ff:"          long: hugconf-crd,                     usage: 'namespace/name of the HugConf CRD'"`
+	ControllerName        string               `ff:"          long: controller-name,                 usage: 'spec.controllerName' GatewayClass selector'"`
+	IPV4BindAddr          string               `ff:"          long: ipv4-bind-address,               usage: 'IPv4 address to bind to'"`
+	IPV6BindAddr          string               `ff:"          long: ipv6-bind-address,	             usage: 'IPv6 address to bind to'"`
+	LogType               string               `ff:"          long: log-type,	      		         usage: 'sets up the log output type (possible values: text, json)"`
 	Namespaces            CommaSeparatedValues `ff:"          long: namespaces,                      usage: 'comma separated list of namespaces that controller will monitor'"`
 	ControllerPort        int                  `ff:"          long: controller-port,                 usage: 'port to listen on for controller data: prometheus'"`
 	SyncPeriod            time.Duration        `ff:"          long: sync-period, default: 0,         usage: 'sets the period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
@@ -53,6 +54,7 @@ type HUGConfig struct {
 	UseWiths6Overlay      bool `ff:"          long:with-s6-overlay,                  usage: 'use s6 overlay to start/stpop/reload HAProxy'"`
 	DisableIPv4           bool `ff:"          long: disable-ipv4,                    usage: 'disable IPv4 support'"`
 	DisableIPv6           bool `ff:"          long: disable-ipv6,			         usage: 'disable IPv6 support'"`
+	Version               bool `ff:"          long: version,                         usage: 'print version and exit'"`
 }
 
 //revive:enable:line-length-limit
@@ -125,6 +127,10 @@ func Get() (HUGConfig, error) {
 	if configuration.Help {
 		fmt.Println(ffhelp.Flags(osArgsFF))
 		os.Exit(0) //revive:disable:deep-exit
+	}
+	if configuration.Version {
+		version.PrintVersion()
+		os.Exit(0)
 	}
 	// --------------
 	// Init and apply defaults

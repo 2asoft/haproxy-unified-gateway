@@ -67,7 +67,7 @@ tasks:
     internal: true
     dir: cmd/controller
     cmds:
-      - CGO_ENABLED=0 go build -o ../../build/kubernetes-controller .
+      - CGO_ENABLED=0 go build -buildvcs=true -o ../../build/kubernetes-controller .
 
   k0s-build-controller-image-dev:
     #internal: true

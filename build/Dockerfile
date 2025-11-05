@@ -24,8 +24,7 @@ COPY / /src
 
 RUN mkdir -p /var/run/vars && \
     cd /src && \
-    git describe --abbrev=0 --tags > /var/run/vars/GIT_LAST_TAG || echo "dev" > /var/run/vars/GIT_LAST_TAG && \
-    CGO_ENABLED=0 go build \
+    CGO_ENABLED=0 go build -buildvcs=true \
         -tags="$BUILD_TAGS" \
         -o fs/kubernetes-controller ./cmd/controller
 
