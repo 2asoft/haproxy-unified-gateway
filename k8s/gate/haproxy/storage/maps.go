@@ -105,6 +105,32 @@ func (m *MapsStorageDefault) EnsureMapData(filePath futils.FilePath) {
 		},
 		Path: filePath,
 	}
+
+	err := m.readFromDisk(filePath)
+	if err != nil {
+		m.logger.LogAttrs(
+			context.Background(),
+			slog.LevelError,
+			"Error reading map from disk",
+			slog.String("map", name),
+			slog.String("error", err.Error()))
+	}
+}
+
+func (m *MapsStorageDefault) readFromDisk(filePath futils.FilePath) error {
+	// data is key-value pairs, there is one space between key and value
+	// this func presumes that the map data initialization is done
+	name := filePath.FullPath()
+
+	data, err := futils.ReadKeyValueFile(name, ' ')
+	if err != nil {
+		return err
+	}
+
+	memoryMap := m.Maps[name]
+	memoryMap.SetData(data)
+
+	return nil
 }
 
 func (MapsStorageDefault) WriteOnDisk(data maps.MapData) error {
