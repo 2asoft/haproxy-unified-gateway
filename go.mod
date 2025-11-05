@@ -1,6 +1,8 @@
 module github.com/haproxytech/kubernetes-controller
 
-go 1.24.0
+// module github.com/haproxytech/haproxy-unified-gateway
+
+go 1.25.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.3.1

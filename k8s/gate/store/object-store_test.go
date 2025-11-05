@@ -227,9 +227,7 @@ func TestObjectStoreImpl_Concurrency(t *testing.T) {
 	var wg sync.WaitGroup
 
 	for i := range numGoroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for j := range numOpsPerGoroutine {
 				idRoutine := strconv.Itoa(i)
 				idOp := strconv.Itoa(j)
@@ -244,7 +242,7 @@ func TestObjectStoreImpl_Concurrency(t *testing.T) {
 					store.delete(&gatewayv1.GatewayClass{}, nsName)
 				}
 			}
-		}()
+		})
 	}
 	wg.Wait()
 
