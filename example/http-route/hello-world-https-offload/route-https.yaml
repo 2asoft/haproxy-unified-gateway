@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-hello-world-offload
+spec:
+  parentRefs:
+  - name: hug-gateway
+    sectionName: https
+  hostnames:
+  - "offload.haproxy.local"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: hello-world-offload
+      port: 80
+---

@@ -28,6 +28,7 @@ allowed:
   - huggate
   - hugconf
   - httproute
+  - https
   - init
   - json
   - keymap
