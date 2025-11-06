@@ -19,15 +19,19 @@ diff:
     - test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || exit "Documentation created untracked files, cannot proceed"
 check-large-files:
   stage: diff
-  needs: []
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller/community' && $CI_PIPELINE_SOURCE == 'push'"
   tags:
     - go
   script:
     # List all files in the latest commit that are larger than 1MB
-    - git ls-tree -r HEAD --long | awk '$4 > 1048576 { print $0 }' > large_files.txt
+    - |
+      git fetch origin ${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+      git diff --name-only origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD | while read file; do
+        if [ -f "$file" ] && [ $(stat -c%s "$file") -gt 1048576 ]; then
+          echo "$file"
+        fi
+      done > large_files.txt
 
     # Fail the job if any file is larger than 1MB
     - |
