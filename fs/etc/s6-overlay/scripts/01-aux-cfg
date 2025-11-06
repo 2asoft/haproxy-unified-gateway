@@ -1,7 +1,0 @@
-#!/command/with-contenv sh
-
-if [ ! -e /usr/local/hug/aux/haproxy-aux.cfg ]; then
-	touch /usr/local/hug/aux/haproxy-aux.cfg
-	chgrp haproxy /usr/local/hug/aux/haproxy-aux.cfg
-	chmod g+w /usr/local/hug/aux/haproxy-aux.cfg
-fi

@@ -28,6 +28,15 @@ RUN mkdir -p /var/run/vars && \
         -tags="$BUILD_TAGS" \
         -o fs/kubernetes-controller ./cmd/controller
 
+FROM haproxytech/haproxy-alpine:3.2 AS builder-c
+RUN apk add --no-cache build-base gcc musl-dev
+WORKDIR /src
+
+COPY hug/protection/block_secrets.c .
+COPY hug/protection/haproxy_wrapper.c .
+RUN gcc -O3 -Wall -flto -fPIC -shared -s -o libblock_secrets.so block_secrets.c -ldl
+RUN gcc -O3 -Wall -g -s -o haproxy_wrapper haproxy_wrapper.c
+
 FROM haproxytech/haproxy-alpine:3.2
 
 ARG TARGETPLATFORM
@@ -39,19 +48,20 @@ ENV S6_USER=haproxy
 ENV S6_GROUP=haproxy
 
 COPY /fs /
-
-RUN mkdir -p /usr/local/hug/aux && \
-    chgrp -R haproxy /usr/local/hug && \
-    chmod -R ug+rwx /usr/local/hug
+COPY --from=builder-c /src/libblock_secrets.so /usr/local/lib/libblock_secrets.so
+COPY --from=builder-c /src/haproxy_wrapper /usr/local/sbin/haproxy_wrapper
 
 RUN apk --no-cache add socat openssl util-linux htop tzdata curl libcap && \
     rm -f /usr/local/bin/dataplaneapi /usr/bin/dataplaneapi /etc/haproxy/dataplaneapi.yml && \
     rm -f /usr/local/bin/dataplaneapi-v2 /usr/bin/dataplaneapi-v2 && \
     rm -f /etc/haproxy/haproxy.cfg && \
-    mkdir -p /usr/local/hug && \
-    chgrp -R haproxy /usr/local/hug /run /var && \
-    chmod -R ug+rwx /usr/local/hug /run /var && \
-    setcap 'cap_net_bind_service=+ep' /usr/local/sbin/haproxy && \
+    mkdir -p /usr/local/hug/aux && \
+    chgrp -R haproxy /usr/local/hug && \
+    chmod -R ug+rwx /usr/local/hug && \
+    chown -R "${S6_USER}:${S6_GROUP}" /usr/local/etc/haproxy /run /var && \
+    chmod -R ug+rwx /usr/local/etc/haproxy /run /var && \
+    chmod u+rx /usr/local/sbin/haproxy_wrapper && \
+    setcap 'cap_net_bind_service=+ep' /usr/local/sbin/haproxy_wrapper && \
     case "${TARGETPLATFORM}" in \
         "linux/arm64")      S6_ARCH=aarch64      ;; \
         "linux/amd64")      S6_ARCH=x86_64       ;; \
