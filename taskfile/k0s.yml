@@ -1,8 +1,7 @@
 #https://taskfile.dev/
-version: '3'
+version: "3"
 
 tasks:
-
   k0s-create-cluster:
     #internal: true
     # deps:
@@ -10,12 +9,12 @@ tasks:
     #     vars:
     #       TOOL: KIND
     silent: true
-    desc: 'create a k0s cluster with controller'
+    desc: "create a k0s cluster with controller"
     status:
       - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
     vars:
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
-    dir: 'ci/k0s' # this file is imported so its fine
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
+    dir: "ci/k0s" # this file is imported so its fine
     cmds:
       # - docker-compose down --volumes --remove-orphans || true
       # - docker compose up -d
@@ -29,12 +28,12 @@ tasks:
     #     vars:
     #       TOOL: KIND
     silent: true
-    desc: 'create a k0s cluster with controller'
+    desc: "create a k0s cluster with controller"
     status:
       - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
     vars:
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
-    dir: 'ci/k0s' # this file is imported so its fine
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
+    dir: "ci/k0s" # this file is imported so its fine
     cmds:
       - echo -n "Waiting for k0s to be ready "
       - |
@@ -63,7 +62,7 @@ tasks:
       - kubectl get pods -A
 
   k0s-controller-build:
-    desc: ''
+    desc: ""
     internal: true
     dir: cmd/controller
     cmds:
@@ -71,7 +70,7 @@ tasks:
 
   k0s-build-controller-image-dev:
     #internal: true
-    desc: 'build docker image of controller'
+    desc: "build docker image of controller"
     deps:
       - task: k0s-controller-build
     status:
@@ -82,7 +81,7 @@ tasks:
 
   k0s-build-controller-image-build-in-docker:
     #internal: true
-    desc: 'build docker image of controller'
+    desc: "build docker image of controller"
     deps:
       - task: k0s-controller-build
     status:
@@ -93,17 +92,17 @@ tasks:
 
   k0s-build-echo-image:
     internal: true
-    desc: 'build docker image of echo service'
+    desc: "build docker image of echo service"
     dir: ci/http-echo
     status:
-      - '[ -f ../../.local/tar/echo.tar ]'
+      - "[ -f ../../.local/tar/echo.tar ]"
     cmds:
       - pwd
       - docker build --build-arg TARGETPLATFORM={{.TARGETPLATFORM}} -t haproxytech/http-echo .
 
   k0s-delete:
-    desc: 'delete a k0s cluster'
-    dir: 'ci/k0s' # this file is imported so its fine
+    desc: "delete a k0s cluster"
+    dir: "ci/k0s" # this file is imported so its fine
     silent: true
     cmds:
       - sh stop-k0s.sh
@@ -113,15 +112,15 @@ tasks:
     internal: true
     deps:
       - task: k0s-build-echo-image
-    desc: 'create tar of echo image'
+    desc: "create tar of echo image"
     status:
-      - '[ -f .local/tar/echo.tar ]'
+      - "[ -f .local/tar/echo.tar ]"
     cmds:
       - mkdir -p .local/tar
       - docker save haproxytech/http-echo:latest -o .local/tar/echo.tar
 
   k0s-echo-upload:
-    desc: 'upload echo image to k0s cluster'
+    desc: "upload echo image to k0s cluster"
     silent: true
     internal: true
     cmds:
@@ -129,13 +128,13 @@ tasks:
       - docker exec k0s-hug-controller k0s ctr images import /tmp/echo.tar
 
   k0s-create:
-    desc: 'create a k0s cluster with HUG and one example app'
+    desc: "create a k0s cluster with HUG and one example app"
     silent: true
     vars:
       # can be set to 'k0s-build-controller-image-build-in-docker' if you want to build in the docker image
-      CONTROLLER_BUILD_TASK: 'k0s-build-controller-image-dev'
-      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+      CONTROLLER_BUILD_TASK: "k0s-build-controller-image-dev"
+      kubectl: "{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl"
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
     deps:
       - task: check-go-tool
         vars:
@@ -145,7 +144,7 @@ tasks:
       - task: delimiter
       - task: k0s-create-cluster
       - task: delimiter
-      - task: '{{ .CONTROLLER_BUILD_TASK }}'
+      - task: "{{ .CONTROLLER_BUILD_TASK }}"
       - docker save haproxytech/haproxy-unified-gateway:latest -o hug.tar
       - task: k0s-echo-create-tar
       # - task: delimiter
@@ -164,7 +163,8 @@ tasks:
       - task: delimiter
       - echo "Install custom resource definitions ..."
       - echo "Install Gateway API CRDs"
-      - /{{.kubectl}} apply -f {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
+      - /{{.kubectl}} apply -f {{.GATEWAYAPI_STANDARD_CRDS_DOWNLOAD_URL}}
+      - /{{.kubectl}} apply -f {{.GATEWAYAPI_EXPERIMENTAL_CRDS_DOWNLOAD_URL}}
       - echo "Install Gateway API Controller CRDs"
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd-update/rbac.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd-update/job-crd.yaml
@@ -187,11 +187,11 @@ tasks:
         vars:
           TOOL: KIND
       - task: check-kubectl
-    desc: 'redeploy a KinD cluster with IC'
+    desc: "redeploy a KinD cluster with IC"
     silent: true
     vars:
-      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+      kubectl: "{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl"
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
     cmds:
       - task: k0s-build-controller-image-dev
       - task: delimiter

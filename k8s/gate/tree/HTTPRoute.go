@@ -222,7 +222,7 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 		}
 	}
 
-	// Récupère le Gateway correspondant
+	// Get the Gateway
 	gwKey := GetParentRefNamespacedName(parentRef, r.K8sResource)
 	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
 	if ok && treeGw.TreeStatus.Status == store.StatusDeleted {
@@ -240,7 +240,7 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 		}
 	}
 
-	// Collecte les listeners attachables
+	// Compute the list of attachable Listeners
 	attachableListeners := make([]*Listener, 0)
 	if parentRef.SectionName != nil {
 		listener, ok := treeGw.Listeners[string(*parentRef.SectionName)]
@@ -262,35 +262,35 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 	conds := generic.Conditions{}
 
 	for _, listener := range attachableListeners {
-		// Vérifie la validité du listener
+		// Check if the listener is valid
 		if !listener.Valid {
 			conds.MergeOverrideConditions(rc.ConditionNotAcceptedNoMatchingParent())
 			continue
 		}
 
-		// Vérifie le hostname
+		// Check hostname
 		if !matchHostname(r.K8sResource.Spec.Hostnames, listener.K8sResource.Hostname) {
 			conds.MergeOverrideConditions(rc.ConditionNotAcceptedNoMatchingHostname())
 			continue
 		}
 
-		// Vérifie le type de route autorisé
+		// Check if the route kind is allowed
 		if !r.isAllowedRouteKind(listener, controllerStore.ExtractGVK) {
 			conds.MergeOverrideConditions(rc.ConditionNotAcceptedRouteReasonNotAllowedByListeners())
 			continue
 		}
 
-		// Listener valide, attache la route
+		// Add the route to the listener
 		listener.addAttachedRoute(client.ObjectKeyFromObject(r.K8sResource), controllerStore)
 		validListeners = append(validListeners, listener)
 
-		// Met à jour la KeyMap r.Listeners
+		// Add the listener to the parentRef
 		existing, _ := r.Listeners.Get(parentRef)
 		existing = append(existing, listener)
 		r.Listeners.Set(parentRef, existing)
 	}
 
-	// Si aucun listener valide, retourne les conditions cumulées
+	// If no listener is valid
 	if len(validListeners) == 0 {
 		return checkParentRefResult{
 			Managed:    true,
@@ -299,7 +299,7 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 		}
 	}
 
-	// Au moins un listener valide
+	// At least one listener is valid
 	return checkParentRefResult{
 		Managed:    true,
 		Valid:      true,

@@ -1,15 +1,15 @@
 #https://taskfile.dev/
-version: '3'
+version: "3"
 
 tasks:
   download-gateway-crds:
-      silent: true
-      desc: Download Gateway API CRDs and split into individual files
-      vars:
-        OUTDIR: test/integration/api
-      cmds:
-        - mkdir -p /{{.TMP}}
-        - curl -L -o /{{.TMP}}/standard-install.yaml {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
-        - cd /{{.TMP}} && csplit --elide-empty-files -f gatewayapicrd- -z --suffix-format='%02d.yaml' standard-install.yaml "/^---$/" "{*}"
-        - mkdir -p crds
-        - mv /{{.TMP}}/gatewayapicrd-* {{.OUTDIR}}
+    silent: true
+    desc: Download Gateway API CRDs and split into individual files
+    vars:
+      OUTDIR: test/integration/api
+    cmds:
+      - mkdir -p /{{.TMP}}
+      - curl -L -o /{{.TMP}}/standard-install.yaml {{.GATEWAYAPI_STANDARD_CRDS_DOWNLOAD_URL}}
+      - cd /{{.TMP}} && csplit --elide-empty-files -f gatewayapicrd- -z --suffix-format='%02d.yaml' standard-install.yaml "/^---$/" "{*}"
+      - mkdir -p crds
+      - mv /{{.TMP}}/gatewayapicrd-* {{.OUTDIR}}

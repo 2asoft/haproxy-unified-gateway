@@ -71,8 +71,8 @@ func (b *RouteMgrImpl) onUpsertedTLSRoute(routeKey k8stypes.NamespacedName, rout
 }
 
 func (b *RouteMgrImpl) onValidTLSRouteUpserted(_ k8stypes.NamespacedName,
-	tlsRoute *tree.TLSRoute, mapSNI *maps.MapData, acceptedHostnamesForRoute []string) error {
-
+	tlsRoute *tree.TLSRoute, mapSNI *maps.MapData, acceptedHostnamesForRoute []string,
+) error {
 	for _, tlsRouteRule := range tlsRoute.Rules {
 		// if !rule.Valid {
 		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional

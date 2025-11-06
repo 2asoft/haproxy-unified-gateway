@@ -1,14 +1,15 @@
 #https://taskfile.dev/
-version: '3'
+version: "3"
 
 env:
   KUBECTL_VERSION: v1.34.1
   K8S_VERSION: v1.34.0
   ENVTEST_VERSION: v1.34.0 # https://raw.githubusercontent.com/kubernetes-sigs/controller-tools/master/envtest-releases.yaml
-  CLUSTER_NAME: "{{ default \"dev-controller\" .CLUSTER_NAME}}"
-  DOCKER_FILE: "{{ default \"-build/Dockerfile\" .DOCKER_FILE}}"
+  CLUSTER_NAME: '{{ default "dev-controller" .CLUSTER_NAME}}'
+  DOCKER_FILE: '{{ default "-build/Dockerfile" .DOCKER_FILE}}'
   TMP: tmp
-  GATEWAYAPI_CRDS_DOWNLOAD_URL: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
+  GATEWAYAPI_STANDARD_CRDS_DOWNLOAD_URL: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
+  GATEWAYAPI_EXPERIMENTAL_CRDS_DOWNLOAD_URL: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/experimental-install.yaml
 
 vars:
   CONFIG_DIR: "example/deploy"

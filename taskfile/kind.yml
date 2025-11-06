@@ -1,8 +1,7 @@
 #https://taskfile.dev/
-version: '3'
+version: "3"
 
 tasks:
-
   check-if-gitlab-env:
     internal: true
     cmds:
@@ -27,18 +26,18 @@ tasks:
       - task: check-go-tool
         vars:
           TOOL: KIND
-    desc: 'create a KinD cluster with controller'
+    desc: "create a KinD cluster with controller"
     status:
       - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
     vars:
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
-    dir: 'ci/kind' # this file is imported so its fine
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
+    dir: "ci/kind" # this file is imported so its fine
     cmds:
       - /{{.kind}} delete cluster --name {{.CLUSTER_NAME}}
       - /{{.kind}} create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml --image kindest/node:{{.K8S_VERSION}}
 
   kind-controller-build:
-    desc: ''
+    desc: ""
     internal: true
     dir: cmd/controller
     cmds:
@@ -46,29 +45,29 @@ tasks:
 
   kind-build-controller-image-dev:
     #internal: true
-    desc: 'build docker image of controller'
+    desc: "build docker image of controller"
     deps:
       - task: kind-controller-build
     status:
       - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
     cmds:
-      - docker build -t haproxytech/haproxy-unified-gateway -f build/Dockerfile.dev .
+      - docker build --network=host -t haproxytech/haproxy-unified-gateway -f build/Dockerfile.dev .
       - rm build/kubernetes-controller
 
   kind-build-controller-image-build-in-docker:
     #internal: true
-    desc: 'build docker image of controller'
+    desc: "build docker image of controller"
     deps:
       - task: kind-controller-build
     status:
       - task check-if-gitlab-env # check if we are in gitlab CI, if we are skip this task
     cmds:
-      - docker build -t haproxytech/haproxy-unified-gateway -f build/Dockerfile .
+      - docker build --network=host -t haproxytech/haproxy-unified-gateway -f build/Dockerfile .
       - rm build/kubernetes-controller
 
   kind-build-echo-image:
     internal: true
-    desc: 'build docker image of echo service'
+    desc: "build docker image of echo service"
     dir: ci/http-echo
     status:
       - docker images | grep haproxytech/http-echo
@@ -77,25 +76,25 @@ tasks:
       - docker build --build-arg TARGETPLATFORM={{.TARGETPLATFORM}} -t haproxytech/http-echo .
 
   kind-delete:
-    desc: 'delete a KinD cluster'
+    desc: "delete a KinD cluster"
     silent: true
     deps:
       - task: check-go-tool
         vars:
           TOOL: KIND
     vars:
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
     cmds:
       - "/{{.kind}} delete cluster --name {{.CLUSTER_NAME}}"
 
   kind-create:
-    desc: 'create a KinD cluster with HUG and one example app'
+    desc: "create a KinD cluster with HUG and one example app"
     silent: true
     vars:
       # set in .env CONTROLLER_BUILD_TASK=kind-build-controller-image-dev to speed build times
       CONTROLLER_BUILD_TASK: '{{.CONTROLLER_BUILD_TASK | default "kind-build-controller-image-build-in-docker"}}'
-      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+      kubectl: "{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl"
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
     deps:
       - task: check-go-tool
         vars:
@@ -105,7 +104,7 @@ tasks:
       - task: delimiter
       - task: kind-create-cluster
       - task: delimiter
-      - task: '{{ .CONTROLLER_BUILD_TASK }}'
+      - task: "{{ .CONTROLLER_BUILD_TASK }}"
       - task: kind-build-echo-image
       - task: delimiter
       - cmd: /{{.kind}} load docker-image haproxytech/haproxy-unified-gateway:latest --name={{.CLUSTER_NAME}}
@@ -116,7 +115,8 @@ tasks:
       - task: delimiter
       - echo "Install custom resource definitions ..."
       - echo "Install Gateway API CRDs"
-      - /{{.kubectl}} apply -f {{.GATEWAYAPI_CRDS_DOWNLOAD_URL}}
+      - /{{.kubectl}} apply -f {{.GATEWAYAPI_STANDARD_CRDS_DOWNLOAD_URL}}
+      - /{{.kubectl}} apply -f {{.GATEWAYAPI_EXPERIMENTAL_CRDS_DOWNLOAD_URL}}
       - echo "Install Gateway API Controller CRDs"
       #- /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_hugconfs.yaml
       #- /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_huggates.yaml
@@ -142,11 +142,11 @@ tasks:
         vars:
           TOOL: KIND
       - task: check-kubectl
-    desc: 'redeploy a KinD cluster with IC'
+    desc: "redeploy a KinD cluster with IC"
     silent: true
     vars:
-      kubectl: '{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl'
-      kind: '{{.TMP}}/kind/{{.KIND_VERSION}}/kind'
+      kubectl: "{{.TMP}}/kubectl/{{.KUBECTL_VERSION}}/kubectl"
+      kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
     cmds:
       - task: kind-build-controller-image-dev
       - task: delimiter

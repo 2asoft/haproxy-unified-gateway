@@ -212,7 +212,6 @@ func GetNamespacedName(name, namespace, defaultNamespace string) types.Namespace
 func MatchTLSHostnames(listenerHostname *string, routeHostnames []string) []string {
 	// If the listener hostname is not set, it matches any route hostname.
 	if listenerHostname == nil {
-
 		return routeHostnames
 	}
 

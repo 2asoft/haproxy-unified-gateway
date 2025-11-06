@@ -483,8 +483,10 @@ func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType 
 	return nil
 }
 
+//revive:disable:flag-parameter
 func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData,
-	backendRef gatewayv1.HTTPBackendRef, namespace string, isHTTPBackend bool) (*models.Backend, error) {
+	backendRef gatewayv1.HTTPBackendRef, namespace string, isHTTPBackend bool,
+) (*models.Backend, error) {
 	// First, we merge the Backend CRDs from filters, if there are some
 	// Backend CRDs are defined in the Filters of type: ExtensionRef
 	// We gather all those filters, merge them and apply them
