@@ -39,6 +39,8 @@ allowed:
   - linters
   - lua
   - maxconn
+  - maxsslconn
+  - memmax
   - mkdir
   - modfile
   - mutex
