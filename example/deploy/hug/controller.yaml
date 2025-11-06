@@ -89,7 +89,7 @@ spec:
       port: 31443
       targetPort: 31443
       # nodePort is needed for NodePort service type
-      nodePort: 31043
+      nodePort: 31443
       protocol: TCP
     - name: stat
       port: 31024
