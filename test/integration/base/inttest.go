@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -31,7 +32,7 @@ import (
 	"github.com/haproxytech/client-native/v6/runtime"
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
 	"github.com/haproxytech/kubernetes-controller/cmd/start"
-	"github.com/haproxytech/kubernetes-controller/hug/configuration/defaults"
+	defaults "github.com/haproxytech/kubernetes-controller/fs/usr/local/hug"
 	haproxymgr "github.com/haproxytech/kubernetes-controller/hug/haproxy"
 	hapapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
 	haproxyparams "github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
@@ -165,6 +166,12 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	if strings.Contains(modifiedCfg, "/var/run/haproxy.pid") {
 		modifiedCfg = strings.ReplaceAll(modifiedCfg, "/var/run/haproxy.pid", hugConfig.HaproxyDirs.PIDFile)
 	}
+	if strings.Contains(modifiedCfg, "/var/run/haproxy/health.sock") {
+		dir := path.Join(os.TempDir(), "hug")
+		err = os.MkdirAll(dir, 0o755)
+		g.Expect(err).ToNot(gomega.HaveOccurred())
+		modifiedCfg = strings.ReplaceAll(modifiedCfg, "/var/run/haproxy/health.sock", path.Join(dir, "health.sock"))
+	}
 	err = writeInitalHaproxyCfg(hugConfig.HaproxyDirs.MainCfgFile, modifiedCfg)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
@@ -213,6 +220,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	params := haproxyparams.Params{
 		Test:             hugConfig.Test,
 		UseWiths6Overlay: hugConfig.UseWiths6Overlay,
+		UseWithPebble:    hugConfig.UseWithPebble,
 		HaproxyDirs:      hugConfig.HaproxyDirs,
 	}
 	p := process.New(params, haproxyClient, gateconfig.Logger)

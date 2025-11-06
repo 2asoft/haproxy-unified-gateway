@@ -23,7 +23,7 @@ import (
 	"time"
 
 	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/hug/configuration/defaults"
+	defaults "github.com/haproxytech/kubernetes-controller/fs/usr/local/hug"
 	"github.com/haproxytech/kubernetes-controller/hug/version"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
 	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
@@ -51,7 +51,8 @@ type HUGConfig struct {
 	Help                  bool `ff:"          long: help,                            usage: 'help'"`
 	Test                  bool `ff:"short:t,                                         usage: 'simulate running HAProxy'"`
 	LeaderElectionEnabled bool `ff:"          long: leader-election-enabled,         usage: 'enable leader election'"`
-	UseWiths6Overlay      bool `ff:"          long:with-s6-overlay,                  usage: 'use s6 overlay to start/stpop/reload HAProxy'"`
+	UseWiths6Overlay      bool `ff:"          long: with-s6-overlay,                 usage: 'use s6 overlay to start/stop/restart HAProxy'"`
+	UseWithPebble         bool `ff:"          long: with-pebble,                     usage: 'use pebble start/stop/restart HAProxy'"`
 	DisableIPv4           bool `ff:"          long: disable-ipv4,                    usage: 'disable IPv4 support'"`
 	DisableIPv6           bool `ff:"          long: disable-ipv6,			         usage: 'disable IPv6 support'"`
 	Version               bool `ff:"          long: version,                         usage: 'print version and exit'"`

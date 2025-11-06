@@ -22,6 +22,8 @@ type Process interface {
 
 func New(param params.Params, api hapi.HAProxyClient, logger *slog.Logger) (p Process) { //nolint:ireturn
 	switch {
+	case param.UseWithPebble:
+		p = newpebbleControl(api, param, logger)
 	case param.UseWiths6Overlay:
 		p = newS6Control(api, param, logger)
 	default:

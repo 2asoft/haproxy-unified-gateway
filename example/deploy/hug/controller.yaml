@@ -30,6 +30,11 @@ spec:
               memory: 2560Mi
             requests:
               memory: 2048Mi
+          lifecycle:
+            preStop:
+              exec:
+                # Send SIGUSR1 directly to the haproxy process
+                command: ["/bin/sh", "-c", "kill -SIGUSR1 $(cat /var/run/haproxy.pid)"]
           args:
             # specify the hugconf CRD location, all other params are in configuration file
             - --hugconf-crd=haproxy-unified-gateway/hugconf

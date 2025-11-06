@@ -1,4 +1,4 @@
-#!/command/with-contenv sh
+#!/bin/sh
 
 MEMLIMIT=$(free -m | awk '/Mem:/ {printf "%d\n", int($2 / 3)}')
 
@@ -23,7 +23,6 @@ fi
 
 export GOMEMLIMIT="${MEMLIMIT}MiB"
 
-echo "Memory limit for Kubernetes Controller: ${GOMEMLIMIT}"
+echo "Memory limit for HUG: ${GOMEMLIMIT}"
 
-#sleep infinity
-exec /kubernetes-controller --with-s6-overlay ${EXTRA_OPTIONS}
+exec /usr/local/sbin/hug --with-pebble ${EXTRA_OPTIONS}

@@ -22,4 +22,4 @@ if [ $# -gt 0 ] && [ "$(echo $1 | cut -b1-2)" != "--" ]; then
 fi
 
 export EXTRA_OPTIONS="$@"
-exec /init
+exec /usr/local/bin/pebble run --verbose

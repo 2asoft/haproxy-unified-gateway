@@ -69,6 +69,7 @@ func main() {
 	params := haproxyparams.Params{
 		Test:             hugConfig.Test,
 		UseWiths6Overlay: hugConfig.UseWiths6Overlay,
+		UseWithPebble:    hugConfig.UseWithPebble,
 		HaproxyDirs:      hugConfig.HaproxyDirs,
 	}
 	p := process.New(params, haproxyClient, gateconfig.Logger)
@@ -107,7 +108,7 @@ func main() {
 	cntlr.Configuration.Logger.Info("Context cancelled: shutting down controller")
 	cntlr.Configuration.Logger.Info("Graceful shutdown requested...")
 
-	// Stop your controller logic
+	// Stop controller logic if its still running
 	haproxyAppManager.Stop()
 
 	// Wait for background goroutines to finish

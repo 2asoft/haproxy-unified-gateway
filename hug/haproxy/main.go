@@ -77,10 +77,7 @@ func (h *AppManagerImpl) HaproxyClient() api.HAProxyClient {
 }
 
 func (h *AppManagerImpl) Stop() {
-	_, err := h.process.Service("stop")
-	if err != nil {
-		panic(err)
-	}
+	h.process.Service("stop")
 }
 
 func (h *AppManagerImpl) Run() {
