@@ -25,6 +25,7 @@ tasks:
       PKG: '{{ regexReplaceAll "/cmd/.*$" .URL "" }}'
       LATEST_PACKAGE_VERSION:
         sh: |
+          cd /{{.TMP}}; \
           GO111MODULE=on go list -m -versions -json {{.PKG}} | \
           /{{.TMP}}/yq/{{.YQ_VERSION}}/yq eval '.Versions | map(select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))) | .[-1]' -
     status:
