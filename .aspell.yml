@@ -75,3 +75,4 @@ allowed:
   - dereference
   - darwin
   - performant
+  - dockerhub

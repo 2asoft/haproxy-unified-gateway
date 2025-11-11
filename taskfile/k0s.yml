@@ -175,7 +175,7 @@ tasks:
       - echo "deploying Controller ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/rbac.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/hugconf.yaml
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/controller.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug-dev/controller.yaml
       - task: delimiter
       - echo "deploying echo service ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/echo/echo.yaml
@@ -202,7 +202,7 @@ tasks:
       - task: delimiter
       - echo "deploying Controller ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/rbac.yaml
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/controller.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug-dev/controller.yaml
       - task: delimiter
       - /{{.kubectl}} delete pods -l run=haproxy-unified-gateway -n haproxy-unified-gateway
       - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-unified-gateway -n haproxy-unified-gateway
