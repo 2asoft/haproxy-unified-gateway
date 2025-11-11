@@ -1,12 +1,14 @@
 # ![HAProxy](assets/images/haproxy-weblogo-210x49.png "HAProxy")
 
-## HAProxy Unified Gateway for k8s
+## HAProxy Unified Gateway for Kubernetes
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 ### Description
 
-HAProxy Unified Gateway for k8s monitors [Gateway API](https://gateway-api.sigs.k8s.io/) API objects and routes traffic from outside your cluster to services within the cluster.
+HUG provides a free open-source solution for cloud-native application routing, featuring unified integration with the latest Kubernetes [Gateway API](https://gateway-api.sigs.k8s.io/) and (coming next year) the existing Ingress API, all built on HAProxy’s legendary performance, reliability, and flexibility – so you can trust it to operate dependably at the largest scale.
+
+Current releases are considered BETA as they do not yet provide full coverage of the Gateway API.
 
 ### Usage
 
