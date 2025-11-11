@@ -20,8 +20,8 @@ import (
 	"github.com/haproxytech/client-native/v6/configuration"
 	cfgoptions "github.com/haproxytech/client-native/v6/configuration/options"
 	"github.com/haproxytech/client-native/v6/models"
-	md "github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
+	md "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
 )
 
 type ownerMetaData interface {

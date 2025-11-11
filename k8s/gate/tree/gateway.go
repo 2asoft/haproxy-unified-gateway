@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 
 	"github.com/imdario/mergo"
 	"k8s.io/apimachinery/pkg/types"

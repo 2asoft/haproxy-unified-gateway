@@ -22,12 +22,12 @@ import (
 	"strings"
 	"time"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	defaults "github.com/haproxytech/kubernetes-controller/fs/usr/local/hug"
-	"github.com/haproxytech/kubernetes-controller/hug/version"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	defaults "github.com/haproxytech/haproxy-unified-gateway/fs/usr/local/hug"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/version"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 )

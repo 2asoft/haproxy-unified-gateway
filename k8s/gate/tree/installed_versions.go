@@ -20,9 +20,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/constants"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"

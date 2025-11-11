@@ -19,9 +19,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"

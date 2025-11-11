@@ -22,7 +22,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/index"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/index"
 
 	ctlr "sigs.k8s.io/controller-runtime"
 	ctlr_builder "sigs.k8s.io/controller-runtime/pkg/builder"

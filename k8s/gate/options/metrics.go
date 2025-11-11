@@ -14,7 +14,7 @@
 package opt
 
 import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
 )
 
 // ControllerPodConfig sets the ControllerPodConfig of the controller.

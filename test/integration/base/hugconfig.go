@@ -21,9 +21,9 @@ import (
 	"path"
 	"time"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	hugconfig "github.com/haproxytech/kubernetes-controller/hug/configuration"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	hugconfig "github.com/haproxytech/haproxy-unified-gateway/hug/configuration"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 const TestControllerName = "gate.haproxy.org/hug"

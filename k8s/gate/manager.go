@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 
-	haproxyapiv3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	haproxyapiv3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"

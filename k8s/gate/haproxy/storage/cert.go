@@ -21,10 +21,10 @@ import (
 	"path/filepath"
 
 	"github.com/google/renameio"
-	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"

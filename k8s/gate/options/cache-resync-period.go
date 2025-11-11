@@ -16,7 +16,7 @@ package opt
 import (
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
 )
 
 func CacheReSyncPeriod(syncPeriod time.Duration) func(o *config.Configuration) error {

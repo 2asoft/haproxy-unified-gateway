@@ -27,7 +27,7 @@ import (
 	"github.com/haproxytech/client-native/v6/options"
 	"github.com/haproxytech/client-native/v6/runtime"
 	runtimeoptions "github.com/haproxytech/client-native/v6/runtime/options"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 type HAProxyClient interface { //nolint:interfacebloat

@@ -17,12 +17,12 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

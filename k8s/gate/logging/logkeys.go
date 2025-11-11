@@ -13,7 +13,7 @@
 // limitations under the License.
 package logging
 
-import v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+import v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 
 var (
 	LogCategoryK8s           v3.Category = "k8s"

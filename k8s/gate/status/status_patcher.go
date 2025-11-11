@@ -18,12 +18,12 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 
 	"github.com/google/go-cmp/cmp"
-	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
+	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )

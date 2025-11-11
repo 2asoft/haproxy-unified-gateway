@@ -18,7 +18,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 // The singleton instance

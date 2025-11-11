@@ -8,8 +8,8 @@ Multiple options can be combined
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 // multiple options can be combined
@@ -52,8 +52,8 @@ Available options:
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.BackendNameTemplate(template))
@@ -65,8 +65,8 @@ controller, err := controller.New(opt.BackendNameTemplate(template))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.CacheReSyncPeriod(syncPeriod))
@@ -78,8 +78,8 @@ controller, err := controller.New(opt.CacheReSyncPeriod(syncPeriod))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.ControllerConfCRD(controllerConf))
@@ -91,8 +91,8 @@ controller, err := controller.New(opt.ControllerConfCRD(controllerConf))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.ControllerName(controllerName))
@@ -104,8 +104,8 @@ controller, err := controller.New(opt.ControllerName(controllerName))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.DefaultsSectionName(name))
@@ -117,8 +117,8 @@ controller, err := controller.New(opt.DefaultsSectionName(name))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.DisableIPv4())
@@ -130,8 +130,8 @@ controller, err := controller.New(opt.DisableIPv4())
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.DisableIPv6())
@@ -143,8 +143,8 @@ controller, err := controller.New(opt.DisableIPv6())
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.FrontendNameTemplate(template))
@@ -156,8 +156,8 @@ controller, err := controller.New(opt.FrontendNameTemplate(template))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.HaproxyConfChannel(treeCh))
@@ -169,8 +169,8 @@ controller, err := controller.New(opt.HaproxyConfChannel(treeCh))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.HaproxyDirs(dirs))
@@ -182,8 +182,8 @@ controller, err := controller.New(opt.HaproxyDirs(dirs))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.IPV4BindAddr(addr))
@@ -195,8 +195,8 @@ controller, err := controller.New(opt.IPV4BindAddr(addr))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.IPV6BindAddr(addr))
@@ -208,8 +208,8 @@ controller, err := controller.New(opt.IPV6BindAddr(addr))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.InitialStructured(structuredCfg))
@@ -221,8 +221,8 @@ controller, err := controller.New(opt.InitialStructured(structuredCfg))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.KubeConfig(kubeconfig))
@@ -234,8 +234,8 @@ controller, err := controller.New(opt.KubeConfig(kubeconfig))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.LeaderElectionConfig(leaderElectionEnabled))
@@ -247,8 +247,8 @@ controller, err := controller.New(opt.LeaderElectionConfig(leaderElectionEnabled
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.LinkID(template))
@@ -260,8 +260,8 @@ controller, err := controller.New(opt.LinkID(template))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.Logging(handlerType, defaultLevel, logSettings))
@@ -274,8 +274,8 @@ ControllerPodConfig sets the ControllerPodConfig of the controller.
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.MetricsConfig(metricsConfig))
@@ -287,8 +287,8 @@ controller, err := controller.New(opt.MetricsConfig(metricsConfig))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.Namespaces(namespaces))
@@ -303,8 +303,8 @@ to the library at start up.
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.RuntimeUpdate(timeout))
@@ -316,8 +316,8 @@ controller, err := controller.New(opt.RuntimeUpdate(timeout))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.ServerNameTemplate(template))
@@ -329,8 +329,8 @@ controller, err := controller.New(opt.ServerNameTemplate(template))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.StartupSyncPeriod(syncPeriod))
@@ -342,8 +342,8 @@ controller, err := controller.New(opt.StartupSyncPeriod(syncPeriod))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.StoreCertificateOnDisk(structureType))
@@ -355,8 +355,8 @@ controller, err := controller.New(opt.StoreCertificateOnDisk(structureType))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.StoreMapsOnDisk(structureType))
@@ -368,8 +368,8 @@ controller, err := controller.New(opt.StoreMapsOnDisk(structureType))
 Example:
 ```go
 import (
-  github.com/haproxytech/kubernetes-controller/k8s/gate
-  github.com/haproxytech/kubernetes-controller/k8s/gate/options
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate
+  github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options
 )
 
 controller, err := controller.New(opt.SyncPeriod(syncPeriod))

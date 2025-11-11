@@ -25,12 +25,12 @@ import (
 	"log/slog"
 
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/templates"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/templates"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"github.com/imdario/mergo"
 
 	k8stypes "k8s.io/apimachinery/pkg/types"

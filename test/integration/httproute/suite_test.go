@@ -17,10 +17,10 @@ package httproute
 import (
 	"context"
 
-	"github.com/haproxytech/kubernetes-controller/test/integration/base"
-	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/base"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 
-	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
+	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )

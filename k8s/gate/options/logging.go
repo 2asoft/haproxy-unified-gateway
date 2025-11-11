@@ -16,9 +16,9 @@ package opt
 import (
 	"log/slog"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 func Logging(handlerType logging.LogHandlerType, defaultLevel slog.Level, logSettings map[v3.Category]slog.Level) func(o *config.Configuration) error {

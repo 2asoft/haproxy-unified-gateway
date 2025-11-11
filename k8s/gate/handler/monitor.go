@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/events"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

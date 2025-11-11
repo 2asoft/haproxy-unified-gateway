@@ -21,10 +21,10 @@ import (
 	"os"
 	"path/filepath"
 
-	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage/maps"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 //revive:disable:var-naming

@@ -22,7 +22,7 @@ import (
 	"strings"
 	"sync"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 )
 
 type ContextKey string

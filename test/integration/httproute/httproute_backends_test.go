@@ -18,7 +18,7 @@ package httproute
 import (
 	"path"
 
-	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 )
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route() {

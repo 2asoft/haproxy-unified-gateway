@@ -14,8 +14,8 @@
 package routeconditions
 
 import (
-	generic "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	generic "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 

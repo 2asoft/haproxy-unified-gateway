@@ -24,11 +24,11 @@ import (
 	"syscall"
 	"time"
 
-	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
+	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 	"sigs.k8s.io/yaml"
 
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 	"github.com/stretchr/testify/suite"
 )
 

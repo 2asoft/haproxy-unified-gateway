@@ -16,7 +16,7 @@ package tree
 import (
 	"testing"
 
-	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
+	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/stretchr/testify/assert"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )

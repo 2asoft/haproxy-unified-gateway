@@ -16,8 +16,8 @@ package store
 import (
 	"log/slog"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 
 	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"

@@ -14,8 +14,8 @@
 package metadata
 
 import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 const (

@@ -17,10 +17,10 @@ import (
 	"log/slog"
 	"testing"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	controller "github.com/haproxytech/kubernetes-controller/k8s/gate"
-	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	controller "github.com/haproxytech/haproxy-unified-gateway/k8s/gate"
+	gateconfig "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 func TestLogging(t *testing.T) {

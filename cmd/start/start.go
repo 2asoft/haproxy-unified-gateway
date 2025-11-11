@@ -14,13 +14,13 @@
 package start
 
 import (
-	hugconfig "github.com/haproxytech/kubernetes-controller/hug/configuration"
-	"github.com/haproxytech/kubernetes-controller/hug/startup"
-	gateconfig "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	opt "github.com/haproxytech/kubernetes-controller/k8s/gate/options"
+	hugconfig "github.com/haproxytech/haproxy-unified-gateway/hug/configuration"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/startup"
+	gateconfig "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	opt "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/options"
 
 	"k8s.io/apimachinery/pkg/types"
 )

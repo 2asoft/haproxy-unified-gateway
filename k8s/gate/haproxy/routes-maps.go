@@ -20,10 +20,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 // ErrMapRuntimeUpdate is an error type for runtime map update failures

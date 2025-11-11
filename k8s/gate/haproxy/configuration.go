@@ -23,11 +23,11 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 type Configuration struct {

@@ -16,9 +16,9 @@ package tree
 import (
 	"log/slog"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/types"
 )
 

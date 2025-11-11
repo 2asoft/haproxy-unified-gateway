@@ -21,11 +21,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
-	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
+	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 

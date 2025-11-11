@@ -16,7 +16,7 @@ package routeconditions
 import (
 	"fmt"
 
-	genericconditions "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
+	genericconditions "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )

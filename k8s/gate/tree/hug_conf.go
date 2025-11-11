@@ -17,9 +17,9 @@ import (
 	"context"
 	"log/slog"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"k8s.io/apimachinery/pkg/types"
 )
 

@@ -14,8 +14,8 @@
 package storage
 
 import (
-	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage/maps"
+	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 )
 
 type StructureType string

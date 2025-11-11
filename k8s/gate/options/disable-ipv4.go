@@ -13,7 +13,7 @@
 // limitations under the License.
 package opt
 
-import "github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+import "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
 
 func DisableIPv4() func(o *config.Configuration) error {
 	return func(o *config.Configuration) error {

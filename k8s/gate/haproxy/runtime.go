@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 // BufferSize is the default value of HAproxy tune.bufsize. Not recommended to change it

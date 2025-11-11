@@ -13,7 +13,7 @@
 // limitations under the License.
 package params
 
-import "github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
+import "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy"
 
 type Params struct {
 	haproxy.HaproxyDirs

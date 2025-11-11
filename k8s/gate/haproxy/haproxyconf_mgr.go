@@ -18,13 +18,13 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
-	"github.com/haproxytech/kubernetes-controller/hug/reload"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/metadata"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/api"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

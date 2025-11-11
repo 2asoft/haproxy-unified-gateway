@@ -18,8 +18,8 @@ import (
 	"log/slog"
 	"time"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"

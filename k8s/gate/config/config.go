@@ -18,11 +18,11 @@ import (
 	"os"
 	"time"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 
 	"github.com/lmittmann/tint"
 	"k8s.io/apimachinery/pkg/types"

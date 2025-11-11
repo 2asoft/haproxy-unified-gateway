@@ -1,6 +1,4 @@
-module github.com/haproxytech/kubernetes-controller
-
-// module github.com/haproxytech/haproxy-unified-gateway
+module github.com/haproxytech/haproxy-unified-gateway
 
 go 1.25.0
 

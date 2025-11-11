@@ -18,10 +18,10 @@ package gatewaytls
 import (
 	"path"
 
-	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
+	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 )
 
 func (s *GatewayTLSTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {

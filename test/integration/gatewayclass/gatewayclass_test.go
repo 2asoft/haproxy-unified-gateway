@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/constants"
-	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/constants"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 	"github.com/stretchr/testify/suite"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"

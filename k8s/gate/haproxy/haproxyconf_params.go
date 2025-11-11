@@ -16,9 +16,9 @@ package haproxy
 import (
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/storage"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/templates"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/templates"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 type HaproxyConfMgrParams struct {

@@ -19,7 +19,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 	"github.com/stretchr/testify/suite"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"

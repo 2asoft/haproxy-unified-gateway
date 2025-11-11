@@ -14,7 +14,7 @@
 package opt
 
 import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
 )
 
 func Namespaces(namespaces []string) func(o *config.Configuration) error {

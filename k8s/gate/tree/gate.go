@@ -14,9 +14,9 @@
 package tree
 
 import (
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/generic"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
 
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"

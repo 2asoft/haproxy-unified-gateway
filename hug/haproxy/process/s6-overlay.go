@@ -10,9 +10,9 @@ import (
 
 	"github.com/haproxytech/client-native/v6/runtime"
 	"github.com/haproxytech/client-native/v6/runtime/options"
-	hapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
-	"github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	hapi "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/api"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/params"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
 type s6Control struct {

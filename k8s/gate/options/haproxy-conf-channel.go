@@ -14,8 +14,8 @@
 package opt
 
 import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
 )
 
 func HaproxyConfChannel(treeCh chan diffs.HaproxyConfDiffs) func(o *config.Configuration) error {

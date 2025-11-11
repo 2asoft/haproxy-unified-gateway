@@ -20,15 +20,15 @@ import (
 	"sync"
 
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
-	"github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
-	"github.com/haproxytech/kubernetes-controller/hug/haproxy/process"
-	"github.com/haproxytech/kubernetes-controller/hug/reload"
-	gatehaproxy "github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/diffs"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/api"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/params"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/process"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
+	gatehaproxy "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 type AppManager interface {

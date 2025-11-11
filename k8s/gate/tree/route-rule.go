@@ -14,11 +14,11 @@
 package tree
 
 import (
-	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )

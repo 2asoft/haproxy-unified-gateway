@@ -21,8 +21,8 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/events"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/events"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"

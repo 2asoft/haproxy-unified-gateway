@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"syscall"
 
-	hapi "github.com/haproxytech/kubernetes-controller/hug/haproxy/api"
-	"github.com/haproxytech/kubernetes-controller/hug/haproxy/params"
+	hapi "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/api"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/params"
 )
 
 // MUST be the same as in fs/etc/s6-overlay/s6-rc.d/haproxy/run

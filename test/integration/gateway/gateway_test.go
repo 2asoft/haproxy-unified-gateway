@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/haproxytech/kubernetes-controller/test/integration/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 	"github.com/stretchr/testify/suite"
 )
 

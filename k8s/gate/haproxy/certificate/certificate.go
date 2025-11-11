@@ -14,7 +14,7 @@
 package certificate
 
 import (
-	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
+	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 )
 
 type CertificateData struct {

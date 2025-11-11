@@ -22,9 +22,9 @@ import (
 	"sort"
 	"strings"
 
-	futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
+	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

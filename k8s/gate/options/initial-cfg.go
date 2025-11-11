@@ -14,8 +14,8 @@
 package opt
 
 import (
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/config"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/structured"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
 )
 
 func InitialStructured(structuredCfg structured.Structured) func(o *config.Configuration) error {

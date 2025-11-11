@@ -14,7 +14,7 @@
 
 package maps
 
-import futils "github.com/haproxytech/kubernetes-controller/k8s/gate/fileutils"
+import futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 
 type MapData struct {
 	// Data contains the values

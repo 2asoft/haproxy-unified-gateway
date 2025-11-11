@@ -19,10 +19,10 @@ import (
 	"strings"
 
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/kubernetes-controller/hug/reload"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/haproxy/certificate"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/logging"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/utils"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 func (b *HaproxyConfMgrImpl) processCertificates() error {

@@ -14,8 +14,8 @@
 package handler
 
 import (
-	"github.com/haproxytech/kubernetes-controller/hug/reload"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 )
 
 type GateTreeBuilder struct {

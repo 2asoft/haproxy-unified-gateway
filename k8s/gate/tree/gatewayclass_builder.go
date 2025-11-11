@@ -14,9 +14,9 @@
 package tree
 
 import (
-	v3 "github.com/haproxytech/kubernetes-controller/api/gate/v3"
-	objtypes "github.com/haproxytech/kubernetes-controller/k8s/gate/object-types"
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/store"
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
+	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )

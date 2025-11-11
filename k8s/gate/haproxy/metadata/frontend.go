@@ -16,7 +16,7 @@ package metadata
 import (
 	"encoding/json"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/tree"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

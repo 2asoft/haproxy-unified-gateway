@@ -18,8 +18,8 @@ package base
 import (
 	"os"
 
-	"github.com/haproxytech/kubernetes-controller/k8s/gate/conditions"
-	rc "github.com/haproxytech/kubernetes-controller/k8s/gate/conditions/routes"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions"
+	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
 
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
