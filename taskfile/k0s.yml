@@ -179,7 +179,6 @@ tasks:
       - task: delimiter
       - echo "deploying echo service ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/echo/echo.yaml
-      - /{{.kind}} load docker-image haproxytech/haproxy-unified-gateway:latest --name={{.CLUSTER_NAME}}
       - task: delimiter
       - /{{.kubectl}} wait --for=condition=ready --timeout=20s pod -l run=haproxy-unified-gateway -n haproxy-unified-gateway
       - kubectl get pods -A

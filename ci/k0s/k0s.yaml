@@ -2,6 +2,6 @@ apiVersion: k0s.k0sproject.io/v1beta1
 kind: ClusterConfig
 spec:
   api:
-    address: 172.21.0.2
+    address: 172.210.0.2
   network:
     provider: kuberouter
