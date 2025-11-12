@@ -65,7 +65,9 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 
 				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
 				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
-				err = b.onDeletedTLSRoute(routeKey, route, mapSNIMap)
+				pathSNIDomainWildcardMap := mapsStorage.MapPath(frontendName, storage.SNI_DOMAIN_WILDCARD_MAP)
+				mapSNIDomainWildcardMap := mapsStorage.GetMapData(pathSNIDomainWildcardMap)
+				err = b.onDeletedTLSRoute(routeKey, route, mapSNIMap, mapSNIDomainWildcardMap)
 				// errs.Add(err)
 				_ = err // TODO ignore error for now
 			}
@@ -73,8 +75,8 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 	}
 	// Managed TLSRoutes => Create / update/ delete backends
 	for routeKey, route := range controllerStore.GateTree.TLSRoutes {
-		for _, listeners := range route.Listeners.Iterate {
-			for _, listener := range listeners {
+		for _, listener := range route.Listeners.Iterate {
+			for _, listener := range listener {
 				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
 				if err != nil {
 					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
@@ -86,15 +88,16 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 				acceptedHostnamesForRoute := utils.MatchTLSHostnames(listenerHostname, routesHosnames)
 				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
 				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
-
+				pathSNIDomainWildcardMap := mapsStorage.MapPath(frontendName, storage.SNI_DOMAIN_WILDCARD_MAP)
+				mapSNIDomainWildcardMap := mapsStorage.GetMapData(pathSNIDomainWildcardMap)
 				switch route.TreeStatus.Status {
 				case store.StatusUnchanged:
 					continue
 				case store.StatusUpserted:
-					err := b.onUpsertedTLSRoute(routeKey, route, mapSNIMap, acceptedHostnamesForRoute)
+					err := b.onUpsertedTLSRoute(routeKey, route, mapSNIMap, mapSNIDomainWildcardMap, acceptedHostnamesForRoute)
 					errs.Add(err)
 				case store.StatusDeleted:
-					err := b.onDeletedTLSRoute(routeKey, route, mapSNIMap)
+					err := b.onDeletedTLSRoute(routeKey, route, mapSNIMap, mapSNIDomainWildcardMap)
 					errs.Add(err)
 				}
 			}

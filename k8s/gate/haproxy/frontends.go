@@ -234,12 +234,14 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 	pathDomainWPathExactMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
 	pathRegexMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
 	sniMap := b.params.mapsStorage.MapPath(frontendName, storage.SNI_MAP)
+	sniDomainWildcardMap := b.params.mapsStorage.MapPath(frontendName, storage.SNI_DOMAIN_WILDCARD_MAP)
 
 	b.params.mapsStorage.EnsureMapData(pathExactMap)
 	b.params.mapsStorage.EnsureMapData(pathPrefixMap)
 	b.params.mapsStorage.EnsureMapData(pathRegexMap)
 	b.params.mapsStorage.EnsureMapData(pathDomainWPathExactMap)
 	b.params.mapsStorage.EnsureMapData(sniMap)
+	b.params.mapsStorage.EnsureMapData(sniDomainWildcardMap)
 
 	var tcpRules []*models.TCPRequestRule
 	var httpRules []*models.HTTPRequestRule
@@ -277,11 +279,12 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 			},
 			{
 				// tcp-request content set-var(txn.sni_match) req_ssl_sni,regsub(^[^.]*,,),map(sni.map)
+				// tcp-request content set-var(txn.sni_match,ifnotexists) req_ssl_sni,map_end(sniDomainWildcardMap.map)
 				Type:     "content",
 				Action:   "set-var",
 				VarName:  "sni_match",
 				VarScope: "txn",
-				Expr:     "req_ssl_sni,regsub(^[^.]*,,),map(" + sniMap.FullPath() + ")",
+				Expr:     "req_ssl_sni,map_end(" + sniDomainWildcardMap.FullPath() + ")",
 			},
 			{
 				// http-request lua.route if route_is_json

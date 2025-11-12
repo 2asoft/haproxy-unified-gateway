@@ -34,6 +34,7 @@ const (
 	PATH_PREFIX_MAP                = "path_prefix"
 	PATH_REGEX_MAP                 = "path_regex"
 	SNI_MAP                        = "sni"
+	SNI_DOMAIN_WILDCARD_MAP        = "domain_wildcard_sni"
 )
 
 //revive:enable:var-naming

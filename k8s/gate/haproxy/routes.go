@@ -62,16 +62,16 @@ func (b *RouteMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, rou
 }
 
 func (b *RouteMgrImpl) onUpsertedTLSRoute(routeKey k8stypes.NamespacedName, route *tree.TLSRoute,
-	sni *maps.MapData, acceptedHostnamesForRoute []string,
+	mapSNI, mapSNIDomainWildcardMap *maps.MapData, acceptedHostnamesForRoute []string,
 ) error {
 	if route.Valid {
-		return b.onValidTLSRouteUpserted(routeKey, route, sni, acceptedHostnamesForRoute)
+		return b.onValidTLSRouteUpserted(routeKey, route, mapSNI, mapSNIDomainWildcardMap, acceptedHostnamesForRoute)
 	}
-	return b.onInvalidTLSRouteUpserted(routeKey, route, sni)
+	return b.onInvalidTLSRouteUpserted(routeKey, route, mapSNI, mapSNIDomainWildcardMap)
 }
 
 func (b *RouteMgrImpl) onValidTLSRouteUpserted(_ k8stypes.NamespacedName,
-	tlsRoute *tree.TLSRoute, mapSNI *maps.MapData, acceptedHostnamesForRoute []string,
+	tlsRoute *tree.TLSRoute, mapSNI, mapSNIDomainWildcardMap *maps.MapData, acceptedHostnamesForRoute []string,
 ) error {
 	for _, tlsRouteRule := range tlsRoute.Rules {
 		// if !rule.Valid {
@@ -136,7 +136,11 @@ func (b *RouteMgrImpl) onValidTLSRouteUpserted(_ k8stypes.NamespacedName,
 
 		for _, hostname := range acceptedHostnamesForRoute {
 			if tlsRouteRule.Valid {
-				mapSNI.AddData(string(hostname), routeValue)
+				if isDomainWildcard(string(hostname)) {
+					mapSNIDomainWildcardMap.AddData(string(hostname), routeValue)
+				} else {
+					mapSNI.AddData(string(hostname), routeValue)
+				}
 				hostnamesInserted[string(hostname)] = struct{}{}
 			} else if _, ok := hostnamesInserted[string(hostname)]; !ok {
 				mapSNI.DeleteData(string(hostname))
@@ -146,17 +150,21 @@ func (b *RouteMgrImpl) onValidTLSRouteUpserted(_ k8stypes.NamespacedName,
 	return nil
 }
 
-func (RouteMgrImpl) onInvalidTLSRouteUpserted(_ k8stypes.NamespacedName, _ *tree.TLSRoute, _ *maps.MapData) error {
+func (RouteMgrImpl) onInvalidTLSRouteUpserted(_ k8stypes.NamespacedName, _ *tree.TLSRoute, _, _ *maps.MapData) error {
 	// TODO we might need to remove it from the maps
 	return nil
 }
 
 func (RouteMgrImpl) onDeletedTLSRoute(_ k8stypes.NamespacedName, route *tree.TLSRoute,
-	mapSNI *maps.MapData,
+	mapSNI *maps.MapData, mapSNIDomainWildcard *maps.MapData,
 ) error {
 	hostnames := route.K8sResource.Spec.Hostnames
 	for _, hostname := range hostnames {
-		mapSNI.DeleteData(string(hostname))
+		if isDomainWildcard(string(hostname)) {
+			mapSNIDomainWildcard.DeleteData(string(hostname))
+		} else {
+			mapSNI.DeleteData(string(hostname))
+		}
 	}
 	return nil
 }
