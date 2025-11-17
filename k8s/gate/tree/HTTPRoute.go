@@ -384,7 +384,7 @@ func matchHostname(routeHostnames []gatewayv1.Hostname, listenerHostname *gatewa
 			return true
 		}
 	}
-	return false
+	return len(routeHostnames) == 0
 }
 
 // match performs the actual hostname matching between a route and a listener hostname.
