@@ -39,6 +39,7 @@ func (s *HTTPRouteSuite) TearDownSuite() {
 
 func (s *HTTPRouteSuite) expectConditionsUpdated(ctx context.Context, namespace, name string, expectedConditions rc.RouteConditions) {
 	route := &gatewayv1.HTTPRoute{}
+	var gotConditions rc.RouteConditions
 	if !utils.WaitFor(ctx, interval, timeout, func() bool {
 		if err := s.Test().Client.Get(
 			s.Test().Ctx,
@@ -46,13 +47,13 @@ func (s *HTTPRouteSuite) expectConditionsUpdated(ctx context.Context, namespace,
 			return false
 		}
 
-		gotConditions := rc.NewRouteConditionsFromV1RouteConditions(route.Status, base.TestControllerName)
+		gotConditions = rc.NewRouteConditionsFromV1RouteConditions(route.Status, base.TestControllerName)
 
 		res := gotConditions.Equal(expectedConditions)
 
 		return res
 	}) {
-		s.T().Fatal("conditions not correct")
+		s.T().Fatalf("conditions not correct,\nGot %+v\nExpected %+v\n", gotConditions, expectedConditions)
 	}
 }
 

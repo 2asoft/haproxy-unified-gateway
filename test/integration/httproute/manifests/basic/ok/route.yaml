@@ -4,17 +4,17 @@ metadata:
   name: route-echo
 spec:
   parentRefs:
-  - name: gateway
-    sectionName: http
-  - name: gateway
-    sectionName: http2
+    - name: gateway
+      sectionName: http
+    - name: gateway
+      sectionName: http2
   hostnames:
-  - "example.haproxy"
+    - "example.haproxy"
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /path1
-    backendRefs:
-    - name: http-echo
-      port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /path1
+      backendRefs:
+        - name: http-echo
+          port: 80

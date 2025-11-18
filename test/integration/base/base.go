@@ -19,8 +19,10 @@ import (
 	"context"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -350,6 +352,28 @@ func (b *BaseSuite) BackendFromManifest(manifestPath, manifestName string) *mode
 	err = yaml.Unmarshal(yamlFile, &be)
 	b.Require().NoError(err)
 	return &be
+}
+
+func (b *BaseSuite) GetMapFileFrom(mapFileRelativePath string) ([]string, error) {
+	var mapFile []byte
+	mapFile, err := os.ReadFile(filepath.Join(b.test.HaproxyCfgDir, "maps", mapFileRelativePath))
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(string(mapFile), "\n"), nil
+}
+
+func (b *BaseSuite) CheckEntryInMapFile(mapFileRelativePath, key, value string) bool {
+	mapFile, err := b.GetMapFileFrom(mapFileRelativePath)
+	if err != nil {
+		return false
+	}
+	for _, line := range mapFile {
+		if line == key+" "+value {
+			return true
+		}
+	}
+	return false
 }
 
 // func (b *BaseSuite) exportFrontend(fe *models.Frontend) {

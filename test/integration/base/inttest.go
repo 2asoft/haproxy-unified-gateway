@@ -87,6 +87,7 @@ type IntTest struct {
 	TestEnv       *envtest.Environment
 	cancel        context.CancelFunc
 	Namespace     string
+	HaproxyCfgDir string
 }
 
 func NewIntTest(t *testing.T) (test IntTest, err error) {
@@ -210,7 +211,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	// // ----------------
 	// // Start Haproxy App manager
 	var wg sync.WaitGroup
-
+	test.HaproxyCfgDir = gateconfig.HaproxyParams.CfgDir
 	haproxyClient, err := hapapi.New(gateconfig.Logger, gateconfig.HaproxyParams.CfgDir,
 		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket)
 	if err != nil {

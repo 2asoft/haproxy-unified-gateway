@@ -177,11 +177,12 @@ func (b *HTTPRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, 
 	case store.StatusDeleted:
 		if treeHTTPRoute != nil {
 			// Iterate over the listeners of the deleted route and remove the route from each listener
-			treeHTTPRoute.Listeners.Iterate(func(_ string, listener *Listener) bool {
-				// This impact the Gateway object (listener status AttachedRoute), so it needs to be done, even so the HTTPRoute by itself is deleted
-				listener.deleteAttachedRoute(client.ObjectKeyFromObject(treeHTTPRoute.K8sResource), b.ControllerStore)
-				return true
-			})
+			for _, listeners := range treeHTTPRoute.Listeners.Iterate {
+				for _, listener := range listeners {
+					// This impact the Gateway object (listener status AttachedRoute), so it needs to be done, even so the HTTPRoute by itself is deleted
+					listener.deleteAttachedRoute(client.ObjectKeyFromObject(treeHTTPRoute.K8sResource), b.ControllerStore)
+				}
+			}
 			treeHTTPRoute.SetAsDeleted(b.Logger)
 			treeHTTPRoute.ResetChecks()
 		}

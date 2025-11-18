@@ -62,6 +62,17 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 	backendsExpectationsPath := path.Join(expectationsPath, "backends")
 	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
+
+	httpPathPrefixMapFile := "link1_" + s.Test().Namespace + "_gateway_http/path_prefix.map"
+	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
+		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
+		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
+	}
+	httpPathPrefixMapFile = "link1_" + s.Test().Namespace + "_gateway_http2/path_prefix.map"
+	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
+		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
+		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
+	}
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {

@@ -34,7 +34,7 @@ type HTTPRoute struct {
 	// K8sResource is the source resource.
 	K8sResource *gatewayv1.HTTPRoute
 	// selected listener
-	Listeners utils.KeyMap[gatewayv1.ParentReference, *Listener] // map[parentRef]
+	Listeners utils.KeyMap[gatewayv1.ParentReference, []*Listener] // map[parentRef]
 	// Rules
 	Rules []*HTTPRouteRule
 	// Final Conditions
@@ -70,7 +70,7 @@ func NewRoute(k8sObject *gatewayv1.HTTPRoute, controllerName string) *HTTPRoute 
 			Status:          store.StatusUpserted,
 			OldTreeResource: nil,
 		},
-		Listeners: utils.NewKeyMap[gatewayv1.ParentReference, *Listener](utils.ParentRefToKey),
+		Listeners: utils.NewKeyMap[gatewayv1.ParentReference, []*Listener](utils.ParentRefToKey),
 		CheckParentRefs: CheckResultRoute{
 			Valid: false,
 			Conditions: rc.RouteConditions{
@@ -176,20 +176,17 @@ func (r *HTTPRoute) checkParentRefs(controllerStore ControllerStore) {
 			continue
 		}
 
+		routeConditions.MergeOverrideConditionsForParentRef(parentRef, result.Conditions)
 		// From now on, parentRef is a managed Gateway
 
 		// 1- The parentRef is not Valid
 		if !result.Valid {
 			// do not add the parentREf in Listener or check result
-			routeConditions.MergeOverrideConditionsForParentRef(parentRef, result.Conditions)
 			continue
 		}
 
 		// 2- The parentRef is Valid
 		atLeastOneValidParentRef = true
-		routeConditions.MergeOverrideConditionsForParentRef(parentRef, result.Conditions)
-		// no specific conditions
-		r.Listeners.Set(parentRef, result.Listener)
 	}
 
 	// Gather all Conditions for all parentRefs in the result
@@ -207,8 +204,6 @@ type checkParentRefResult struct {
 	// Conditions has a set of failing conditions
 	// It is set only if Managed is true
 	Conditions generic.Conditions
-	// Listener is the selected Listener
-	Listener *Listener
 	// Managed is true if the Gateway is managed by our controller
 	Managed bool
 	// Valid is set only if Managed is true
@@ -218,6 +213,7 @@ type checkParentRefResult struct {
 // checkParentRef checks 1 parentRef and returns:
 // - a bool indicating if the parentRef is valid, and if it's not, a set of conditions detailing why
 func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controllerStore ControllerStore) checkParentRefResult {
+	// Vérifie si le type de parentRef est supporté
 	if !isParentRefGroupKindSupported(parentRef, controllerStore.ExtractGVK) {
 		return checkParentRefResult{
 			Managed:    false,
@@ -226,11 +222,10 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 		}
 	}
 
+	// Récupère le Gateway correspondant
 	gwKey := GetParentRefNamespacedName(parentRef, r.K8sResource)
-
 	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
 	if ok && treeGw.TreeStatus.Status == store.StatusDeleted {
-		// gateway exists, but it was deleted
 		return checkParentRefResult{
 			Managed:    true,
 			Valid:      false,
@@ -238,8 +233,6 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 		}
 	}
 	if !ok {
-		// It's a whole different story, it means the Gateway does not exists,
-		// we can not know if it's managed by our controller or not
 		return checkParentRefResult{
 			Managed:    false,
 			Valid:      false,
@@ -247,13 +240,9 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 		}
 	}
 
-	// From now on, the parent references an exising Gateway managed by our controller
-	// SectionName is optional
-	// 1- if set, the only attachable listener is the one references by the sectionName
-	// 2- if not set, all listeners from the Gateway are attachable
+	// Collecte les listeners attachables
 	attachableListeners := make([]*Listener, 0)
 	if parentRef.SectionName != nil {
-		// Check if the Gateway has this listener
 		listener, ok := treeGw.Listeners[string(*parentRef.SectionName)]
 		if !ok {
 			return checkParentRefResult{
@@ -262,7 +251,6 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 				Conditions: rc.ConditionNotAcceptedNoMatchingParent(),
 			}
 		}
-		// We found the listener, it does exists
 		attachableListeners = append(attachableListeners, listener)
 	} else {
 		for _, listener := range treeGw.Listeners {
@@ -270,86 +258,52 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 		}
 	}
 
-	// If we have only 1 attache listener, just check the hostnames
-	if len(attachableListeners) == 1 {
-		listener := attachableListeners[0]
-		if !listener.Valid {
-			return checkParentRefResult{
-				Managed:    true,
-				Valid:      false,
-				Conditions: rc.ConditionNotAcceptedNoMatchingParent(),
-			}
-		}
-		if matched := matchHostname(r.K8sResource.Spec.Hostnames, listener.K8sResource.Hostname); matched {
-			// AllowedRouteKind ???
-			allowedRouteKind := r.isAllowedRouteKind(listener, controllerStore.ExtractGVK)
-			if !allowedRouteKind {
-				return checkParentRefResult{
-					Managed:    true,
-					Valid:      false,
-					Conditions: rc.ConditionNotAcceptedRouteReasonNotAllowedByListeners(),
-				}
-			}
+	validListeners := make([]*Listener, 0)
+	conds := generic.Conditions{}
 
-			// Set the Listener attached Route
-			listener.addAttachedRoute(client.ObjectKeyFromObject(r.K8sResource), controllerStore)
-
-			return checkParentRefResult{
-				Managed:    true,
-				Valid:      true,
-				Listener:   listener,
-				Conditions: rc.ConditionAccepted(),
-			}
-		}
-		return checkParentRefResult{
-			Managed:    true,
-			Valid:      false,
-			Conditions: rc.ConditionNotAcceptedNoMatchingHostname(),
-		}
-	}
-
-	// Now, case where we need to find a listener among the list
-	var matched bool
-	var matchedListener *Listener
 	for _, listener := range attachableListeners {
+		// Vérifie la validité du listener
 		if !listener.Valid {
+			conds.MergeOverrideConditions(rc.ConditionNotAcceptedNoMatchingParent())
 			continue
 		}
 
-		// Match Hostname ?
-		if matchHostname(r.K8sResource.Spec.Hostnames, listener.K8sResource.Hostname) {
-			matched = true
-			matchedListener = listener
-			break
+		// Vérifie le hostname
+		if !matchHostname(r.K8sResource.Spec.Hostnames, listener.K8sResource.Hostname) {
+			conds.MergeOverrideConditions(rc.ConditionNotAcceptedNoMatchingHostname())
+			continue
 		}
+
+		// Vérifie le type de route autorisé
+		if !r.isAllowedRouteKind(listener, controllerStore.ExtractGVK) {
+			conds.MergeOverrideConditions(rc.ConditionNotAcceptedRouteReasonNotAllowedByListeners())
+			continue
+		}
+
+		// Listener valide, attache la route
+		listener.addAttachedRoute(client.ObjectKeyFromObject(r.K8sResource), controllerStore)
+		validListeners = append(validListeners, listener)
+
+		// Met à jour la KeyMap r.Listeners
+		existing, _ := r.Listeners.Get(parentRef)
+		existing = append(existing, listener)
+		r.Listeners.Set(parentRef, existing)
 	}
-	if !matched {
+
+	// Si aucun listener valide, retourne les conditions cumulées
+	if len(validListeners) == 0 {
 		return checkParentRefResult{
 			Managed:    true,
 			Valid:      false,
-			Conditions: rc.ConditionNotAcceptedNoMatchingParent(),
+			Conditions: conds,
 		}
 	}
 
-	// We have found a listener
-	// Allowed RouteKind ??
-	allowedRouteKind := r.isAllowedRouteKind(matchedListener, controllerStore.ExtractGVK)
-	// Set the Listener attached Route
-	matchedListener.addAttachedRoute(client.ObjectKeyFromObject(r.K8sResource), controllerStore)
-
-	if !allowedRouteKind {
-		return checkParentRefResult{
-			Managed:    true,
-			Valid:      false,
-			Conditions: rc.ConditionNotAcceptedRouteReasonNotAllowedByListeners(),
-		}
-	}
-
+	// Au moins un listener valide
 	return checkParentRefResult{
 		Managed:    true,
 		Valid:      true,
-		Listener:   matchedListener,
-		Conditions: generic.Conditions{},
+		Conditions: rc.ConditionAccepted(),
 	}
 }
 

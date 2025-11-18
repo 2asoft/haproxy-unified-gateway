@@ -50,56 +50,60 @@ func (b *RouteMgrImpl) fillMaps() {
 			continue
 		}
 		route = route.TreeStatus.OldTreeResource
-		for _, listener := range route.Listeners.Iterate {
-			frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
-			if err != nil {
-				b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-					logging.LogAttrError(err),
-				)
-			}
+		for _, listeners := range route.Listeners.Iterate {
+			for _, listener := range listeners {
+				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
+				if err != nil {
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
+						logging.LogAttrError(err),
+					)
+				}
 
-			pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
-			pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
-			pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
-			pathregexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
-			mapExact := mapsStorage.GetMapData(pathExactMap)
-			mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
-			mapRegex := mapsStorage.GetMapData(pathregexMap)
-			mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
-			err = b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
-			// errs.Add(err)
-			_ = err // TODO ignore error for now
+				pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
+				pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
+				pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
+				pathregexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
+				mapExact := mapsStorage.GetMapData(pathExactMap)
+				mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
+				mapRegex := mapsStorage.GetMapData(pathregexMap)
+				mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
+				err = b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
+				// errs.Add(err)
+				_ = err // TODO ignore error for now
+			}
 		}
 	}
 
 	// Managed HTTPRoutes => Create / update/ delete backends
 	for routeKey, route := range controllerStore.GateTree.HTTPRoutes {
 		for _, listener := range route.Listeners.Iterate {
-			frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
-			if err != nil {
-				b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-					logging.LogAttrError(err),
-				)
-			}
+			for _, listener := range listener {
+				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
+				if err != nil {
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
+						logging.LogAttrError(err),
+					)
+				}
 
-			pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
-			pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
-			pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
-			pathRegexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
-			mapExact := mapsStorage.GetMapData(pathExactMap)
-			mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
-			mapRegex := mapsStorage.GetMapData(pathRegexMap)
-			mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
+				pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
+				pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
+				pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
+				pathRegexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
+				mapExact := mapsStorage.GetMapData(pathExactMap)
+				mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
+				mapRegex := mapsStorage.GetMapData(pathRegexMap)
+				mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
 
-			switch route.TreeStatus.Status {
-			case store.StatusUnchanged:
-				continue
-			case store.StatusUpserted:
-				err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
-				errs.Add(err)
-			case store.StatusDeleted:
-				err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
-				errs.Add(err)
+				switch route.TreeStatus.Status {
+				case store.StatusUnchanged:
+					continue
+				case store.StatusUpserted:
+					err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
+					errs.Add(err)
+				case store.StatusDeleted:
+					err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
+					errs.Add(err)
+				}
 			}
 		}
 	}
