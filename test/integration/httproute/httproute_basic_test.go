@@ -176,3 +176,40 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
 }
+
+func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "basic"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir, "ok _multiple_listeners_one_gateway")
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	httpRouteName := "route-echo"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
+
+	// haproxy.cfg Backends
+	backendsExpectationsPath := path.Join(expectationsPath, "backends")
+	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo_80__"}
+	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
+
+	httpPathPrefixMapFile := "link1_" + s.Test().Namespace + "_gateway_http/path_prefix.map"
+	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
+		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
+		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
+	}
+	httpPathPrefixMapFile = "link1_" + s.Test().Namespace + "_gateway_http2/path_prefix.map"
+	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
+		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
+		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
+	}
+}

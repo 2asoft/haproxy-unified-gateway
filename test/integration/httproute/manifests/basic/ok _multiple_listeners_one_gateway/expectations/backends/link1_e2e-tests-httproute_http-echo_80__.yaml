@@ -1,0 +1,26 @@
+{
+    "from": "haproxytech",
+    "metadata": {
+        "hug": {
+            "HTTPRoute": {
+                "e2e-tests-httproute/route-echo": {
+                    "Generation": 1,
+                    "LinkID": "link1"
+                }
+            }
+        }
+    },
+    "mode": "http",
+    "name": "link1_e2e-tests-httproute_http-echo_80__",
+      "abortonclose": "disabled",
+    "balance": {
+        "algorithm": "roundrobin"
+    },
+    "default_server": {
+        "check": "enabled"
+    },
+    "forwardfor": {
+        "enabled": "enabled"
+    },
+    "server_timeout": 50000
+}
