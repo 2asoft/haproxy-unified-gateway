@@ -19,9 +19,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// if we plan to change structure of this CRD in future versions, we need to
+// update the hug/version annotation below and write hash in api/gate/v3/versions.yml
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
+// +kubebuilder:metadata:annotations="gate.hug/version=v0.7.0"
 
 // HugGate is a specification for a HugGate resource
 type HugGate struct {

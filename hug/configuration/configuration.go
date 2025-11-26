@@ -56,6 +56,7 @@ type HUGConfig struct {
 	DisableIPv4           bool `ff:"          long: disable-ipv4,                    usage: 'disable IPv4 support'"`
 	DisableIPv6           bool `ff:"          long: disable-ipv6,			         usage: 'disable IPv6 support'"`
 	Version               bool `ff:"          long: version,                         usage: 'print version and exit'"`
+	JobCheckCRD           bool `ff:"          long: job-check-crd,                   usage: 'run CRD refresh job and exit'"`
 }
 
 //revive:enable:line-length-limit

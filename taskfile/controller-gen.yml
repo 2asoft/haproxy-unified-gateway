@@ -2,6 +2,19 @@
 version: '3'
 
 tasks:
+  controller-gen-cn-version:
+    desc: 'Get the client-native controller-gen version'
+    dir: api/gate/v3
+    cmds:
+      - |
+        client_native_info=$(go list -m -f "{{ "{{" }}.Path}} {{ "{{" }}.Version}}" github.com/haproxytech/client-native/v6)
+        echo "Client Native Version: $client_native_info"
+        client_native_version=$(echo $client_native_info | awk '{print $2}')
+        for file in *.go; do
+            echo "$file"
+            # Use sed to replace the version string in Go files with the new version
+            sed -i  "s@// +kubebuilder:metadata:annotations=\"client-native.haproxy.org/version=.*\"@// +kubebuilder:metadata:annotations=\"client-native.haproxy.org/version=$client_native_version\"@" $file
+        done
   controller-gen-deep-copy:
     desc: 'Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.'
     deps:
@@ -18,3 +31,8 @@ tasks:
           TOOL: CONTROLLER_GEN
     cmds:
       - /{{.TMP}}/controller-gen/{{.CONTROLLER_GEN_VERSION}}/controller-gen crd webhook paths="./api/gate/..." output:crd:artifacts:config=./api/definition
+      - |
+        for file in api/definition/*.yaml; do
+          /{{.TMP}}/yq/{{.YQ_VERSION}}/yq eval 'del(.metadata.annotations."controller-gen.kubebuilder.io/version")' -i "$file"
+        done
+      - go run cmd/crd-version-check/main.go

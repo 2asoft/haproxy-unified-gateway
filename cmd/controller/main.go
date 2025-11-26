@@ -21,6 +21,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/haproxytech/haproxy-unified-gateway/api/definition"
 	"github.com/haproxytech/haproxy-unified-gateway/cmd/start"
 	hugconfig "github.com/haproxytech/haproxy-unified-gateway/hug/configuration"
 	haproxymgr "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy"
@@ -43,6 +44,15 @@ func main() {
 	hugConfig, err := hugconfig.Get()
 	if err != nil {
 		panic(err)
+	}
+
+	if hugConfig.JobCheckCRD {
+		err := definition.CRDRefresh(hugConfig.External.External)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("CRD refresh job completed successfully")
+		return
 	}
 
 	fmt.Println(string(version.Logo))

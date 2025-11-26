@@ -106,6 +106,7 @@ tasks:
       #- go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...
       - /{{.TMP}}/betteralign/{{.BETTERALIGN_VERSION}}/betteralign -apply ./... || true
       - /{{.TMP}}/gofumpt/{{.GOFUMPT_VERSION}}/gofumpt -l -w .
+      - go run cmd/crd-version-check/main.go
 
   licenses:
     internal: true

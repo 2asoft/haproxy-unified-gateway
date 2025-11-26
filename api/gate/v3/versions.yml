@@ -1,0 +1,18 @@
+# Copyright 2024 HAProxy Technologies
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http:# www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+hug-conf.go:
+  v0.7.0: "4dbb98e1701e9d3f44c58ca2b9c0093a72932d68dc2058f79234765e44089246"
+gate.go:
+  v0.7.0: "4b4f42c6bd786e611d7ea0484f2cedd45affc8247c33ad8f776a34d6143d400e"
