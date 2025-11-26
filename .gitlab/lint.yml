@@ -12,6 +12,19 @@ tidy:
   script:
     - go mod tidy
     - test -z "$(git diff 2> /dev/null)" || exit 'Go modules not tidied, issue \`go mod tidy\` and commit the result'
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" == "success" ]; then
+        junit-report add --status=ok --message="tidy check passed successfully"
+      else
+        junit-report add --status=failed --message="go mod tidy not executed" --description="$(git diff)"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
 format:
   stage: lint
   needs: []
@@ -28,6 +41,19 @@ format:
     - task format
     - "sed -i 's/internal: false/internal: true/g' taskfile.yml"
     - test -z "$(git diff 2> /dev/null)" || exit 'Go code not formatted, issue \`task ci\` and commit the result'
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" == "success" ]; then
+        junit-report add --status=ok --message="format check passed successfully"
+      else
+        junit-report add --status=failed --message="go code not formatted" --description="$(git diff)"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
 lint:
   stage: lint
   needs: []
@@ -41,6 +67,19 @@ lint:
     - go
   script:
     - task lint
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" == "success" ]; then
+        junit-report add --status=ok --message="linting passed successfully"
+      else
+        junit-report add --status=failed --message="git diff is not clean" --description="$(git diff)"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
 commit-policy:
   stage: lint
   needs: []

@@ -1,7 +1,5 @@
 unit-tests:
   needs: ["diff", "tidy"]
-  variables:
-    GOTESTSUM_JUNITFILE: "unit-tests-report.xml"
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller/community' && $CI_PIPELINE_SOURCE == 'push'"
@@ -18,6 +16,6 @@ unit-tests:
   artifacts:
     when: always
     paths:
-      - unit-tests-report.xml
+      - junit-report.xml
     reports:
-      junit: unit-tests-report.xml
+      junit: junit-report.xml

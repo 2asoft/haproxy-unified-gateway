@@ -13,6 +13,19 @@ license:
     - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
   script:
     - task licenses
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" == "success" ]; then
+        junit-report add --status=ok --message="license check passed successfully"
+      else
+        junit-report add --status=failed --message="licenses errors" --description="$(task licenses 2>&1)"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
 govulncheck:
   stage: security
   needs: []
@@ -28,3 +41,16 @@ govulncheck:
     - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
   script:
     - task govulncheck
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" == "success" ]; then
+        junit-report add --status=ok --message="vulnerability check passed successfully"
+      else
+        junit-report add --status=failed --message="vulnerabilities detected" --description="$(task govulncheck 2>&1)"
+      fi
+  artifacts:
+    when: always
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
