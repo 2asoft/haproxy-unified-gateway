@@ -12,7 +12,7 @@ enableAllRules = true
   arguments = [60]
 
 [rule.unhandled-error]
-  arguments = ["fmt.Print", "fmt.Println", "strings.Builder.WriteString", "bytes.Buffer.WriteString"]
+  arguments = ["fmt.Print", "fmt.Printf", "fmt.Println", "strings.Builder.WriteString", "bytes.Buffer.WriteString"]
 
 [rule.unexported-return]
   Disabled = true
@@ -46,3 +46,6 @@ enableAllRules = true
 
 [rule.argument-limit]
   arguments = [10]
+
+[rule.var-naming]
+  arguments = [[], [], [{skipPackageNameChecks = true}]]
