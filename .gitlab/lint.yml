@@ -20,7 +20,7 @@ tidy:
         junit-report add --status=failed --message="go mod tidy not executed" --description="$(git diff)"
       fi
   artifacts:
-    when: always
+    when: on_failure
     paths:
       - junit-report.xml
     reports:
@@ -49,7 +49,7 @@ format:
         junit-report add --status=failed --message="go code not formatted" --description="$(git diff)"
       fi
   artifacts:
-    when: always
+    when: on_failure
     paths:
       - junit-report.xml
     reports:
@@ -75,7 +75,7 @@ lint:
         junit-report add --status=failed --message="git diff is not clean" --description="$(git diff)"
       fi
   artifacts:
-    when: always
+    when: on_failure
     paths:
       - junit-report.xml
     reports:
@@ -86,9 +86,15 @@ commit-policy:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   image:
-    name: $CI_REGISTRY_GO/commit-check:5.2.0
+    name: $CI_REGISTRY_GO/commit-check:5.4.0
     entrypoint: [""]
   tags:
     - go
   script:
       - /check
+  artifacts:
+    when: on_failure
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml

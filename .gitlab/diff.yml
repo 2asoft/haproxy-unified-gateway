@@ -23,7 +23,7 @@ diff:
     - test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || exit "Documentation created untracked files, cannot proceed"
     - junit-report add --status=ok --file=diff --message="Diff is clean" --description="Check for uncommitted changes in the repository"
   artifacts:
-    when: always
+    when: on_failure
     paths:
       - junit-report.xml
     reports:
@@ -59,7 +59,7 @@ check-large-files:
         junit-report add --status=ok --file=large-files --message="commit clean" --description="No large files found in the latest commit."
       fi
   artifacts:
-    when: always
+    when: on_failure
     paths:
       - junit-report.xml
     reports:

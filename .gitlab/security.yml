@@ -21,7 +21,7 @@ license:
         junit-report add --status=failed --message="licenses errors" --description="$(task licenses 2>&1)"
       fi
   artifacts:
-    when: always
+    when: on_failure
     paths:
       - junit-report.xml
     reports:
@@ -49,7 +49,7 @@ govulncheck:
         junit-report add --status=failed --message="vulnerabilities detected" --description="$(task govulncheck 2>&1)"
       fi
   artifacts:
-    when: always
+    when: on_failure
     paths:
       - junit-report.xml
     reports:
