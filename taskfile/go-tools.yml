@@ -66,12 +66,17 @@ tasks:
           CURRENT_VERSION: '{{.CURRENT_VERSION}}'
     status:
       - "{{ if eq .CURRENT_VERSION .VERSION }}true{{ else }}false{{ end }}"
+      - "{{ if eq .CURRENT_BUILT_WITH_GO_VERSION .GO_VERSION }}true{{ else }}false{{ end }}"
     vars:
       NAME: '{{ index . (print .TOOL "_NAME") }}'
       VERSION: '{{ index . (print .TOOL "_VERSION") }}'
       URL: '{{ index . (print .TOOL "_URL") }}'
       CURRENT_VERSION:
         sh: go version -m /{{.TMP}}/{{.NAME}}/{{.VERSION}}/{{.NAME}} | awk '$1 == "mod" {print $3}'
+      GO_VERSION:
+        sh: go version | awk '{print $3}'
+      CURRENT_BUILT_WITH_GO_VERSION:
+        sh: go version /{{.TMP}}/{{.NAME}}/{{.VERSION}}/{{.NAME}} | awk '{print $NF}'
     cmds:
       - echo -n "installing {{.NAME}} {{.VERSION}} ..."
       - task : go-install
