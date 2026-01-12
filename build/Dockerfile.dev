@@ -14,7 +14,11 @@
 FROM golang:1.25-alpine AS builder
 
 RUN apk --no-cache add git openssh
-RUN go install github.com/canonical/pebble/cmd/pebble@v1.25.0
+# https://github.com/canonical/pebble/issues/719
+# RUN go install github.com/canonical/pebble/cmd/pebble@v1.25.0
+WORKDIR /src
+RUN git clone --branch stop-signal --single-branch https://github.com/haproxytech/pebble.git
+RUN cd pebble/cmd/pebble && go build -buildvcs=true -o /go/bin/pebble
 
 FROM haproxytech/haproxy-alpine:3.2 AS builder-c
 RUN apk add --no-cache build-base gcc musl-dev

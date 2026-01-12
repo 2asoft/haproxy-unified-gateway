@@ -25,19 +25,14 @@ spec:
           # imagePullPolicy: this is set to never for kind cluster usage
           imagePullPolicy: Always
           # imagePullPolicy: Never
+          args:
+            # specify the hugconf CRD location, all other params are in configuration file
+            - --hugconf-crd=haproxy-unified-gateway/hugconf
           resources:
             limits:
               memory: 2560Mi
             requests:
               memory: 2048Mi
-          lifecycle:
-            preStop:
-              exec:
-                # Send SIGUSR1 directly to the haproxy process
-                command: ["/bin/sh", "-c", "kill -SIGUSR1 $(cat /var/run/haproxy.pid)"]
-          args:
-            # specify the hugconf CRD location, all other params are in configuration file
-            - --hugconf-crd=haproxy-unified-gateway/hugconf
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false

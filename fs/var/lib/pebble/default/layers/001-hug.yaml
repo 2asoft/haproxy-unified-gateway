@@ -8,6 +8,8 @@ services:
         startup: enabled
         on-success: ignore
         on-failure: restart
+        kill-delay: 30s
+        stop-signal: SIGUSR1
 
     hug:
         override: replace
