@@ -13,4 +13,5 @@ env:
 
 vars:
   CONFIG_DIR: "example/deploy"
+  DEV_INIT_DIR: "example/dev-init"
   API_DEFINITION_DIR: "api/definition"

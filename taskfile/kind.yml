@@ -130,9 +130,17 @@ tasks:
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/hugconf.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug-dev/controller.yaml
       - task: delimiter
-      - echo "deploying echo service ..."
-      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/echo/echo.yaml
+      - echo "deploying a complete example in `example` namespace ..."
+      - /{{.kubectl}} create ns example
+      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/echo.yaml
       - /{{.kind}} load docker-image haproxytech/haproxy-unified-gateway:latest --name={{.CLUSTER_NAME}}
+      - task: delimiter
+      - echo "deploying GatewayClass, Gateway, Secret, 2 HTTPRoutes"
+      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/offload-secret.yaml
+      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/gatewayclass.yaml
+      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/gateway.yaml
+      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/route-http.yaml
+      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/route-https.yaml
       - task: delimiter
       - /{{.kubectl}} wait --for=condition=ready --timeout=10s pod -l run=haproxy-unified-gateway -n haproxy-unified-gateway
 

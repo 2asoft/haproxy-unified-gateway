@@ -38,7 +38,7 @@ spec:
           args:
             # specify the hugconf CRD location, all other params are in configuration file
             - --hugconf-crd=haproxy-unified-gateway/hugconf
-            - --log-type=text
+            - --log-type=text  ## default is json output
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
