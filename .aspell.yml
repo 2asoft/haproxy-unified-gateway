@@ -24,9 +24,11 @@ allowed:
   - gitlab
   - golang
   - golangci
+  - groups
   - haproxycfg
   - huggate
   - hugconf
+  - http
   - httproute
   - https
   - init
