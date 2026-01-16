@@ -1,9 +1,11 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: route-echo-https
+  name: route-echo-http
 spec:
   parentRefs:
+  - name: hug-gateway
+    sectionName: http
   - name: hug-gateway
     sectionName: https
   hostnames:

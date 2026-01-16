@@ -183,8 +183,7 @@ tasks:
       - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/offload-secret.yaml
       - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/gatewayclass.yaml
       - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/gateway.yaml
-      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/route-http.yaml
-      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/route-https.yaml
+      - /{{.kubectl}} apply -n example -f {{.DEV_INIT_DIR}}/route.yaml
       - task: delimiter
       - /{{.kubectl}} wait --for=condition=ready --timeout=20s pod -l run=haproxy-unified-gateway -n haproxy-unified-gateway
       - kubectl get pods -A
