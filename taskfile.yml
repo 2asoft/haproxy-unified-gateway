@@ -1,9 +1,6 @@
 #https://taskfile.dev/
 version: "3"
 
-env:
-  TASK_INTERNAL: true
-
 dotenv:
   - .env
 
@@ -78,7 +75,6 @@ tasks:
         /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --format-icons=hivis --format=testdox --format-hide-empty-pkg -- -count=1 -p 1 ./...
 
   tidy:
-    internal: true
     desc: "run Go mod tidy"
     cmds:
       - go mod tidy
@@ -95,7 +91,6 @@ tasks:
       - /{{.TMP}}/betteralign/{{.BETTERALIGN_VERSION}}/betteralign ./...
 
   format:
-    internal: true
     desc: "formats the code"
     deps:
       - task: check-go-tools
@@ -108,7 +103,6 @@ tasks:
       - go run cmd/crd-version-check/main.go
 
   licenses:
-    internal: true
     dir: cmd/controller
     desc: "check licenses"
     deps:
@@ -123,7 +117,6 @@ tasks:
         /{{.TMP}}/go-licenses/{{.GO_LICENSES_VERSION}}/go-licenses check --allowed_licenses="$ALLOWED_LICENSES" --ignore "$PROJECT"  --ignore "github.com/modern-go/reflect2" --ignore "github.com/modern-go/reflect2" --ignore "golang.org/x/sys/unix"  .
 
   check-commit:
-    internal: true
     deps:
       - task: check-go-tool
         vars:
@@ -132,7 +125,6 @@ tasks:
       - /{{.TMP}}/check-commit/{{.CHECK_COMMIT_VERSION}}/check-commit
 
   govulncheck:
-    internal: true
     deps:
       - task: check-go-tool
         vars:

@@ -37,9 +37,7 @@ format:
   tags:
     - go
   script:
-    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
     - task format
-    - "sed -i 's/internal: false/internal: true/g' taskfile.yml"
     - test -z "$(git diff 2> /dev/null)" || exit 'Go code not formatted, issue \`task ci\` and commit the result'
   after_script:
     - |
