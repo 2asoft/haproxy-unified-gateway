@@ -85,7 +85,7 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 				}
 				routesHosnames := utils.ConvertSliceWithFunc(route.K8sResource.Spec.Hostnames, utils.ConvertV1Alpha2HostnameToString)
 				listenerHostname := (*string)(listener.K8sResource.Hostname)
-				acceptedHostnamesForRoute := utils.MatchTLSHostnames(listenerHostname, routesHosnames)
+				acceptedHostnamesForRoute := utils.GetHostnamesForRouteWithListener(listenerHostname, routesHosnames)
 				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
 				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
 				pathSNIDomainWildcardMap := mapsStorage.MapPath(frontendName, storage.SNI_DOMAIN_WILDCARD_MAP)

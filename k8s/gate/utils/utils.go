@@ -18,6 +18,7 @@ package utils // revive:disable:var-naming
 import (
 	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -180,34 +181,51 @@ func GetNamespacedName(name, namespace, defaultNamespace string) types.Namespace
 	return types.NamespacedName{Name: name, Namespace: namespace}
 }
 
-// matchTLSHostnames checks if a route's hostnames match a listener's hostname.
+// GetHostnamesForRouteWithListener returns the hostnames that match a listener and a route.
 // The rules are based on the Gateway API specification.
 // If the listener hostname is not set, it matches any route hostname.
 // If the listener hostname is a wildcard, it checks if it matches any route hostname.
 // If the route hostnames are empty, the listener hostname matches the route hostnames.
-func MatchTLSHostnames(listenerHostname *string, routeHostnames []string) []string {
-	// If the listener hostname is not set, it matches any route hostname.
+func GetHostnamesForRouteWithListener(listenerHostname *string, routeHostnames []string) []string {
 	if listenerHostname == nil {
+		// no restriction from listeners, all hostnames from route are allowed
 		return routeHostnames
 	}
 
-	lh := strings.TrimPrefix(*listenerHostname, "*.")
-
-	// If the route hostnames are empty, the listener hostname matches the route hostnames.
 	if len(routeHostnames) == 0 {
+		// route hostnames are empty, the listener hostname becomes the restriction
 		return []string{*listenerHostname}
 	}
 
-	// If the listener hostname is a wildcard, check if it matches any route hostname.
-	var matched []string
-	for _, rh := range routeHostnames {
-		rhTrim := strings.TrimPrefix(rh, "*.")
-		if rhTrim == lh || strings.HasSuffix(lh, "."+rhTrim) || strings.HasSuffix(rhTrim, "."+lh) {
-			matched = append(matched, rh)
+	// to avoid duplicates
+	matched:= map[string]struct{}{}
+	for _, routeHostname := range routeHostnames {
+		// If the listener hostname is a wildcard, check if it matches any route hostname.
+		if hostnamesMatchingRouteAndListener(routeHostname, *listenerHostname) {
+			matched [*listenerHostname]= struct{}{}
+		} else if hostnamesMatchingRouteAndListener(*listenerHostname, routeHostname) {
+			// If the route hostname is a wildcard, check if it matches any listener hostname.
+			matched[routeHostname]= struct{}{}
 		}
 	}
+	result := make([]string, len(matched))
+	i := 0
+	for k := range matched {
+		result[i] = k
+		i++
+	}
+	slices.Sort(result)
+	return result
+}
 
-	return matched
+func hostnamesMatchingRouteAndListener(pattern, hostname string) bool {
+	// Exact match if no wildcard
+	if !strings.HasPrefix(pattern, "*.") {
+		return pattern == hostname
+	}
+
+	// pattern is of the form "*.example.com"
+	return strings.HasSuffix(hostname, pattern[1:]) 
 }
 
 func ConvertSliceWithFunc[U, V any](arg []U, f func(U) V) []V {
