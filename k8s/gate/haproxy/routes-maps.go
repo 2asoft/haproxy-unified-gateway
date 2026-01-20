@@ -155,7 +155,9 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 						logging.LogAttrError(err),
 					)
 				}
-
+				routesHosnames := utils.ConvertSliceWithFunc(route.K8sResource.Spec.Hostnames, utils.ConvertV1Alpha2HostnameToString)
+				listenerHostname := (*string)(listener.K8sResource.Hostname)
+				acceptedHostnamesForRoute := utils.GetHostnamesForRouteWithListener(listenerHostname, routesHosnames)
 				pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
 				pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
 				pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
@@ -169,7 +171,7 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 				case store.StatusUnchanged:
 					continue
 				case store.StatusUpserted:
-					err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
+					err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact,acceptedHostnamesForRoute)
 					errs.Add(err)
 				case store.StatusDeleted:
 					err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
