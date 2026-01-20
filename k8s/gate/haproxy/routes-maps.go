@@ -171,7 +171,7 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 				case store.StatusUnchanged:
 					continue
 				case store.StatusUpserted:
-					err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact,acceptedHostnamesForRoute)
+					err := b.onUpsertedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact, acceptedHostnamesForRoute)
 					errs.Add(err)
 				case store.StatusDeleted:
 					err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)

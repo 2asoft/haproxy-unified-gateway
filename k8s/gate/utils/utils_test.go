@@ -14,10 +14,9 @@
 package utils // revive:disable:var-naming
 
 import (
+	"slices"
 	"testing"
 	"time"
-
-	"slices"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,8 +69,7 @@ func TestSortByCreationTimestamp_Gateways_SameTimestamp(t *testing.T) {
 	}
 }
 
-
-func TestGetHostnamesForRouteWithListener	(t *testing.T) {
+func TestGetHostnamesForRouteWithListener(t *testing.T) {
 	hostname := "test.example.com"
 	hostnameWildCard := "*.example.com"
 	otherHostname := "other.example.com"
@@ -81,22 +79,22 @@ func TestGetHostnamesForRouteWithListener	(t *testing.T) {
 
 	for i, test := range []struct {
 		listenerHostname *string
-		routeHostnames []string
-		expected      []string    
+		routeHostnames   []string
+		expected         []string
 	}{
-		{&hostname, []string{} , []string{hostname}},
-		{&hostname, []string{hostname} , []string{hostname}},
-		{&hostname, []string{hostname,otherHostname}, []string{hostname}},
-		{nil, []string{hostname,fooHostname} , []string{hostname,fooHostname}},
-		{nil, []string{} , []string{}},
-		{&hostnameWildCard, []string{} , []string{hostnameWildCard}},
-		{&hostnameWildCard, []string{hostname} , []string{hostname}},
-		{&hostnameWildCard, []string{hostname,fooExtendedHostname,otherOrgHostname} , []string{fooExtendedHostname, hostname}},
-		{&hostname, []string{hostnameWildCard} , []string{hostname}},
-		{&hostname, []string{hostnameWildCard,hostname} , []string{hostname}},
-		{&hostname, []string{hostnameWildCard, otherHostname,otherOrgHostname}, []string{hostname}},
-		{&hostnameWildCard, []string{hostnameWildCard} , []string{hostnameWildCard}},
-		{&hostnameWildCard, []string{"*.foo.com"} , []string{}},
+		{&hostname, []string{}, []string{hostname}},
+		{&hostname, []string{hostname}, []string{hostname}},
+		{&hostname, []string{hostname, otherHostname}, []string{hostname}},
+		{nil, []string{hostname, fooHostname}, []string{hostname, fooHostname}},
+		{nil, []string{}, []string{}},
+		{&hostnameWildCard, []string{}, []string{hostnameWildCard}},
+		{&hostnameWildCard, []string{hostname}, []string{hostname}},
+		{&hostnameWildCard, []string{hostname, fooExtendedHostname, otherOrgHostname}, []string{fooExtendedHostname, hostname}},
+		{&hostname, []string{hostnameWildCard}, []string{hostname}},
+		{&hostname, []string{hostnameWildCard, hostname}, []string{hostname}},
+		{&hostname, []string{hostnameWildCard, otherHostname, otherOrgHostname}, []string{hostname}},
+		{&hostnameWildCard, []string{hostnameWildCard}, []string{hostnameWildCard}},
+		{&hostnameWildCard, []string{"*.foo.com"}, []string{}},
 	} {
 		if result := GetHostnamesForRouteWithListener(test.listenerHostname, test.routeHostnames); !slices.Equal(result, test.expected) {
 			t.Errorf("test #%d, Expected %s, got %s", i, test.expected, result)

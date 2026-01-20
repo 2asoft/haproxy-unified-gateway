@@ -278,11 +278,10 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				Expr:     "req_ssl_sni,map(" + sniMap.FullPath() + ")",
 			},
 			{
-				// tcp-request content set-var(txn.sni_match) req_ssl_sni,regsub(^[^.]*,,),map(sni.map)
 				// tcp-request content set-var(txn.sni_match,ifnotexists) req_ssl_sni,map_end(sniDomainWildcardMap.map)
 				Type:     "content",
 				Action:   "set-var",
-				VarName:  "sni_match",
+				VarName:  "sni_match,ifnotexists",
 				VarScope: "txn",
 				Expr:     "req_ssl_sni,map_end(" + sniDomainWildcardMap.FullPath() + ")",
 			},

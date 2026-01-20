@@ -53,7 +53,8 @@ type RouteMgrImpl struct {
 }
 
 func (b *RouteMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData,acceptedHostnamesForRoute []string) error {
+	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData, acceptedHostnamesForRoute []string,
+) error {
 	if route.Valid {
 		return b.onValidHTTPRouteUpserted(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact, acceptedHostnamesForRoute)
 	}
@@ -61,7 +62,8 @@ func (b *RouteMgrImpl) onUpsertedHTTPRoute(routeKey k8stypes.NamespacedName, rou
 }
 
 func (b *RouteMgrImpl) onUpsertedTLSRoute(routeKey k8stypes.NamespacedName, route *tree.TLSRoute,
-	mapSNI, mapSNIDomainWildcardMap *maps.MapData, acceptedHostnamesForRoute []string) error {
+	mapSNI, mapSNIDomainWildcardMap *maps.MapData, acceptedHostnamesForRoute []string,
+) error {
 	if route.Valid {
 		return b.onValidTLSRouteUpserted(routeKey, route, mapSNI, mapSNIDomainWildcardMap, acceptedHostnamesForRoute)
 	}
@@ -69,7 +71,8 @@ func (b *RouteMgrImpl) onUpsertedTLSRoute(routeKey k8stypes.NamespacedName, rout
 }
 
 func (b *RouteMgrImpl) onValidTLSRouteUpserted(_ k8stypes.NamespacedName,
-	tlsRoute *tree.TLSRoute, mapSNI, mapSNIDomainWildcardMap *maps.MapData, acceptedHostnamesForRoute []string) error {
+	tlsRoute *tree.TLSRoute, mapSNI, mapSNIDomainWildcardMap *maps.MapData, acceptedHostnamesForRoute []string,
+) error {
 	for _, tlsRouteRule := range tlsRoute.Rules {
 		// if !rule.Valid {
 		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
@@ -215,7 +218,8 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 }
 
 func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData,acceptedHostnamesForRoute []string) error { //revive:disable:function-length,cognitive-complexity
+	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData, acceptedHostnamesForRoute []string,
+) error { //revive:disable:function-length,cognitive-complexity
 	hostnames := route.K8sResource.Spec.Hostnames
 	for _, rule := range route.Rules {
 		// if !rule.Valid {
@@ -321,7 +325,6 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 					}
 				}
 			}
-
 
 			if rule.Valid {
 				for _, hostname := range acceptedHostnamesForRoute {

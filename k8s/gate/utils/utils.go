@@ -198,14 +198,14 @@ func GetHostnamesForRouteWithListener(listenerHostname *string, routeHostnames [
 	}
 
 	// to avoid duplicates
-	matched:= map[string]struct{}{}
+	matched := map[string]struct{}{}
 	for _, routeHostname := range routeHostnames {
 		// If the listener hostname is a wildcard, check if it matches any route hostname.
 		if hostnamesMatchingRouteAndListener(routeHostname, *listenerHostname) {
-			matched [*listenerHostname]= struct{}{}
+			matched[*listenerHostname] = struct{}{}
 		} else if hostnamesMatchingRouteAndListener(*listenerHostname, routeHostname) {
 			// If the route hostname is a wildcard, check if it matches any listener hostname.
-			matched[routeHostname]= struct{}{}
+			matched[routeHostname] = struct{}{}
 		}
 	}
 	result := make([]string, len(matched))
@@ -225,7 +225,7 @@ func hostnamesMatchingRouteAndListener(pattern, hostname string) bool {
 	}
 
 	// pattern is of the form "*.example.com"
-	return strings.HasSuffix(hostname, pattern[1:]) 
+	return strings.HasSuffix(hostname, pattern[1:])
 }
 
 func ConvertSliceWithFunc[U, V any](arg []U, f func(U) V) []V {
