@@ -224,7 +224,7 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 	}
 
 	// Get the Gateway
-	gwKey := GetParentRefNamespacedName(parentRef, r.K8sResource)
+	gwKey := GetParentRefNamespacedName(parentRef, r.K8sResource.Namespace)
 	treeGw, ok := controllerStore.GateTree.Gateways[gwKey]
 	if ok && treeGw.TreeStatus.Status == store.StatusDeleted {
 		return checkParentRefResult{
@@ -392,30 +392,27 @@ func (r *HTTPRoute) BuildConditions() {
 
 // GetParentRefNamespacedName returns the namespaced name for a parentRef reference,
 // using the Route's namespace as a default if the reference does not specify one.
-func GetParentRefNamespacedName(parentRef gatewayv1.ParentReference, route *gatewayv1.HTTPRoute) types.NamespacedName {
+func GetParentRefNamespacedName(parentRef gatewayv1.ParentReference, defaultNamespace string) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: getNamespace(parentRef.Namespace, route),
+		Namespace: getNamespace(parentRef.Namespace, defaultNamespace),
 		Name:      string(parentRef.Name),
 	}
 }
 
 // GetBackendRefNamespacedName returns the namespaced name for a backendref reference,
 // using the Route's namespace as a default if the reference does not specify one.
-func GetBackendRefNamespacedName(backendRef gatewayv1.BackendObjectReference, route *gatewayv1.HTTPRoute) types.NamespacedName {
+func GetBackendRefNamespacedName(backendRef gatewayv1.BackendObjectReference, defaultNamespace string) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: getNamespace(backendRef.Namespace, route),
+		Namespace: getNamespace(backendRef.Namespace, defaultNamespace),
 		Name:      string(backendRef.Name),
 	}
 }
 
-// getNamespace returns
-//   - the route's namespace if ns if nil
-//   - *ns if not nil
-func getNamespace(ns *gatewayv1.Namespace, route *gatewayv1.HTTPRoute) string {
+func getNamespace(ns *gatewayv1.Namespace, defaultNamespace string) string {
 	if ns != nil {
 		return string(*ns)
 	}
-	return route.Namespace
+	return defaultNamespace
 }
 
 // isBackendRefGroupKindSupported checks if the provided HTTPRoute parent reference has a supported Group and Kind.
