@@ -319,12 +319,6 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 
 	default:
 		httpRules = []*models.HTTPRequestRule{
-			{ // http-request set-var(txn.base) base
-				Type:     "set-var",
-				VarName:  "base",
-				VarScope: "txn",
-				VarExpr:  "base",
-			},
 			{ // http-request set-var(txn.path) path
 				Type:     "set-var",
 				VarName:  "path",
@@ -337,13 +331,19 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				VarScope: "txn",
 				VarExpr:  "req.hdr(Host),host_only",
 			},
+			{ // http-request set-var(txn.base) var(txn.host),concat("",txn.path)
+				Type:     "set-var",
+				VarName:  "base",
+				VarScope: "txn",
+				VarExpr:  "var(txn.host),concat(\"\",txn.path)",
+			},
 			{
 				// exact domain + exact path
 				// http-request set-var(txn.route) base,map(route_exact_match.map)
 				Type:     "set-var",
 				VarName:  "route",
 				VarScope: "txn",
-				VarExpr:  "base,map(" + pathExactMap.FullPath() + ")",
+				VarExpr:  "var(txn.base),map(" + pathExactMap.FullPath() + ")",
 				Metadata: map[string]any{"hug": "exact domain + exact path"},
 			},
 			{
@@ -361,7 +361,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				Type:     "set-var",
 				VarName:  "route,ifnotexists",
 				VarScope: "txn",
-				VarExpr:  "base,map_beg(" + pathPrefixMap.FullPath() + ")",
+				VarExpr:  "var(txn.base),map_beg(" + pathPrefixMap.FullPath() + ")",
 				Metadata: map[string]any{"hug": "exact domain + path prefix"},
 			},
 			{
@@ -371,7 +371,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				VarName:  "route,ifnotexists",
 				VarScope: "txn",
 				VarExpr:  "path,map_beg(" + pathPrefixMap.FullPath() + ")",
-				Metadata: map[string]any{"hug": "exact domain + path prefix"},
+				Metadata: map[string]any{"hug": "any domain + path prefix"},
 			},
 			{
 				//	# domain wildcard + exact path
@@ -379,7 +379,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				Type:     "set-var",
 				VarName:  "route,ifnotexists",
 				VarScope: "txn",
-				VarExpr:  "base,map_end(" + pathDomainWPathExactMap.FullPath() + ")",
+				VarExpr:  "var(txn.base),map_end(" + pathDomainWPathExactMap.FullPath() + ")",
 				Metadata: map[string]any{"hug": "domain wildcard + exact path"},
 			},
 			{
@@ -399,7 +399,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				Type:     "set-var",
 				VarName:  "route,ifnotexists",
 				VarScope: "txn",
-				VarExpr:  "base,map_reg(" + pathRegexMap.FullPath() + ")",
+				VarExpr:  "var(txn.base),map_reg(" + pathRegexMap.FullPath() + ")",
 				Metadata: map[string]any{"hug": "domain wildcard + path prefix or regex, exact domain + path regex"},
 			},
 			{
