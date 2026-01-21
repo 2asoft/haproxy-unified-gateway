@@ -90,8 +90,7 @@ func (r *ReferencedBy) RemoveReferencedByUsingKeys(logger *slog.Logger, ownedKey
 
 func (r *ReferencedBy) ReferencedBy(owned client.Object, ownerGVK schema.GroupVersionKind) map[client.ObjectKey]struct{} {
 	ownedKey := client.ObjectKeyFromObject(owned)
-	r.ReferencedByUsingKeys(ownedKey, ownerGVK)
-	return r.Owner[ownedKey][ownerGVK]
+	return r.ReferencedByUsingKeys(ownedKey, ownerGVK)
 }
 
 func (r *ReferencedBy) ReferencedByUsingKeys(ownedKey client.ObjectKey, ownerGVK schema.GroupVersionKind) map[client.ObjectKey]struct{} {
