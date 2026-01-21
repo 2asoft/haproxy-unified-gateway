@@ -13,3 +13,7 @@ tasks:
       - cd /{{.TMP}} && csplit --elide-empty-files -f gatewayapicrd- -z --suffix-format='%02d.yaml' standard-install.yaml "/^---$/" "{*}"
       - mkdir -p crds
       - mv /{{.TMP}}/gatewayapicrd-* {{.OUTDIR}}
+      - curl -L -o /{{.TMP}}/experimental-install.yaml {{.GATEWAYAPI_EXPERIMENTAL_CRDS_DOWNLOAD_URL}}
+      - cd /{{.TMP}} && csplit --elide-empty-files -f gatewayapicrdexp- -z --suffix-format='%02d.yaml' experimental-install.yaml "/^---$/" "{*}"
+      - mkdir -p crds
+      - mv /{{.TMP}}/gatewayapicrdexp-* {{.OUTDIR}}
