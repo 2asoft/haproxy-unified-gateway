@@ -73,7 +73,7 @@ func (d *directControl) Service(action string) (string, error) {
 		}
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		return "", cmd.Run()
+		return "", cmd.Start()
 	case "stop":
 		if processErr != nil {
 			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is already stopped")

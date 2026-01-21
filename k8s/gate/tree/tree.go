@@ -26,7 +26,6 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -52,19 +51,10 @@ type GateTree struct {
 }
 
 type ReferencedObjects struct {
-	// ReferencedHugGates includes the Gates that are references by GatewayClasses and Gateways
-	ReferencedHugGates references.ReferencedBy
-	//  ReferencedGatewayClasses includes the GatewayClasses that are references by Gateways
-	ReferencedGatewayClasses references.ReferencedBy
-
 	//  ReferencedSecrets includes the GatewayClasses that are references by Gateways Listeners
 	// Owners are Listeners
 	ReferencedSecrets         references.ReferencedBy
 	PreviousReferencedSecrets references.ReferencedBy
-	// ReferencedGateways includes the Gateways that are referenced by HTTPRoutes
-	ReferencedGateways references.ReferencedBy
-	// ReferencedServices includes the Services that are references by HTTPRoutes
-	ReferencedServices references.ReferencedBy
 	// ReferencedBackendCRs includes the Backends CR that are referenced by HTTPRoutes
 	ReferencedBackendCRs references.ReferencedBy
 }
@@ -118,50 +108,45 @@ type TreeResourcePointer[T TreeResource] interface {
 
 func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
 	return &ReferencedObjects{
-		ReferencedHugGates:        references.NewReferencedBy("huggate", extractGVK),
-		ReferencedGatewayClasses:  references.NewReferencedBy("gatewayclass", extractGVK),
 		ReferencedSecrets:         references.NewReferencedBy("secret", extractGVK),
 		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),
-		ReferencedGateways:        references.NewReferencedBy("gateway", extractGVK),
-		ReferencedServices:        references.NewReferencedBy("service", extractGVK),
-		ReferencedBackendCRs:      references.NewReferencedBy("backend", extractGVK),
 	}
 }
 
-func addIndirectFromReferenced[OWNED client.Object, OWNER client.Object](
-	ownedUpdate store.Update[OWNED],
-	referencedBy references.ReferencedBy,
-	ownerMap map[client.ObjectKey]OWNER,
-	updateMap map[client.ObjectKey]store.Update[OWNER],
-	ownergvk schema.GroupVersionKind,
-	ownerKeyTransformer func(client.ObjectKey) client.ObjectKey,
-) {
-	var owned OWNED
-	switch ownedUpdate.Status {
-	case store.StatusUpserted:
-		owned = ownedUpdate.NewObject
-	case store.StatusDeleted:
-		owned = ownedUpdate.OldObject
-	}
+// func addIndirectFromReferenced[OWNED client.Object, OWNER client.Object](
+// 	ownedUpdate store.Update[OWNED],
+// 	referencedBy references.ReferencedBy,
+// 	ownerMap map[client.ObjectKey]OWNER,
+// 	updateMap map[client.ObjectKey]store.Update[OWNER],
+// 	ownergvk schema.GroupVersionKind,
+// 	ownerKeyTransformer func(client.ObjectKey) client.ObjectKey,
+// ) {
+// 	var owned OWNED
+// 	switch ownedUpdate.Status {
+// 	case store.StatusUpserted:
+// 		owned = ownedUpdate.NewObject
+// 	case store.StatusDeleted:
+// 		owned = ownedUpdate.OldObject
+// 	}
 
-	ownerKeys := referencedBy.ReferencedBy(owned, ownergvk)
+// 	ownerKeys := referencedBy.ReferencedBy(owned, ownergvk)
 
-	for ownerKey := range ownerKeys {
-		if ownerKeyTransformer != nil {
-			ownerKey = ownerKeyTransformer(ownerKey)
-		}
-		owner := ownerMap[ownerKey]
-		if _, alreadyPresent := updateMap[ownerKey]; alreadyPresent {
-			continue
-		}
-		updateMap[ownerKey] = store.Update[OWNER]{
-			NewObject: owner,
-			OldObject: owner, // indirect update
-			Status:    store.StatusUpserted,
-			Indirect:  true,
-		}
-	}
-}
+// 	for ownerKey := range ownerKeys {
+// 		if ownerKeyTransformer != nil {
+// 			ownerKey = ownerKeyTransformer(ownerKey)
+// 		}
+// 		owner := ownerMap[ownerKey]
+// 		if _, alreadyPresent := updateMap[ownerKey]; alreadyPresent {
+// 			continue
+// 		}
+// 		updateMap[ownerKey] = store.Update[OWNER]{
+// 			NewObject: owner,
+// 			OldObject: owner, // indirect update
+// 			Status:    store.StatusUpserted,
+// 			Indirect:  true,
+// 		}
+// 	}
+// }
 
 func cleanTreeUpdates[T TreeResource, R TreeResourcePointer[T]](resourceMap map[types.NamespacedName]R) {
 	for key, resource := range resourceMap {

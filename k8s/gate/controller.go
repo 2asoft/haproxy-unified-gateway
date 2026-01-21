@@ -44,7 +44,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	k8spredicate "sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -237,7 +237,7 @@ func Add(
 func registerControllers(ctx context.Context, cfg config.Configuration, mgr manager.Manager, eventCh chan any) error {
 	type ctlrCfg struct {
 		name       string
-		objectType client.Object
+		objectType ctrlruntimeclient.Object
 		options    []Option
 	}
 
@@ -257,7 +257,6 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 				WithOnlyMetadata(),
 				WithK8sPredicate(
 					k8spredicate.And(
-						// k8spredicate.GenerationChangedPredicate{},
 						predicate.AnnotationPredicate{Annotation: constant.BundleVersionAnnotation}),
 				),
 			},
@@ -272,6 +271,18 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 						predicate.GatewayClassPredicate{ControllerName: cfg.ControllerName},
 					),
 				),
+				// Watch HugGate
+				WithEnqueueFor([]enqueueForParams{
+					{
+						watchSource: objtypes.ObjectTypeHugGate,
+						enqueueFunc: enqueueGatewayClassForHugGate,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+				},
+				),
 			},
 		},
 		{
@@ -283,6 +294,33 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 						k8spredicate.GenerationChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
+				),
+				WithEnqueueFor([]enqueueForParams{
+					// Watch HugGate
+					{
+						watchSource: objtypes.ObjectTypeHugGate,
+						enqueueFunc: enqueueGatewayForHugGate,
+						predicate:   predicate.NewNamespacePredicate(cfg.Namespaces),
+					},
+					// Watch GatewayClass
+					{
+						watchSource: objtypes.ObjectTypeGatewayClass,
+						enqueueFunc: enqueueGatewayForGatewayClass,
+						predicate: k8spredicate.And(
+							k8spredicate.GenerationChangedPredicate{},
+							predicate.GatewayClassPredicate{ControllerName: cfg.ControllerName},
+						),
+					},
+					// Watch Secrets
+					{
+						watchSource: objtypes.ObjectTypeSecret,
+						enqueueFunc: enqueueGatewayForSecret,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+				},
 				),
 			},
 		},
@@ -296,6 +334,36 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 						// predicate.GatewayPredicate{GatewayClassNames: cfg.GatewayClasses},
 						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
+				),
+				// Watch Gateway
+				WithEnqueueFor([]enqueueForParams{
+					{
+						watchSource: objtypes.ObjectTypeGateway,
+						enqueueFunc: enqueueHTTPRouteForGateway,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+					// Watch Services
+					{
+						watchSource: objtypes.ObjectTypeService,
+						enqueueFunc: enqueueHTTPRouteForService,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+					// Watch BAckend CRs
+					{
+						watchSource: objtypes.ObjectTypeBackend,
+						enqueueFunc: enqueueHTTPRouteForBackendCR,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+				},
 				),
 			},
 		},

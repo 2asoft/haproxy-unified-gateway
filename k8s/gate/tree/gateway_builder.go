@@ -14,12 +14,9 @@
 package tree
 
 import (
-	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
-	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -57,74 +54,12 @@ func NewGatewayBuilder(params GatewayBuilderParams) Builder {
 
 func (b *GatewayBuilderImpl) ComputeTreeUpdates() {
 	b.resetListenerConflicts()
-	b.addIndirectClusterStoreUpdates()
 
 	// After this step, the clusterStore.Updates contains all impacted Gateways
 	// Including the one impacted by:
-	// - HugGate updates
 	// - GatewayClass updates
 	b.computeGateTreeUpdates()
 	// Here we check for Listener conflicts
-}
-
-func (b *GatewayBuilderImpl) addIndirectClusterStoreUpdates() {
-	// Indirect from HugGate
-	b.addIndirectGatewaysFromHugGates()
-	// Indirect from GatewayClass
-	b.addIndirectGatewaysFromGatewayClasses()
-	// Indirect from Secret
-	b.addIndirectGatewaysFromSecrets()
-}
-
-func (b *GatewayBuilderImpl) addIndirectGatewaysFromHugGates() {
-	for _, hugGateUpdate := range b.ClusterStore.Updates.HugGates {
-		b.addIndirectGatewaysFromHugGate(hugGateUpdate)
-	}
-}
-
-func (b *GatewayBuilderImpl) addIndirectGatewaysFromHugGate(hugGateUpdate store.Update[*v3.HugGate]) {
-	addIndirectFromReferenced(
-		hugGateUpdate,
-		b.ControllerStore.ReferencedObjects.ReferencedHugGates,
-		b.ControllerStore.ClusterStore.Gateways,
-		b.ClusterStore.Updates.Gateways,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
-		nil, // no ownerKey transformation
-	)
-}
-
-func (b *GatewayBuilderImpl) addIndirectGatewaysFromGatewayClasses() {
-	for _, gwcUpdate := range b.ClusterStore.Updates.GatewayClasses {
-		b.addIndirectGatewaysFromGatewayClass(gwcUpdate)
-	}
-}
-
-func (b *GatewayBuilderImpl) addIndirectGatewaysFromGatewayClass(gwcUpdate store.Update[*gatewayv1.GatewayClass]) {
-	addIndirectFromReferenced(
-		gwcUpdate,
-		b.ReferencedObjects.ReferencedGatewayClasses,
-		b.ClusterStore.Gateways,
-		b.ClusterStore.Updates.Gateways,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
-		nil, // no ownerKey transformation
-	)
-}
-
-func (b *GatewayBuilderImpl) addIndirectGatewaysFromSecrets() {
-	for _, secretUpdate := range b.ClusterStore.Updates.Secrets {
-		b.addIndirectGatewaysFromSecret(secretUpdate)
-	}
-}
-
-func (b *GatewayBuilderImpl) addIndirectGatewaysFromSecret(secretUpdate store.Update[*v1.Secret]) {
-	addIndirectFromReferenced(
-		secretUpdate,
-		b.ReferencedObjects.ReferencedSecrets,
-		b.ClusterStore.Gateways,
-		b.ClusterStore.Updates.Gateways,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway),
-		ConvertListenerKeyToGatewayKey,
-	)
 }
 
 func (b *GatewayBuilderImpl) computeGateTreeUpdates() {

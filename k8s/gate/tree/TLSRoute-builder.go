@@ -20,10 +20,8 @@ import (
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
-	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -53,49 +51,7 @@ func NewTLSRouteBuilder(params TLSRouteBuilderParams) Builder {
 // --------------------
 
 func (b *TLSRouteBuilderImpl) ComputeTreeUpdates() {
-	b.addIndirectClusterStoreUpdates()
 	b.computeGateTreeUpdates()
-}
-
-func (b *TLSRouteBuilderImpl) addIndirectClusterStoreUpdates() {
-	// Indirect from Services
-	b.addIndirectMapsFromServices()
-	// Indirect from Gateways
-	b.addIndirectMapsFromGateways()
-}
-
-func (b *TLSRouteBuilderImpl) addIndirectMapsFromServices() {
-	for _, service := range b.ClusterStore.Updates.Services {
-		b.addIndirectMapsFromService(service)
-	}
-}
-
-func (b *TLSRouteBuilderImpl) addIndirectMapsFromService(serviceUpdate store.Update[*v1.Service]) {
-	addIndirectFromReferenced(
-		serviceUpdate,
-		b.ReferencedObjects.ReferencedServices,
-		b.ClusterStore.TLSRoutes,
-		b.ClusterStore.Updates.TLSRoutes,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeTLSRoute),
-		nil, // no ownerKey transformation
-	)
-}
-
-func (b *TLSRouteBuilderImpl) addIndirectMapsFromGateways() {
-	for _, gateway := range b.ClusterStore.Updates.Gateways {
-		b.addIndirectMapsFromGateway(gateway)
-	}
-}
-
-func (b *TLSRouteBuilderImpl) addIndirectMapsFromGateway(gatewayUpdate store.Update[*gatewayv1.Gateway]) {
-	addIndirectFromReferenced(
-		gatewayUpdate,
-		b.ReferencedObjects.ReferencedGateways,
-		b.ClusterStore.TLSRoutes,
-		b.ClusterStore.Updates.TLSRoutes,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeTLSRoute),
-		nil,
-	)
 }
 
 func (b *TLSRouteBuilderImpl) computeGateTreeUpdates() {

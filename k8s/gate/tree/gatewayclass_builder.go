@@ -14,8 +14,6 @@
 package tree
 
 import (
-	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
-	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -47,33 +45,12 @@ func (b *GatewayClassBuilderImpl) ComputeTreeUpdates() {
 	b.addIndirectClusterStoreUpdates()
 	// After this step, the clusterStore.Updates contains all impacted GatewayClass
 	// Including the one impacted by:
-	// - HugGate updates
 	// - installedVersions updates
 	b.computeGateTreeUpdates()
 }
 
 func (b *GatewayClassBuilderImpl) addIndirectClusterStoreUpdates() {
-	// Indirect from HugGate
-	b.addIndirectGatewayClassesFromHugGates()
-	// Indirect from InstalledVersions
 	b.addIndirectGatewayClassesFromInstalledVersions()
-}
-
-func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHugGates() {
-	for _, hugGateUpdate := range b.ClusterStore.Updates.HugGates {
-		b.addIndirectGatewayClassesFromHugGate(hugGateUpdate)
-	}
-}
-
-func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromHugGate(hugGateUpdate store.Update[*v3.HugGate]) {
-	addIndirectFromReferenced(
-		hugGateUpdate,
-		b.ReferencedObjects.ReferencedHugGates,
-		b.ClusterStore.GatewayClasses,
-		b.ClusterStore.Updates.GatewayClasses,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGatewayClass),
-		nil, // no ownerKey transformation
-	)
 }
 
 func (b *GatewayClassBuilderImpl) addIndirectGatewayClassesFromInstalledVersions() {

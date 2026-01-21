@@ -18,13 +18,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
-	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -58,68 +55,7 @@ func NewHTTPRouteBuilder(params HTTPRouteBuilderParams) Builder {
 // --------------------
 
 func (b *HTTPRouteBuilderImpl) ComputeTreeUpdates() {
-	b.addIndirectClusterStoreUpdates()
 	b.computeGateTreeUpdates()
-}
-
-func (b *HTTPRouteBuilderImpl) addIndirectClusterStoreUpdates() {
-	// Indirect from Services
-	b.addIndirectMapsFromServices()
-	// Indirect from Gateways
-	b.addIndirectMapsFromGateways()
-	// Indirect from Backend CR
-	b.addIndirectMapsFromBackendCRs()
-}
-
-func (b *HTTPRouteBuilderImpl) addIndirectMapsFromServices() {
-	for _, service := range b.ClusterStore.Updates.Services {
-		b.addIndirectMapsFromService(service)
-	}
-}
-
-func (b *HTTPRouteBuilderImpl) addIndirectMapsFromService(serviceUpdate store.Update[*v1.Service]) {
-	addIndirectFromReferenced(
-		serviceUpdate,
-		b.ReferencedObjects.ReferencedServices,
-		b.ClusterStore.HTTPRoutes,
-		b.ClusterStore.Updates.HTTPRoutes,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),
-		nil, // no ownerKey transformation
-	)
-}
-
-func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateways() {
-	for _, gateway := range b.ClusterStore.Updates.Gateways {
-		b.addIndirectMapsFromGateway(gateway)
-	}
-}
-
-func (b *HTTPRouteBuilderImpl) addIndirectMapsFromGateway(gatewayUpdate store.Update[*gatewayv1.Gateway]) {
-	addIndirectFromReferenced(
-		gatewayUpdate,
-		b.ReferencedObjects.ReferencedGateways,
-		b.ClusterStore.HTTPRoutes,
-		b.ClusterStore.Updates.HTTPRoutes,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),
-		nil,
-	)
-}
-
-func (b *HTTPRouteBuilderImpl) addIndirectMapsFromBackendCRs() {
-	for _, backendCR := range b.ClusterStore.Updates.BackendCRs {
-		b.addIndirectMapsFromBackendCR(backendCR)
-	}
-}
-
-func (b *HTTPRouteBuilderImpl) addIndirectMapsFromBackendCR(backendCRUpdate store.Update[*v3.Backend]) {
-	addIndirectFromReferenced(
-		backendCRUpdate,
-		b.ReferencedObjects.ReferencedBackendCRs,
-		b.ClusterStore.HTTPRoutes,
-		b.ClusterStore.Updates.HTTPRoutes,
-		b.ControllerStore.ExtractGVK(objtypes.ObjectTypeHTTPRoute),
-		nil,
-	)
 }
 
 func (b *HTTPRouteBuilderImpl) computeGateTreeUpdates() {

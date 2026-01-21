@@ -26,7 +26,6 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -135,14 +134,6 @@ func (g *GatewayClass) BuildConditions(controllerStore ControllerStore) {
 	case false:
 		g.buildConditionsIgnored(controllerStore.Logger)
 	}
-}
-
-func getGatewayClassParamsRefKey(gwc *gatewayv1.GatewayClass) (types.NamespacedName, bool) {
-	paramsRef := gwc.Spec.ParametersRef
-	if paramsRef == nil {
-		return types.NamespacedName{}, false
-	}
-	return client.ObjectKey{Namespace: utils.NamespaceAsString(paramsRef.Namespace), Name: paramsRef.Name}, true
 }
 
 func (g *GatewayClass) buildConditionsManaged(_ *slog.Logger, cs ControllerStore) {

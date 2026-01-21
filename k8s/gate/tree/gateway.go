@@ -169,31 +169,38 @@ func (g *Gateway) checkParametersRef(controllerStore ControllerStore) {
 		ParamRef:      paramRef,
 		StoreHugGates: controllerStore.ClusterStore.HugGates,
 	}
-	var hugGate *v3.HugGate
-	g.CheckParamsRef, hugGate = checker.CheckGatewayClass()
+	var gwHugGate *v3.HugGate
+	g.CheckParamsRef, gwHugGate = checker.CheckGatewayClass()
 	if g.CheckParamsRef.Valid {
 		// Check if the GatewayClass has a valid ParamsRef and if so, merge them
 		gwcKey := types.NamespacedName{Name: string(g.K8sResource.Spec.GatewayClassName)}
 		treeGwc, ok := controllerStore.GateTree.GatewayClasses[gwcKey]
 
 		if ok && treeGwc.Valid {
-			gwcGate := treeGwc.HugGate
-			if gwcGate != nil {
+			gwcHugGate := treeGwc.HugGate
+			if gwcHugGate != nil {
 				mergedHugGate := &v3.HugGate{}
-				if g.HugGate != nil {
-					mergedHugGate = g.HugGate
-				}
-				err := mergo.Merge(mergedHugGate, hugGate)
+				// First Gwc HugGate
+				err := mergo.MergeWithOverwrite(mergedHugGate, gwcHugGate)
 				if err != nil {
 					controllerStore.Logger.LogAttrs(context.Background(), slog.LevelError, "error merging haproxy gate",
 						logging.LogAttrError(err))
-				} else {
-					g.HugGate = mergedHugGate
 				}
+
+				// Then Gw HugGate with Override
+				if gwHugGate != nil {
+					err := mergo.MergeWithOverwrite(mergedHugGate, gwHugGate)
+					if err != nil {
+						controllerStore.Logger.LogAttrs(context.Background(), slog.LevelError, "error merging haproxy gate",
+							logging.LogAttrError(err))
+					}
+				}
+
+				g.HugGate = mergedHugGate
 			}
 		} else {
 			// No merge needed
-			g.HugGate = hugGate
+			g.HugGate = gwHugGate
 		}
 	}
 }
@@ -251,20 +258,6 @@ func (g *Gateway) checkListenerConflicts(portWithoutConflict map[gatewayv1.PortN
 		g.CheckConflict.Valid = true
 	}
 	g.Valid = g.Valid && g.CheckConflict.Valid
-}
-
-func getGatewayParamsRefKey(gw *gatewayv1.Gateway) (types.NamespacedName, bool) {
-	if gw.Spec.Infrastructure == nil {
-		return types.NamespacedName{}, false
-	}
-	if gw.Spec.Infrastructure.ParametersRef == nil {
-		return types.NamespacedName{}, false
-	}
-	paramsRef := gw.Spec.Infrastructure.ParametersRef
-	if paramsRef == nil {
-		return types.NamespacedName{}, false
-	}
-	return client.ObjectKey{Namespace: gw.Namespace, Name: paramsRef.Name}, true
 }
 
 func (g *Gateway) BuildConditions() {

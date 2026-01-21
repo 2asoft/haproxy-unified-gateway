@@ -26,7 +26,8 @@ import (
 
 	ctlr "sigs.k8s.io/controller-runtime"
 	ctlr_builder "sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlruntimehandler "sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -37,10 +38,11 @@ const (
 )
 
 type recConfig struct {
-	namespacedNameFilter NamespacedNameFilterFunc
 	k8sPredicate         predicate.Predicate
+	namespacedNameFilter NamespacedNameFilterFunc
 	fieldIndices         index.FieldIndices
 	newReconciler        NewReconcilerFunc
+	enqueueForList       []enqueueForParams
 	onlyMetadata         bool
 }
 
@@ -84,20 +86,39 @@ func WithOnlyMetadata() Option {
 	}
 }
 
+// WithEnqueueFor tells the controller to also watch for other types
+func WithEnqueueFor(l []enqueueForParams) Option {
+	return func(cfg *recConfig) {
+		cfg.enqueueForList = l
+	}
+}
+
 func defaultConfig() recConfig {
 	return recConfig{
 		newReconciler: NewReconciler,
 	}
 }
 
+func (c recConfig) hasEnqueueFor() bool {
+	return len(c.enqueueForList) != 0
+}
+
 type registerParams struct {
 	ctx        context.Context
 	logger     *slog.Logger
-	objectType client.Object
+	objectType ctrlruntimeclient.Object
 	name       string
 	mgr        manager.Manager
 	eventCh    chan<- any
 	options    []Option
+}
+
+type enqueueForParams struct {
+	// Which extra object type we want to Watch
+	// For example, a GatewayClass controller depends and want to watch for HugGate
+	watchSource ctrlruntimeclient.Object
+	enqueueFunc func(client ctrlruntimeclient.Client) ctrlruntimehandler.MapFunc
+	predicate   predicate.Predicate
 }
 
 // Register registers a new controller for the object type in the manager and configure it with the provided options.
@@ -134,12 +155,31 @@ func Register(params registerParams) error {
 		}
 		forOpts = append(forOpts, ctlr_builder.OnlyMetadata)
 	}
+
+	// If we have some predicates, add them
+	if cfg.k8sPredicate != nil {
+		forOpts = append(forOpts, ctlr_builder.WithPredicates(cfg.k8sPredicate))
+	}
+
+	// 1. Watch for the objectType itself
 	builder := ctlr.NewControllerManagedBy(params.mgr).
 		Named(params.name).
 		For(params.objectType, forOpts...)
 
-	if cfg.k8sPredicate != nil {
-		builder = builder.WithEventFilter(cfg.k8sPredicate)
+	// 2. Watch for dependent objects
+	if cfg.hasEnqueueFor() {
+		for _, ef := range cfg.enqueueForList {
+			var enqueueOpts []ctlr_builder.WatchesOption
+			if ef.predicate != nil {
+				enqueueOpts = append(enqueueOpts, ctlr_builder.WithPredicates(ef.predicate))
+			}
+
+			builder = builder.Watches(
+				ef.watchSource,
+				ctrlruntimehandler.EnqueueRequestsFromMapFunc(ef.enqueueFunc(params.mgr.GetClient())),
+				enqueueOpts...,
+			)
+		}
 	}
 
 	reconcileConfig := ReconcilerConfig{
@@ -160,9 +200,9 @@ func Register(params registerParams) error {
 
 type addIndexParams struct {
 	ctx         context.Context
-	indexer     client.FieldIndexer
-	objectType  client.Object
-	indexerFunc client.IndexerFunc
+	indexer     ctrlruntimeclient.FieldIndexer
+	objectType  ctrlruntimeclient.Object
+	indexerFunc ctrlruntimeclient.IndexerFunc
 	field       string
 }
 
