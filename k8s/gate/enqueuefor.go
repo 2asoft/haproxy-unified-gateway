@@ -17,13 +17,12 @@ package controller
 
 import (
 	"context"
-	"strings"
 
-	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
+
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -32,7 +31,7 @@ import (
 // enqueueGatewayClassForHugGate returns a handler.EventHandler that enqueues all GatewayClasses
 // related to an observed HugGate.
 // The relationship is built via the `spec.parametersRef` field in the GatewayClass.
-func enqueueGatewayClassForHugGate(ctrlclient client.Client) handler.MapFunc {
+func enqueueGatewayClassForHugGate(ctrlclient client.Client, _ utilsk8s.ExtractGVK) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		var requests []reconcile.Request
 
@@ -71,7 +70,7 @@ func getGatewayClassParamsRefKey(gwc gatewayv1.GatewayClass) (types.NamespacedNa
 // - The relationship is built via the `spec.parametersRef` field in the GatewayClass.
 // Indirect:
 // - related to the referenced GatewayClass that references this HugGate
-func enqueueGatewayForHugGate(ctrlclint client.Client) handler.MapFunc {
+func enqueueGatewayForHugGate(ctrlclint client.Client, _ utilsk8s.ExtractGVK) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		var requests []reconcile.Request
 
@@ -135,7 +134,7 @@ func getGatewayParamsRefKey(gw gatewayv1.Gateway) (types.NamespacedName, bool) {
 
 // enqueueGatewayForGatewayClass returns a handler.EventHandler that enqueues all Gateways
 // related to an observed GatewayClass.
-func enqueueGatewayForGatewayClass(ctrlclient client.Client) handler.MapFunc {
+func enqueueGatewayForGatewayClass(ctrlclient client.Client, _ utilsk8s.ExtractGVK) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		var requests []reconcile.Request
 
@@ -162,7 +161,7 @@ func enqueueGatewayForGatewayClass(ctrlclient client.Client) handler.MapFunc {
 
 // enqueueGatewayForSecret returns a handler.EventHandler that enqueues all Gateways
 // related to an observed Secret.
-func enqueueGatewayForSecret(ctrlclient client.Client) handler.MapFunc {
+func enqueueGatewayForSecret(ctrlclient client.Client, _ utilsk8s.ExtractGVK) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		var requests []reconcile.Request
 
@@ -181,7 +180,7 @@ func enqueueGatewayForSecret(ctrlclient client.Client) handler.MapFunc {
 				}
 				for _, certRef := range listener.TLS.CertificateRefs {
 					// We only accept v1.Secret
-					if !isSecretGroupKindSupported(certRef) {
+					if !utilsk8s.IsSecretGroupKindSupported(certRef) {
 						continue
 					}
 					secretNsName := utils.GetNamespacedName(string(certRef.Name),
@@ -201,21 +200,9 @@ func enqueueGatewayForSecret(ctrlclient client.Client) handler.MapFunc {
 	}
 }
 
-// isSecretGroupKindSupported checks if the provided certificate reference has a supported Group and Kind.
-// It only supports core `v1.Secret` resources.
-func isSecretGroupKindSupported(certRef gatewayv1.SecretObjectReference) bool {
-	if certRef.Kind != nil && *certRef.Kind != "Secret" {
-		return false
-	}
-	if certRef.Group != nil && *certRef.Group != "" {
-		return false
-	}
-	return true
-}
-
 // enqueueHTTPRouteForGateway returns a handler.EventHandler that enqueues all HTTPRoutes
 // related to an observed Gateway.
-func enqueueHTTPRouteForGateway(ctrlclient client.Client) handler.MapFunc {
+func enqueueHTTPRouteForGateway(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		var requests []reconcile.Request
 
@@ -230,7 +217,7 @@ func enqueueHTTPRouteForGateway(ctrlclient client.Client) handler.MapFunc {
 		for _, route := range routeList.Items {
 			for _, parentRef := range route.Spec.ParentRefs {
 				// We only accept v1.Gateway
-				if !isParentRefGroupKindSupported(parentRef) {
+				if !utilsk8s.IsParentRefGroupKindSupported(parentRef, extractGVK) {
 					continue
 				}
 				gwNsName := utils.GetNamespacedName(string(parentRef.Name),
@@ -250,28 +237,9 @@ func enqueueHTTPRouteForGateway(ctrlclient client.Client) handler.MapFunc {
 	}
 }
 
-// isParentRefGroupKindSupported checks if the provided HTTPRoute parent reference has a supported Group and Kind.
-// It only supports `gatewayv1.Gateway` resources.
-func isParentRefGroupKindSupported(parentRef gatewayv1.ParentReference) bool {
-	gatewaytype := objtypes.ObjectTypeGateway
-
-	gvk, err := apiutil.GVKForObject(gatewaytype, scheme)
-	if err != nil {
-		return false
-	}
-
-	if parentRef.Kind != nil && *parentRef.Kind != gatewayv1.Kind(gvk.Kind) {
-		return false
-	}
-	if parentRef.Group != nil && *parentRef.Group != gatewayv1.Group(gvk.Group) {
-		return false
-	}
-	return true
-}
-
 // enqueueHTTPRouteForService returns a handler.EventHandler that enqueues all HTTPRoutes
 // related to an observed Service.
-func enqueueHTTPRouteForService(ctrlclient client.Client) handler.MapFunc {
+func enqueueHTTPRouteForService(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		var requests []reconcile.Request
 
@@ -288,7 +256,7 @@ func enqueueHTTPRouteForService(ctrlclient client.Client) handler.MapFunc {
 				for _, rule := range route.Spec.Rules {
 					for _, backendRef := range rule.BackendRefs {
 						// We only accept v1.Service
-						if !isBackendRefGroupKindSupported(backendRef.BackendObjectReference) {
+						if !utilsk8s.IsBackendRefGroupKindSupported(backendRef.BackendObjectReference, extractGVK) {
 							continue
 						}
 						serviceNsName := utils.GetNamespacedName(
@@ -311,27 +279,9 @@ func enqueueHTTPRouteForService(ctrlclient client.Client) handler.MapFunc {
 	}
 }
 
-// isBackendRefGroupKindSupported checks if the provided HTTPRoute parent reference has a supported Group and Kind.
-// It only supports `corev1.Service` resources.
-func isBackendRefGroupKindSupported(backendRef gatewayv1.BackendObjectReference) bool {
-	servicetype := objtypes.ObjectTypeService
-	serviceGVK, err := apiutil.GVKForObject(servicetype, scheme)
-	if err != nil {
-		return false
-	}
-
-	if backendRef.Kind != nil && *backendRef.Kind != gatewayv1.Kind(serviceGVK.Kind) {
-		return false
-	}
-	if backendRef.Group != nil && *backendRef.Group != gatewayv1.Group(serviceGVK.Group) {
-		return false
-	}
-	return true
-}
-
 // enqueueHTTPRouteForBackendCR returns a handler.EventHandler that enqueues all HTTPRoutes
 // related to an observed Backend.
-func enqueueHTTPRouteForBackendCR(ctrlclient client.Client) handler.MapFunc {
+func enqueueHTTPRouteForBackendCR(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {
 	return func(ctx context.Context, o client.Object) []reconcile.Request {
 		var requests []reconcile.Request
 
@@ -352,7 +302,7 @@ func enqueueHTTPRouteForBackendCR(ctrlclient client.Client) handler.MapFunc {
 							continue
 						}
 						// We only accept v3.Backend
-						if !isFilterExtensionRefKindSupported(filter.ExtensionRef) {
+						if !utilsk8s.IsFilterExtensionRefKindSupported(filter.ExtensionRef, extractGVK) {
 							continue
 						}
 						nsName := types.NamespacedName{
@@ -371,25 +321,4 @@ func enqueueHTTPRouteForBackendCR(ctrlclient client.Client) handler.MapFunc {
 		}
 		return requests
 	}
-}
-
-// isFilterExtensionRefKindSupported checks if the provided filter ExtensionRef has a supported Group and Kind.
-// It only supports `v3.Backend` resources.
-func isFilterExtensionRefKindSupported(extensionRef *gatewayv1.LocalObjectReference) bool {
-	backendCRType := objtypes.ObjectTypeBackend
-	backendGVK, err := apiutil.GVKForObject(backendCRType, scheme)
-	if err != nil {
-		return false
-	}
-
-	if extensionRef == nil {
-		return false
-	}
-	if !strings.EqualFold(backendGVK.Kind, string(extensionRef.Kind)) {
-		return false
-	}
-	if backendGVK.Group != string(extensionRef.Group) {
-		return false
-	}
-	return true
 }

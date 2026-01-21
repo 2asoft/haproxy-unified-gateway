@@ -33,7 +33,7 @@ import (
 	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/predicate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	apiv1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
@@ -148,12 +148,11 @@ func Add(
 	}
 
 	eventCh := make(chan any)
+	extractGVK := utilsk8s.NewExtractGKV(scheme, cfg.Logger)
 
-	if err := registerControllers(ctx, cfg, mgr, eventCh); err != nil {
+	if err := registerControllers(ctx, extractGVK, cfg, mgr, eventCh); err != nil {
 		return fmt.Errorf("cannot register controllers: %w", err)
 	}
-
-	extractGVK := utils.NewExtractGKV(scheme, cfg.Logger)
 
 	clusterStore := &store.ClusterStore{
 		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
@@ -234,7 +233,7 @@ func Add(
 }
 
 //revive:disable:function-length
-func registerControllers(ctx context.Context, cfg config.Configuration, mgr manager.Manager, eventCh chan any) error {
+func registerControllers(ctx context.Context, extractGVK utilsk8s.ExtractGVK, cfg config.Configuration, mgr manager.Manager, eventCh chan any) error {
 	type ctlrCfg struct {
 		name       string
 		objectType ctrlruntimeclient.Object
@@ -490,6 +489,7 @@ func registerControllers(ctx context.Context, cfg config.Configuration, mgr mana
 			mgr:        mgr,
 			eventCh:    eventCh,
 			options:    registerConfig.options,
+			extractGVK: extractGVK,
 		}
 		if err := Register(params); err != nil {
 			return fmt.Errorf("cannot register controller for %T: %w", registerConfig.objectType, err)

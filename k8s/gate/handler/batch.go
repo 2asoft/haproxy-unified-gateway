@@ -29,7 +29,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/status"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,7 +52,7 @@ type GateTreeConfig struct {
 	MapsStorage                storage.MapsStorage
 	BaseLogger                 *slog.Logger
 	LogCategoryFilterHandler   *logging.CategoryFilterHandler
-	ExtractGVK                 utils.ExtractGVK
+	ExtractGVK                 utilsk8s.ExtractGVK
 	TransferHaproxyConfChannel chan diffs.HaproxyConfDiffs
 	//  Namespace and name of the controller conf CRD
 	ControllerConfNsName types.NamespacedName

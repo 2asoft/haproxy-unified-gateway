@@ -24,7 +24,7 @@ import (
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,7 +48,7 @@ var _ CertStorage = &CertificateStorageDefault{}
 // CertificateStorageDefault handles a default storage for certificates
 type CertificateStorageDefault struct {
 	logger     *slog.Logger
-	extractGVK utils.ExtractGVK
+	extractGVK utilsk8s.ExtractGVK
 	// CertsBaseDir the base directory to store certificates
 	// /etc/unified.../certs/<namespace>/my/
 	CertsBaseDir string
@@ -56,7 +56,7 @@ type CertificateStorageDefault struct {
 	CertFilesBaseDir string
 }
 
-func NewCertificateStorage(logger *slog.Logger, extractGVK utils.ExtractGVK, structureType StructureType, certsBaseDir, certFileBaseDir string) (CertificateStorage, error) {
+func NewCertificateStorage(logger *slog.Logger, extractGVK utilsk8s.ExtractGVK, structureType StructureType, certsBaseDir, certFileBaseDir string) (CertificateStorage, error) {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogCategoryCertsStorage))
 
 	switch structureType {

@@ -21,7 +21,7 @@ import (
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/events"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -31,7 +31,7 @@ type EventLoop struct {
 	handler    EventHandler
 	logger     *slog.Logger
 	eventCh    <-chan any
-	extractGVK utils.ExtractGVK
+	extractGVK utilsk8s.ExtractGVK
 
 	timer  *time.Timer
 	timerC <-chan time.Time
@@ -57,7 +57,7 @@ func NewEventLoop(
 	eventCh <-chan any,
 	logger *slog.Logger,
 	handler EventHandler,
-	extractGVK utils.ExtractGVK,
+	extractGVK utilsk8s.ExtractGVK,
 ) *EventLoop {
 	return &EventLoop{
 		loopCfg:      loopCfg,

@@ -18,7 +18,7 @@ import (
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -30,7 +30,7 @@ type ControllerStore struct {
 	// A Map of installed GwApi CRDs versions
 	InstalledGwAPIVersions *InstalledVersions
 	Logger                 *slog.Logger
-	ExtractGVK             utils.ExtractGVK
+	ExtractGVK             utilsk8s.ExtractGVK
 	CertUpdates            *CertUpdates
 	CrtListUpdates         *CrtListUpdates
 	// from config

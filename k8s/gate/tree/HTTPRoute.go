@@ -23,6 +23,7 @@ import (
 	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -214,7 +215,7 @@ type checkParentRefResult struct {
 // - a bool indicating if the parentRef is valid, and if it's not, a set of conditions detailing why
 func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controllerStore ControllerStore) checkParentRefResult {
 	// Vérifie si le type de parentRef est supporté
-	if !isParentRefGroupKindSupported(parentRef, controllerStore.ExtractGVK) {
+	if !utilsk8s.IsParentRefGroupKindSupported(parentRef, controllerStore.ExtractGVK) {
 		return checkParentRefResult{
 			Managed:    false,
 			Valid:      false,
@@ -307,7 +308,7 @@ func (r *HTTPRoute) checkParentRef(parentRef gatewayv1.ParentReference, controll
 	}
 }
 
-func (r *HTTPRoute) isAllowedRouteKind(listener *Listener, extractGVK utils.ExtractGVK) bool {
+func (r *HTTPRoute) isAllowedRouteKind(listener *Listener, extractGVK utilsk8s.ExtractGVK) bool {
 	gvk := extractGVK(r.K8sResource)
 	for _, allowed := range listener.AllowedRouteKinds {
 		if allowed.Group != nil && *allowed.Group == gatewayv1.Group(gvk.Group) {
@@ -417,64 +418,15 @@ func getNamespace(ns *gatewayv1.Namespace, route *gatewayv1.HTTPRoute) string {
 	return route.Namespace
 }
 
-// isParentRefGroupKindSupported checks if the provided HTTPRoute parent reference has a supported Group and Kind.
-// It only supports `gatewayv1.Gateway` resources.
-func isParentRefGroupKindSupported(parentRef gatewayv1.ParentReference, extractGVK utils.ExtractGVK) bool {
-	gatewaytype := objtypes.ObjectTypeGateway
-	gatewayGVK := extractGVK(gatewaytype)
-	if parentRef.Kind != nil && *parentRef.Kind != gatewayv1.Kind(gatewayGVK.Kind) {
-		return false
-	}
-	if parentRef.Group != nil && *parentRef.Group != gatewayv1.Group(gatewayGVK.Group) {
-		return false
-	}
-	return true
-}
-
 // isBackendRefGroupKindSupported checks if the provided HTTPRoute parent reference has a supported Group and Kind.
 // It only supports `corev1.Service` resources.
-func isBackendRefGroupKindSupported(backendRef gatewayv1.BackendObjectReference, extractGVK utils.ExtractGVK) bool {
+func isBackendRefGroupKindSupported(backendRef gatewayv1.BackendObjectReference, extractGVK utilsk8s.ExtractGVK) bool {
 	servicetype := objtypes.ObjectTypeService
 	serviceGVK := extractGVK(servicetype)
 	if backendRef.Kind != nil && *backendRef.Kind != gatewayv1.Kind(serviceGVK.Kind) {
 		return false
 	}
 	if backendRef.Group != nil && *backendRef.Group != gatewayv1.Group(serviceGVK.Group) {
-		return false
-	}
-	return true
-}
-
-// IsFilterExtensionRefKindSupported checks if the provided filter ExtensionRef has a supported Group and Kind.
-// It only supports `v3.Backend` resources.
-func IsFilterExtensionRefKindSupported(extensionRef *gatewayv1.LocalObjectReference, extractGVK utils.ExtractGVK) bool {
-	backendCRType := objtypes.ObjectTypeBackend
-	backendGVK := extractGVK(backendCRType)
-	if extensionRef == nil {
-		return false
-	}
-	if !strings.EqualFold(backendGVK.Kind, string(extensionRef.Kind)) {
-		return false
-	}
-	if backendGVK.Group != string(extensionRef.Group) {
-		return false
-	}
-	return true
-}
-
-func IsFilterExtensionRefKindMergeType(extensionRef *gatewayv1.LocalObjectReference, extractGVK utils.ExtractGVK) bool {
-	backendCRType := objtypes.ObjectTypeBackend
-	backendGVK := extractGVK(backendCRType)
-	if extensionRef == nil {
-		return false
-	}
-	if !strings.EqualFold("MergeType", string(extensionRef.Kind)) {
-		return false
-	}
-	if backendGVK.Group != string(extensionRef.Group) {
-		return false
-	}
-	if !(strings.EqualFold("Override", string(extensionRef.Name)) || strings.EqualFold("Append", string(extensionRef.Name))) {
 		return false
 	}
 	return true

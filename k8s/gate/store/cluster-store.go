@@ -17,7 +17,7 @@ import (
 	"log/slog"
 
 	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	v1 "k8s.io/api/core/v1"
 	discoveryV1 "k8s.io/api/discovery/v1"
@@ -58,7 +58,7 @@ type ClusterStoreUpdater interface {
 type ClusterStoreUpdaterImpl struct {
 	clusterStore *ClusterStore
 	storeAdapter *storeAdapter
-	extractGVK   utils.ExtractGVK
+	extractGVK   utilsk8s.ExtractGVK
 	logger       *slog.Logger
 }
 
@@ -67,7 +67,7 @@ var _ ClusterStoreUpdater = &ClusterStoreUpdaterImpl{}
 
 func NewClusterStoreUpdaterImpl(
 	clusterStore *ClusterStore,
-	extractGVK utils.ExtractGVK,
+	extractGVK utilsk8s.ExtractGVK,
 	logger *slog.Logger,
 ) ClusterStoreUpdater {
 	return &ClusterStoreUpdaterImpl{

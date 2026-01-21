@@ -21,7 +21,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,7 +34,7 @@ type StatusUpdater interface {
 type StatusUpdaterConf struct {
 	logger         *slog.Logger
 	client         client.Client
-	extractGVK     utils.ExtractGVK
+	extractGVK     utilsk8s.ExtractGVK
 	controllerName string
 }
 
@@ -64,7 +64,7 @@ func NewStatusUpdater(
 
 func NewStatusUpdaterConf(
 	k8sClient client.Client,
-	extractGVK utils.ExtractGVK,
+	extractGVK utilsk8s.ExtractGVK,
 	controllerName string,
 	logger *slog.Logger,
 ) StatusUpdaterConf {
@@ -175,7 +175,7 @@ type StatusUpdateParams[T client.Object] struct {
 	Getter        client.Client
 	StatusUpdater client.SubResourceWriter
 	Logger        *slog.Logger
-	extractGVK    utils.ExtractGVK
+	extractGVK    utilsk8s.ExtractGVK
 	NsName        types.NamespacedName
 }
 

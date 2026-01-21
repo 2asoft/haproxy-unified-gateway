@@ -17,18 +17,13 @@ package utils // revive:disable:var-naming
 
 import (
 	"cmp"
-	"context"
 	"fmt"
-	"log/slog"
 	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
@@ -36,25 +31,6 @@ import (
 // Ptr return pointer to a given value
 func Ptr[V any](v V) *V {
 	return &v
-}
-
-// ExtractGVK is a function that extracts the GroupVersionKind (GVK) of a client.object.
-// It will log an error if the GKV cannot be extracted.
-type ExtractGVK func(object client.Object) schema.GroupVersionKind
-
-// NewExtractGKV creates a new MustExtractGVK function using the scheme.
-func NewExtractGKV(scheme *runtime.Scheme, logger *slog.Logger) ExtractGVK {
-	return func(obj client.Object) schema.GroupVersionKind {
-		gvk, err := apiutil.GVKForObject(obj, scheme)
-		if err != nil {
-			// this should not happen
-			logger.LogAttrs(context.Background(), slog.LevelError,
-				fmt.Sprintf("could not extract GVK for object: %T", obj),
-			)
-		}
-
-		return gvk
-	}
 }
 
 type ObjectWithTimestamp interface {

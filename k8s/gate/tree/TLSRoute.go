@@ -8,6 +8,7 @@ import (
 	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -168,7 +169,7 @@ func (r *TLSRoute) checkParentRefs(controllerStore ControllerStore) {
 
 //revive:disable:function-length
 func (r *TLSRoute) checkParentRef(parentRef gatewayv1.ParentReference, controllerStore ControllerStore) checkParentRefResult {
-	if !isParentRefGroupKindSupported(parentRef, controllerStore.ExtractGVK) {
+	if !utilsk8s.IsParentRefGroupKindSupported(parentRef, controllerStore.ExtractGVK) {
 		return checkParentRefResult{
 			Managed:    false,
 			Valid:      false,
@@ -291,7 +292,7 @@ func getNamespaceOrDefault(namespace *gatewayv1.Namespace, defaultNamespace stri
 	return defaultNamespace
 }
 
-func (r *TLSRoute) isAllowedRouteKind(listener *Listener, extractGVK utils.ExtractGVK) bool {
+func (r *TLSRoute) isAllowedRouteKind(listener *Listener, extractGVK utilsk8s.ExtractGVK) bool {
 	gvk := extractGVK(r.K8sResource)
 	for _, allowed := range listener.AllowedRouteKinds {
 		if allowed.Group != nil && *allowed.Group == gatewayv1.Group(gvk.Group) {

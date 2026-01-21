@@ -24,7 +24,7 @@ import (
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 )
 
 //revive:disable:var-naming
@@ -43,13 +43,13 @@ var _ MapsStorage = &MapsStorageDefault{}
 
 type MapsStorageDefault struct {
 	logger     *slog.Logger
-	extractGVK utils.ExtractGVK
+	extractGVK utilsk8s.ExtractGVK
 	Maps       map[string]*maps.MapData
 	// MapsBaseDir the base directory to store maps
 	MapsBaseDir string
 }
 
-func NewMapsStorage(logger *slog.Logger, extractGVK utils.ExtractGVK, structureType StructureType, mapsBaseDir string) (MapsStorage, error) {
+func NewMapsStorage(logger *slog.Logger, extractGVK utilsk8s.ExtractGVK, structureType StructureType, mapsBaseDir string) (MapsStorage, error) {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogMapsStorage))
 
 	if mapsBaseDir == "" {

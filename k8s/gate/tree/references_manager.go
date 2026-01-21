@@ -15,6 +15,7 @@ package tree
 
 import (
 	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 )
 
 type ReferenceManager struct {
@@ -55,7 +56,7 @@ func (rm *ReferenceManager) buildSecretReferences() {
 			}
 			for _, certRef := range listener.TLS.CertificateRefs {
 				// We only accept v1.Secret
-				if !isSecretGroupKindSupported(certRef) {
+				if !utilsk8s.IsSecretGroupKindSupported(certRef) {
 					continue
 				}
 				nsName := GetCertificateRefNamespacedName(certRef, gw)

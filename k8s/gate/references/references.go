@@ -18,19 +18,19 @@ import (
 	"log/slog"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ReferencedBy struct {
-	exctractGVK utils.ExtractGVK
+	exctractGVK utilsk8s.ExtractGVK
 	// Owner: Gate Key -> GVK of Owner -> Owner Key
 	Owner map[client.ObjectKey]map[schema.GroupVersionKind]map[client.ObjectKey]struct{}
 	Name  string
 }
 
-func NewReferencedBy(name string, exctractGVK utils.ExtractGVK) ReferencedBy {
+func NewReferencedBy(name string, exctractGVK utilsk8s.ExtractGVK) ReferencedBy {
 	return ReferencedBy{
 		exctractGVK: exctractGVK,
 		Owner:       make(map[client.ObjectKey]map[schema.GroupVersionKind]map[client.ObjectKey]struct{}),

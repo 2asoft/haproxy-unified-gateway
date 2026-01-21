@@ -23,7 +23,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/references"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -106,7 +106,7 @@ type TreeResourcePointer[T TreeResource] interface {
 	TreeObject[T]
 }
 
-func NewReferencedObjects(extractGVK utils.ExtractGVK) *ReferencedObjects {
+func NewReferencedObjects(extractGVK utilsk8s.ExtractGVK) *ReferencedObjects {
 	return &ReferencedObjects{
 		ReferencedSecrets:         references.NewReferencedBy("secret", extractGVK),
 		PreviousReferencedSecrets: references.NewReferencedBy("secret", extractGVK),

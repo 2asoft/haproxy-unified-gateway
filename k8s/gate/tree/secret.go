@@ -108,15 +108,3 @@ func GetCertificateRefNamespacedName(certRef gatewayv1.SecretObjectReference, gw
 		Name:      string(certRef.Name),
 	}
 }
-
-// isSecretGroupKindSupported checks if the provided certificate reference has a supported Group and Kind.
-// It only supports core `v1.Secret` resources.
-func isSecretGroupKindSupported(certRef gatewayv1.SecretObjectReference) bool {
-	if certRef.Kind != nil && *certRef.Kind != "Secret" {
-		return false
-	}
-	if certRef.Group != nil && *certRef.Group != "" {
-		return false
-	}
-	return true
-}

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/index"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	ctlr "sigs.k8s.io/controller-runtime"
 	ctlr_builder "sigs.k8s.io/controller-runtime/pkg/builder"
@@ -105,11 +106,12 @@ func (c recConfig) hasEnqueueFor() bool {
 
 type registerParams struct {
 	ctx        context.Context
-	logger     *slog.Logger
 	objectType ctrlruntimeclient.Object
-	name       string
 	mgr        manager.Manager
+	logger     *slog.Logger
 	eventCh    chan<- any
+	extractGVK utilsk8s.ExtractGVK
+	name       string
 	options    []Option
 }
 
@@ -117,7 +119,7 @@ type enqueueForParams struct {
 	// Which extra object type we want to Watch
 	// For example, a GatewayClass controller depends and want to watch for HugGate
 	watchSource ctrlruntimeclient.Object
-	enqueueFunc func(client ctrlruntimeclient.Client) ctrlruntimehandler.MapFunc
+	enqueueFunc func(client ctrlruntimeclient.Client, extractGVK utilsk8s.ExtractGVK) ctrlruntimehandler.MapFunc
 	predicate   predicate.Predicate
 }
 
@@ -176,7 +178,7 @@ func Register(params registerParams) error {
 
 			builder = builder.Watches(
 				ef.watchSource,
-				ctrlruntimehandler.EnqueueRequestsFromMapFunc(ef.enqueueFunc(params.mgr.GetClient())),
+				ctrlruntimehandler.EnqueueRequestsFromMapFunc(ef.enqueueFunc(params.mgr.GetClient(), params.extractGVK)),
 				enqueueOpts...,
 			)
 		}

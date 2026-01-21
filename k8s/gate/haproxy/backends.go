@@ -31,6 +31,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	"github.com/imdario/mergo"
 
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -537,8 +538,8 @@ func (b *HaproxyConfMgrImpl) mergeWithBackendCRs(backendRef gatewayv1.HTTPBacken
 		// - Kind: MergeType CRDs
 		// Name can only have 2 values:
 		// - Name: Override || Append
-		isFilterExtensionRefKindSupported := tree.IsFilterExtensionRefKindSupported(filter.ExtensionRef, b.params.extractGVK)
-		isFilterExtensionRefKindMergeType := tree.IsFilterExtensionRefKindMergeType(filter.ExtensionRef, b.params.extractGVK)
+		isFilterExtensionRefKindSupported := utilsk8s.IsFilterExtensionRefKindSupported(filter.ExtensionRef, b.params.extractGVK)
+		isFilterExtensionRefKindMergeType := utilsk8s.IsFilterExtensionRefKindMergeType(filter.ExtensionRef, b.params.extractGVK)
 
 		if !(isFilterExtensionRefKindSupported || isFilterExtensionRefKindMergeType) {
 			continue

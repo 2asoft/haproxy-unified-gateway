@@ -15,7 +15,7 @@ package metadata
 
 import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 )
 
 const (
@@ -37,13 +37,13 @@ type Manager interface {
 }
 
 type ManagerImpl struct {
-	extractGVK utils.ExtractGVK
+	extractGVK utilsk8s.ExtractGVK
 	linkID     string
 }
 
 var _ Manager = &ManagerImpl{}
 
-func NewManager(extractGVK utils.ExtractGVK, linkID string) Manager {
+func NewManager(extractGVK utilsk8s.ExtractGVK, linkID string) Manager {
 	return &ManagerImpl{
 		extractGVK: extractGVK,
 		linkID:     linkID,
