@@ -252,24 +252,22 @@ func enqueueHTTPRouteForService(ctrlclient client.Client, extractGVK utilsk8s.Ex
 		}
 
 		for _, route := range routeList.Items {
-			for _, parentRef := range route.Spec.ParentRefs {
-				for _, rule := range route.Spec.Rules {
-					for _, backendRef := range rule.BackendRefs {
-						// We only accept v1.Service
-						if !utilsk8s.IsBackendRefGroupKindSupported(backendRef.BackendObjectReference, extractGVK) {
-							continue
-						}
-						serviceNsName := utils.GetNamespacedName(
-							string(parentRef.Name),
-							string(utils.PointerDefaultValueIfNil(parentRef.Namespace)),
-							route.GetNamespace())
+			for _, rule := range route.Spec.Rules {
+				for _, backendRef := range rule.BackendRefs {
+					// We only accept v1.Service
+					if !utilsk8s.IsBackendRefGroupKindSupported(backendRef.BackendObjectReference, extractGVK) {
+						continue
+					}
+					serviceNsName := utils.GetNamespacedName(
+						string(backendRef.Name),
+						string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
+						route.GetNamespace())
 
-						if serviceNsName.Name == o.GetName() && serviceNsName.Namespace == o.GetNamespace() {
-							requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
-								Namespace: route.GetNamespace(),
-								Name:      route.GetName(),
-							}})
-						}
+					if serviceNsName.Name == o.GetName() && serviceNsName.Namespace == o.GetNamespace() {
+						requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+							Namespace: route.GetNamespace(),
+							Name:      route.GetName(),
+						}})
 					}
 				}
 			}

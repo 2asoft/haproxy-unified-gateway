@@ -19,6 +19,8 @@ import (
 	"path"
 
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
+	v1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route() {
@@ -113,4 +115,47 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_bac
 	expectedBackends = []string{"link1_e2e-tests-httproute_http-echo-1_80__", "link1_e2e-tests-httproute_http-echo-3_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 	s.ExpectBackendsDoNotExist(s.Test().Ctx, "link1_e2e-tests-httproute_http-echo-2_80__")
+}
+
+func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_1_backend_dynamic_delete_service() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "backends"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir, "1_route_1_backend")
+	manifests := []string{"gateway.yaml", "gatewayclass.yaml", "http-echo-1.yaml", "route-1.yaml"}
+	s.CreateFixtures(fixturePath, manifests)
+	defer s.CleanupFixtures(fixturePath, manifests)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	httpRouteName := "route-echo-1"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, httpRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
+
+	// haproxy.cfg Backends
+	backendsExpectationsPath := path.Join(expectationsPath, "backends")
+	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo-1_80__"}
+	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
+
+	// Now remove the Service http-echo-1
+	// Backend link1_e2e-tests-httproute_http-echo-1_80__ should be deleted
+	s.deleteService("http-echo-1")
+	s.ExpectBackendsDoNotExist(s.Test().Ctx, "link1_e2e-tests-httproute_http-echo-1_80__")
+	s.CreateFixtures(fixturePath, []string{"http-echo-1.yaml"}) // Recreate the service in order to please the defer  s.CleanupFixtures(fixturePath, manifests)
+}
+
+func (s *HTTPRouteTestSuite) deleteService(name string) *v1.Service {
+	var service v1.Service
+	err := s.Test().Client.Get(s.Test().Ctx, client.ObjectKey{Name: name, Namespace: s.Test().Namespace}, &service)
+	s.Require().NoError(err)
+
+	err = s.Test().Client.Delete(s.Test().Ctx, &service)
+	s.Require().NoError(err)
+
+	return &service
 }
