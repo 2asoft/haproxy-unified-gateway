@@ -50,7 +50,7 @@ type CertificateStorageDefault struct {
 	logger     *slog.Logger
 	extractGVK utilsk8s.ExtractGVK
 	// CertsBaseDir the base directory to store certificates
-	// /etc/unified.../certs/<namespace>/my/
+	// /usr/local/hug/certs/<namespace>/my/
 	CertsBaseDir string
 	// CertFilesBaseDir is the base directory where crt-list files are stored
 	CertFilesBaseDir string
@@ -80,14 +80,14 @@ func NewCertificateStorage(logger *slog.Logger, extractGVK utilsk8s.ExtractGVK, 
 // - For directory: certificates are grouped in directories based on:
 //   - namespace/[take two first characters of a secret name as folder] to avoid having too many of them in the same directory
 //     For example for secrets: namespace/secret-name-1 , namespace/secret-name-2, namespace/my-secret-name-1
-//   - /etc/unified.../certs/<namespace>/se/
-//   - /etc/unified.../certs/<namespace>/se/
-//   - /etc/unified.../certs/<namespace>/my/
+//     -/usr/local/hug/certs/<namespace>/se/
+//     -/usr/local/hug/certs/<namespace>/se/
+//     -/usr/local/hug/certs/<namespace>/my/
 //
 // For file name: secret name.pem
-// - /etc/unified.../certs/<namespace>/se/secret-name-1.pem
-// - /etc/unified.../certs/<namespace>/se/secret-name-2.pem
-// - /etc/unified.../certs/<namespace>/my/my-secret-name-1.pem
+// -/usr/local/hug/certs/<namespace>/se/secret-name-1.pem
+// -/usr/local/hug/certs/<namespace>/se/secret-name-2.pem
+// -/usr/local/hug/certs/<namespace>/my/my-secret-name-1.pem
 func (c *CertificateStorageDefault) CertPath(secretKey client.ObjectKey) futils.FilePath {
 	return futils.FilePath{
 		Dir:      filepath.Join(c.CertsBaseDir, secretKey.Namespace, secretKey.Name[:2]),
