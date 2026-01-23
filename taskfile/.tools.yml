@@ -5,7 +5,7 @@ vars:
   YQ_URL: github.com/mikefarah/yq/v4
 
   KIND_NAME: kind
-  KIND_VERSION: v0.30.0
+  KIND_VERSION: v0.31.0
   KIND_URL: sigs.k8s.io/kind
 
   CONTROLLER_GEN_NAME: controller-gen
