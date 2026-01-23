@@ -31,10 +31,12 @@ tasks:
       - task check-if-ci-env # check if we are in CI_ENV, if we are, skip this task
     vars:
       kind: "{{.TMP}}/kind/{{.KIND_VERSION}}/kind"
+      KIND_CONFIG: '{{.KIND_CONFIG | default "kind-config.yaml"}}'
     dir: "ci/kind" # this file is imported so its fine
     cmds:
       - /{{.kind}} delete cluster --name {{.CLUSTER_NAME}}
-      - /{{.kind}} create cluster --name {{.CLUSTER_NAME}} --config kind-config.yaml --image kindest/node:{{.K8S_VERSION}}
+      - echo "Creating kind cluster {{.CLUSTER_NAME}} with config {{.KIND_CONFIG}} ..."
+      - /{{.kind}} create cluster --name {{.CLUSTER_NAME}} --config {{.KIND_CONFIG}} --image kindest/node:{{.K8S_VERSION}}
 
   kind-controller-build:
     desc: ""
@@ -88,6 +90,25 @@ tasks:
       - "/{{.kind}} delete cluster --name {{.CLUSTER_NAME}}"
 
   kind-create:
+    desc: "create a standard KinD cluster"
+    vars:
+      KIND_CONFIG: "kind-config.yaml"
+    cmds:
+      - task: kind-create-internal
+        vars:
+          KIND_CONFIG: "kind-config.yaml"
+
+  kind-create-debug:
+    desc: "create a KinD cluster for local debug (start Hug in local) (no host port maps)"
+    vars:
+      KIND_CONFIG: "kind-config-dev.yaml"
+    cmds:
+      - task: kind-create-internal
+        vars:
+          KIND_CONFIG: "kind-config-dev.yaml"
+
+  kind-create-internal:
+    internal: true
     desc: "create a KinD cluster with HUG and one example app"
     silent: true
     vars:
@@ -103,6 +124,8 @@ tasks:
     cmds:
       - task: delimiter
       - task: kind-create-cluster
+        vars:
+          KIND_CONFIG: "{{.KIND_CONFIG}}"
       - task: delimiter
       - task: "{{ .CONTROLLER_BUILD_TASK }}"
       - task: kind-build-echo-image
@@ -118,9 +141,6 @@ tasks:
       - /{{.kubectl}} apply -f {{.GATEWAYAPI_STANDARD_CRDS_DOWNLOAD_URL}}
       - /{{.kubectl}} apply -f {{.GATEWAYAPI_EXPERIMENTAL_CRDS_DOWNLOAD_URL}}
       - echo "Install Gateway API Controller CRDs"
-      #- /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_hugconfs.yaml
-      #- /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_huggates.yaml
-      #- /{{.kubectl}} apply -f {{.API_DEFINITION_DIR}}/gate.v3.haproxy.org_backends.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd-update/rbac.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/crd-update/job-crd.yaml
       - /{{.kubectl}} wait --for=condition=complete --timeout=60s job/haproxy-unified-gateway-crd -n haproxy-unified-gateway

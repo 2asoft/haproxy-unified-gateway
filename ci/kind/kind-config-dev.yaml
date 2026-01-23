@@ -6,15 +6,6 @@ networking:
 kind: Cluster
 nodes:
   - role: control-plane
-    extraPortMappings:
-      - hostPort: 31080
-        containerPort: 31080
-        #listenAddress: "0.0.0.0" # Optional, defaults to "0.0.0.0"
-        #protocol: udp # Optional, defaults to tcp
-      - hostPort: 31443
-        containerPort: 31443
-      - hostPort: 31024
-        containerPort: 31024
     kubeadmConfigPatches:
     - |
       kind: ClusterConfiguration
@@ -28,3 +19,7 @@ nodes:
       metadata:
               name: config
       maxPods: 2048
+  ## This is the same as kind-create-cluster but it is useful in dev purposes for debugging purpose and running HUG locally
+  ## It uses kind-config-dev.yaml which does not map the ports to host machine
+  ## Thus it is useful for local development where you can use 'as is' the examples in the example directory
+  ## and run a local haproxy that can start and binds on the same ports as the ones used in the examples
