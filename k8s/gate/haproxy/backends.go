@@ -464,7 +464,10 @@ func (bo *BackendReferencedBy) getBackendsReferencedBy(ownerType BackendOwnerTyp
 }
 
 func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackends() error {
-	return b.cleanupUnreferencedBackendsForHTTPRoutes(BackendOwnerTypeHTTPRoute)
+	var err utils.Errors
+	err.Add(b.cleanupUnreferencedBackendsForHTTPRoutes(BackendOwnerTypeHTTPRoute),
+		b.cleanupUnreferencedBackendsForHTTPRoutes(BackendOwnerTypeTLSRoute))
+	return err.Result()
 }
 
 func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType BackendOwnerType) error {

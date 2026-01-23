@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 // enqueueGatewayClassForHugGate returns a handler.EventHandler that enqueues all GatewayClasses
@@ -317,6 +318,83 @@ func enqueueHTTPRouteForBackendCR(ctrlclient client.Client, extractGVK utilsk8s.
 				}
 			}
 		}
+		return requests
+	}
+}
+
+// enqueueTLSRouteForService returns a handler.EventHandler that enqueues all TLSRoutes
+// related to an observed Service.
+func enqueueTLSRouteForService(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		var requests []reconcile.Request
+
+		// TLSRoutes
+		routeList := &gatewayv1alpha2.TLSRouteList{}
+
+		listOpts := &client.ListOptions{}
+		if err := ctrlclient.List(ctx, routeList, listOpts); err != nil {
+			return []reconcile.Request{}
+		}
+
+		for _, route := range routeList.Items {
+			for _, rule := range route.Spec.Rules {
+				for _, backendRef := range rule.BackendRefs {
+					// We only accept v1.Service
+					if !utilsk8s.IsBackendRefGroupKindSupported(backendRef.BackendObjectReference, extractGVK) {
+						continue
+					}
+					serviceNsName := utils.GetNamespacedName(
+						string(backendRef.Name),
+						string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
+						route.GetNamespace())
+
+					if serviceNsName.Name == o.GetName() && serviceNsName.Namespace == o.GetNamespace() {
+						requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+							Namespace: route.GetNamespace(),
+							Name:      route.GetName(),
+						}})
+					}
+				}
+			}
+		}
+
+		return requests
+	}
+}
+
+// enqueueTLSRouteForGateway returns a handler.EventHandler that enqueues all TLSRoutes
+// related to an observed Gateway.
+func enqueueTLSRouteForGateway(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		var requests []reconcile.Request
+
+		// TLSRoutes
+		routeList := &gatewayv1alpha2.TLSRouteList{}
+
+		listOpts := &client.ListOptions{}
+		if err := ctrlclient.List(ctx, routeList, listOpts); err != nil {
+			return []reconcile.Request{}
+		}
+
+		for _, route := range routeList.Items {
+			for _, parentRef := range route.Spec.ParentRefs {
+				// We only accept v1.Gateway
+				if !utilsk8s.IsParentRefGroupKindSupported(parentRef, extractGVK) {
+					continue
+				}
+				gwNsName := utils.GetNamespacedName(string(parentRef.Name),
+					string(utils.PointerDefaultValueIfNil(parentRef.Namespace)),
+					route.GetNamespace())
+
+				if gwNsName.Name == o.GetName() && gwNsName.Namespace == o.GetNamespace() {
+					requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+						Namespace: route.GetNamespace(),
+						Name:      route.GetName(),
+					}})
+				}
+			}
+		}
+
 		return requests
 	}
 }

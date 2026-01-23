@@ -476,6 +476,26 @@ func registerControllers(ctx context.Context, extractGVK utilsk8s.ExtractGVK, cf
 						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
+				// Watch Gateway
+				WithEnqueueFor([]enqueueForParams{
+					{
+						watchSource: objtypes.ObjectTypeGateway,
+						enqueueFunc: enqueueTLSRouteForGateway,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+					// Watch Services
+					{
+						watchSource: objtypes.ObjectTypeService,
+						enqueueFunc: enqueueTLSRouteForService,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+				}),
 			},
 		},
 	}
