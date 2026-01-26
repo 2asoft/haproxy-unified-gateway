@@ -285,16 +285,6 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				VarScope: "txn",
 				Expr:     "req_ssl_sni,map_end(" + sniDomainWildcardMap.FullPath() + ")",
 			},
-			{
-				// http-request lua.route if route_is_json
-				Type:      "lua",
-				LuaAction: "route",
-				Cond:      "if",
-				CondTest:  "route_is_json",
-				Metadata: map[string]any{
-					"hug": "lua routing",
-				},
-			},
 		}
 		backendSwitchingRules = []*models.BackendSwitchingRule{
 			{
