@@ -17,6 +17,7 @@ allowed:
   - entrypoint
   - envtest
   - failsafe
+  - forwardfor
   - frontend
   - frontends
   - gatewayclass

@@ -494,6 +494,13 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 	// First, we merge the Backend CRDs from filters, if there are some
 	// Backend CRDs are defined in the Filters of type: ExtensionRef
 	// We gather all those filters, merge them and apply them
+	var optionForwardFor *models.Forwardfor
+	if isHTTPBackend {
+		optionForwardFor = &models.Forwardfor{
+			Enabled: utils.Ptr("enabled"),
+		}
+	}
+
 	newBackend := &models.Backend{
 		BackendBase: models.BackendBase{
 			Metadata: md,
@@ -508,9 +515,7 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 			Balance:       &models.Balance{Algorithm: utils.Ptr("roundrobin")},
 			Abortonclose:  "disabled",
 			ServerTimeout: utils.PtrInt64(50000),
-			Forwardfor: &models.Forwardfor{
-				Enabled: utils.Ptr("enabled"),
-			},
+			Forwardfor:    optionForwardFor,
 			DefaultServer: &models.DefaultServer{
 				ServerParams: models.ServerParams{Check: "enabled"},
 			},
