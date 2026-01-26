@@ -106,7 +106,7 @@ func (h *AppManagerImpl) Run() {
 
 func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs) error {
 	var err error
-	if haproxyCfgDiffs.IsEmpty() {
+	if haproxyCfgDiffs.IsEmpty() && !haproxyCfgDiffs.ReloadNeed {
 		// Should not happen, already checked before
 		return nil
 	}
