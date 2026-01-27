@@ -38,12 +38,7 @@ func SetupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 	haproxyConfCh := make(chan diffs.HaproxyConfDiffs, 100)
 
 	// Read the haproy.cfg file at startup, and initializes the library with the initial haproxy configuration
-	initialStructured, err := startup.StructuredFromFile(
-		hugConfig.HaproxyDirs.MainCfgFile,
-		hugConfig.HaproxyDirs.CfgDir,
-		hugConfig.HaproxyDirs.HaproxyBinary,
-		hugConfig.RuntimeSocket,
-	)
+	initialStructured, err := startup.StructuredFromFile(hugConfig)
 	if err != nil {
 		panic(err)
 	}

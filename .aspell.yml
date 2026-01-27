@@ -33,6 +33,7 @@ allowed:
   - httproute
   - https
   - init
+  - ipv
   - json
   - keymap
   - kubebuilder

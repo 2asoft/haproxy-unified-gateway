@@ -17,4 +17,7 @@ const (
 	// BundleVersionAnnotation is the annotation on Gateway API CRDs that contains the installed version.
 	// https://gateway-api.sigs.k8s.io/guides/api-design/?h=version#supported-api-versions
 	BundleVersionAnnotation = "gateway.networking.k8s.io/bundle-version"
+
+	// Stats Frontend name
+	StatsFrontendName = "stats"
 )

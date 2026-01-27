@@ -15,13 +15,17 @@ package startup
 
 import (
 	"context"
+	"net/netip"
 	"path/filepath"
 
 	"github.com/haproxytech/client-native/v6/configuration"
 	cfgoptions "github.com/haproxytech/client-native/v6/configuration/options"
 	"github.com/haproxytech/client-native/v6/models"
+	hugconfig "github.com/haproxytech/haproxy-unified-gateway/hug/configuration"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/constants"
 	md "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 type ownerMetaData interface {
@@ -33,12 +37,12 @@ type ownerMetaData interface {
 // Frontends/Backends
 // that have the unified gateway metadata
 // (the objects that the gateway manages)
-func StructuredFromFile(cfgFile, transactionDir, haproxyBin, runtimeSocket string) (structured.Structured, error) {
+func StructuredFromFile(hugConfig hugconfig.HUGConfig) (structured.Structured, error) {
 	confClient, err := configuration.New(context.Background(),
-		cfgoptions.ConfigurationFile(cfgFile),
-		cfgoptions.TransactionsDir(transactionDir),
+		cfgoptions.ConfigurationFile(hugConfig.HaproxyDirs.MainCfgFile),
+		cfgoptions.TransactionsDir(hugConfig.HaproxyDirs.CfgDir),
 		cfgoptions.UseMd5Hash,
-		cfgoptions.HAProxyBin(haproxyBin),
+		cfgoptions.HAProxyBin(hugConfig.HaproxyDirs.HaproxyBinary),
 	)
 	if err != nil {
 		return structured.Structured{}, err
@@ -80,21 +84,21 @@ func StructuredFromFile(cfgFile, transactionDir, haproxyBin, runtimeSocket strin
 	if global.LuaOptions == nil {
 		global.LuaOptions = &models.LuaOptions{}
 	}
-	cfgDir := filepath.Dir(cfgFile)
+	cfgDir := filepath.Dir(hugConfig.MainCfgFile)
 	global.LuaOptions.LoadPerThread = filepath.Join(cfgDir, "route.lua")
 	// check if we have runtime option enabled
 	if len(global.RuntimeAPIs) == 0 {
 		global.RuntimeAPIs = []*models.RuntimeAPI{
 			{
-				Address: &runtimeSocket,
+				Address: &hugConfig.RuntimeSocket,
 			},
 		}
 	} else {
 		// check if the first one is the correct one, otherwise add it as first
-		if global.RuntimeAPIs[0].Address == nil || *global.RuntimeAPIs[0].Address != runtimeSocket {
+		if global.RuntimeAPIs[0].Address == nil || *global.RuntimeAPIs[0].Address != hugConfig.RuntimeSocket {
 			global.RuntimeAPIs = append([]*models.RuntimeAPI{
 				{
-					Address: &runtimeSocket,
+					Address: &hugConfig.RuntimeSocket,
 				},
 			}, global.RuntimeAPIs...)
 		}
@@ -108,7 +112,114 @@ func StructuredFromFile(cfgFile, transactionDir, haproxyBin, runtimeSocket strin
 		return structured.Structured{}, err
 	}
 
+	// Add binds to the stats frontend if it exists
+	// There is an option to not add it
+	if hugConfig.AddStatsPortToFrontend {
+		err = addBindPortToStatsFrontend(confClient, frontends, hugConfig)
+		if err != nil {
+			return structured.Structured{}, err
+		}
+	}
+
 	return structuredCfg, nil
+}
+
+func addBindPortToStatsFrontend(confClient configuration.Configuration,
+	frontends models.Frontends,
+	hugConfig hugconfig.HUGConfig,
+) error {
+	var statsFrontend *models.Frontend
+	for _, fe := range frontends {
+		if fe.Name == constants.StatsFrontendName {
+			statsFrontend = fe
+		}
+	}
+
+	if statsFrontend == nil {
+		// Does not exists, skip
+		return nil
+	}
+
+	var bindv4 *models.Bind
+	var bindv6 *models.Bind
+
+	// Do we have a v4/v6 bind already?
+	for _, bind := range statsFrontend.Binds {
+		if bind.Port != nil {
+			addr, err := netip.ParseAddr(bind.Address)
+			if err == nil {
+				if addr.Is4() {
+					bindv4 = &bind
+				}
+				if addr.Is6() {
+					bindv6 = &bind
+				}
+			}
+		}
+	}
+
+	if !hugConfig.DisableIPv4 {
+		version, err := confClient.GetVersion("")
+		if err != nil {
+			return err
+		}
+		if statsFrontend.Binds == nil {
+			statsFrontend.Binds = make(map[string]models.Bind)
+		}
+		if bindv4 == nil {
+			name := "stats"
+			bind := models.Bind{
+				Port:       utils.Ptr(hugConfig.StatsPort),
+				Address:    "0.0.0.0",
+				BindParams: models.BindParams{Name: name},
+			}
+			err := confClient.CreateBind("frontend", constants.StatsFrontendName, &bind, "", version)
+			if err != nil {
+				return err
+			}
+			statsFrontend.Binds[name] = bind
+		} else {
+			// We already have a bind for this port
+			bindv4.Port = utils.Ptr(hugConfig.StatsPort)
+			err := confClient.EditBind(bindv4.Name, "frontend", constants.StatsFrontendName, bindv4, "", version)
+			if err != nil {
+				return err
+			}
+			statsFrontend.Binds[bindv4.Name] = *bindv4
+		}
+	}
+	if !hugConfig.DisableIPv6 {
+		version, err := confClient.GetVersion("")
+		if err != nil {
+			return err
+		}
+		if statsFrontend.Binds == nil {
+			statsFrontend.Binds = make(map[string]models.Bind)
+		}
+		if bindv6 == nil {
+			name := "v6"
+			bind := models.Bind{
+				Port:       utils.Ptr(hugConfig.StatsPort),
+				Address:    "::",
+				BindParams: models.BindParams{Name: name},
+			}
+			err := confClient.CreateBind("frontend", constants.StatsFrontendName, &bind, "", version)
+			if err != nil {
+				return err
+			}
+			statsFrontend.Binds[name] = bind
+		} else {
+			// We already have a bind for this port
+			bindv6.Port = utils.Ptr(hugConfig.StatsPort)
+			err := confClient.EditBind(bindv6.Name, "frontend", constants.StatsFrontendName, bindv6, "", version)
+			if err != nil {
+				return err
+			}
+			statsFrontend.Binds[bindv6.Name] = *bindv6
+		}
+	}
+
+	return nil
 }
 
 // isUnifiedGatewayManaged returns true if the object is managed by the Unified Gateway
