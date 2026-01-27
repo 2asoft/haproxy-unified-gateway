@@ -81,6 +81,7 @@ func main() {
 		UseWiths6Overlay: hugConfig.UseWiths6Overlay,
 		UseWithPebble:    hugConfig.UseWithPebble,
 		HaproxyDirs:      hugConfig.HaproxyDirs,
+		ForceRestart:     hugConfig.ForceRestartHaproxyAtStartup,
 	}
 	p := process.New(params, haproxyClient, gateconfig.Logger)
 	p.SetAPI(haproxyClient)

@@ -39,26 +39,27 @@ type HUGConfig struct {
 	ControllerConfCRD NamespaceNameValue `ff:"          long: hugconf-crd,                         usage: 'namespace/name of the HugConf CRD'"`
 	ControllerName    string             `ff:"          long: controller-name,                     usage: 'spec.controllerName' GatewayClass selector'"`
 	IPV4BindAddr      string             `ff:"          long: ipv4-bind-address,                   usage: 'IPv4 address to bind to'"`
-	IPV6BindAddr      string             `ff:"          long: ipv6-bind-address,	                  usage: 'IPv6 address to bind to'"`
-	LogType           string             `ff:"          long: log-type,	      		              usage: 'sets up the log output type (possible values: text, json)"`
+	IPV6BindAddr      string             `ff:"          long: ipv6-bind-address,	               usage: 'IPv6 address to bind to'"`
+	LogType           string             `ff:"          long: log-type,	      		               usage: 'sets up the log output type (possible values: text, json)"`
 	External
-	Namespaces             CommaSeparatedValues `ff:"          long: namespaces,                          usage: 'comma separated list of namespaces that controller will monitor'"`
-	StatsPort              int64                `ff:"          long: stats-port, default: 1024,           usage: 'port to listen on for HAProxy stats'"`
-	ControllerPort         int                  `ff:"          long: controller-port,                     usage: 'port to listen on for controller data: prometheus'"`
-	SyncPeriod             time.Duration        `ff:"          long: sync-period, default: 0,             usage: 'sets the period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
-	StartupSyncPeriod      time.Duration        `ff:"          long: startup-sync-period, default: 0,     usage: 'sets the startup period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
-	CacheResyncPeriod      time.Duration        `ff:"          long: cache-resync-period, default: 0,     usage: 'sets the controller-runtime manager cache SyncPeriod. If not set, defaults to controller-runtime defaults (10 hours)'"`
-	DefaultLogLevel        slog.Level
-	AddStatsPortToFrontend bool `ff:"          long: add-stats-port,default: true,        usage: 'add stats port bind to existing stats frontend'"`
-	Help                   bool `ff:"          long: help,                            usage: 'help'"`
-	Test                   bool `ff:"short:t,                                         usage: 'simulate running HAProxy'"`
-	LeaderElectionEnabled  bool `ff:"          long: leader-election-enabled,         usage: 'enable leader election'"`
-	UseWiths6Overlay       bool `ff:"          long: with-s6-overlay,                 usage: 'use s6 overlay to start/stop/restart HAProxy'"`
-	UseWithPebble          bool `ff:"          long: with-pebble,                     usage: 'use pebble start/stop/restart HAProxy'"`
-	DisableIPv4            bool `ff:"          long: disable-ipv4,                    usage: 'disable IPv4 support'"`
-	DisableIPv6            bool `ff:"          long: disable-ipv6,			          usage: 'disable IPv6 support'"`
-	Version                bool `ff:"          long: version,                         usage: 'print version and exit'"`
-	JobCheckCRD            bool `ff:"          long: job-check-crd,                   usage: 'run CRD refresh job and exit'"`
+	Namespaces                   CommaSeparatedValues `ff:"          long: namespaces,                      usage: 'comma separated list of namespaces that controller will monitor'"`
+	StatsPort                    int64                `ff:"          long: stats-port, default: 1024,       usage: 'port to listen on for HAProxy stats'"`
+	ControllerPort               int                  `ff:"          long: controller-port,                 usage: 'port to listen on for controller data: prometheus'"`
+	SyncPeriod                   time.Duration        `ff:"          long: sync-period, default: 0,         usage: 'sets the period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
+	StartupSyncPeriod            time.Duration        `ff:"          long: startup-sync-period, default: 0, usage: 'sets the startup period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
+	CacheResyncPeriod            time.Duration        `ff:"          long: cache-resync-period, default: 0, usage: 'sets the controller-runtime manager cache SyncPeriod. If not set, defaults to controller-runtime defaults (10 hours)'"`
+	DefaultLogLevel              slog.Level
+	AddStatsPortToFrontend       bool `ff:"          long: add-stats-port,default: true,    usage: 'add stats port bind to existing stats frontend'"`
+	ForceRestartHaproxyAtStartup bool `ff:"          long: force-restart-haproxy,           usage: 'forces HAProxy restart at controller startup'"`
+	Help                         bool `ff:"          long: help,                            usage: 'help'"`
+	Test                         bool `ff:"short:t,                                         usage: 'simulate running HAProxy'"`
+	LeaderElectionEnabled        bool `ff:"          long: leader-election-enabled,         usage: 'enable leader election'"`
+	UseWiths6Overlay             bool `ff:"          long: with-s6-overlay,                 usage: 'use s6 overlay to start/stop/restart HAProxy'"`
+	UseWithPebble                bool `ff:"          long: with-pebble,                     usage: 'use pebble start/stop/restart HAProxy'"`
+	DisableIPv4                  bool `ff:"          long: disable-ipv4,                    usage: 'disable IPv4 support'"`
+	DisableIPv6                  bool `ff:"          long: disable-ipv6,			        usage: 'disable IPv6 support'"`
+	Version                      bool `ff:"          long: version,                         usage: 'print version and exit'"`
+	JobCheckCRD                  bool `ff:"          long: job-check-crd,                   usage: 'run CRD refresh job and exit'"`
 }
 
 //revive:enable:line-length-limit

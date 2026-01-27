@@ -18,6 +18,7 @@ import "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy"
 type Params struct {
 	haproxy.HaproxyDirs
 	Test             bool
+	ForceRestart     bool
 	UseWiths6Overlay bool
 	UseWithPebble    bool
 }
