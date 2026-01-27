@@ -14,6 +14,7 @@ import (
 	hapi "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/api"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/params"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 type directControl struct {
@@ -70,6 +71,10 @@ func (d *directControl) Service(action string) (string, error) {
 				if err != nil {
 					return msg, err
 				}
+				err = d.waitUntilGone()
+				if err != nil {
+					return "", err
+				}
 				msg, err = d.Service("start")
 				if err != nil {
 					return msg, err
@@ -106,7 +111,7 @@ func (d *directControl) Service(action string) (string, error) {
 			return msg, err
 		}
 		if processErr != nil {
-			d.logger.LogAttrs(context.Background(), slog.LevelError, "haproxy is not running, trying to start it")
+			d.logger.LogAttrs(context.Background(), slog.LevelInfo, "haproxy is not running, trying to start it")
 			return d.Service("start")
 		}
 		return "", nil
@@ -121,4 +126,20 @@ func (d *directControl) UseAuxFile(useAuxFile bool) {
 
 func (d *directControl) SetAPI(api hapi.HAProxyClient) {
 	d.API = api
+}
+
+func (d *directControl) waitUntilGone() error {
+	err := wait.PollUntilContextTimeout(context.Background(), 500*time.Millisecond, 10*time.Second, true,
+		func(ctx context.Context) (bool, error) {
+			_, processErr := haproxyProcess(d.Params.PIDFile)
+
+			// If processErr is NOT nil, the process is gone!
+			if processErr != nil {
+				d.logger.LogAttrs(ctx, slog.LevelInfo, "haproxy is stopped")
+				return true, nil // Condition met, stop polling
+			}
+			d.logger.LogAttrs(context.Background(), slog.LevelDebug, "haproxy is still running... waiting for it to stop")
+			return false, nil // Still running, keep polling
+		})
+	return err
 }
