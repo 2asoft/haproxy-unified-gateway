@@ -216,10 +216,10 @@ func (c *HUGConfig) Init(external External) error {
 		c.LogSettings = map[v3.Category]slog.Level{
 			logging.LogCategoryK8s:          slog.LevelInfo,
 			logging.LogCategoryGate:         slog.LevelDebug,
-			logging.LogCategoryStatus:       slog.LevelInfo,
-			logging.LogCategoryBatch:        slog.LevelInfo,
-			logging.LogCategoryApp:          slog.LevelInfo,
-			logging.LogCategoryCertsStorage: slog.LevelInfo,
+			logging.LogCategoryStatus:       slog.LevelDebug,
+			logging.LogCategoryBatch:        slog.LevelDebug,
+			logging.LogCategoryApp:          slog.LevelDebug,
+			logging.LogCategoryCertsStorage: slog.LevelDebug,
 		}
 	}
 
