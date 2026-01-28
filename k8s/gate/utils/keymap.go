@@ -72,22 +72,6 @@ func (m *KeyMap[KEY, VALUE]) Clear() {
 	m.data = make(map[string]VALUE)
 }
 
-type copier[T any] interface {
-	DeepCopy() T
-}
-
-// DeepCopy creates a deep copy of the KeyMap.
-// It requires the VALUE type to have a DeepCopy() method.
-func (m *KeyMap[KEY, VALUE]) DeepCopy() KeyMap[KEY, VALUE] {
-	newMap := NewKeyMap[KEY, VALUE](m.computeKey)
-	for k, v := range m.data {
-		if c, ok := any(v).(copier[VALUE]); ok {
-			newMap.data[k] = c.DeepCopy()
-		}
-	}
-	return newMap
-}
-
 // ParentRefToKey converts a ParentReference to a unique string key.
 // It handles nil pointers by using a consistent placeholder.
 func ParentRefToKey(parentRef gatewayv1.ParentReference) string {

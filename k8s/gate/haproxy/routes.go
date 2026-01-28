@@ -170,7 +170,6 @@ func (RouteMgrImpl) onDeletedTLSRoute(_ k8stypes.NamespacedName, route *tree.TLS
 }
 
 func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
-	// func (b *RouteMgrImpl) onDeletedHTTPRoute(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData,
 ) error {
 	// TODO consider uniting this function with onUpsertedHTTPRoute basically the same

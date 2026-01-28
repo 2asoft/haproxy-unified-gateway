@@ -78,31 +78,27 @@ func (r *TLSRoute) DeepCopy() *TLSRoute {
 	if r == nil {
 		return nil
 	}
-	// Save TreeStatus
-	treeStatus := r.TreeStatus
-	r.TreeStatus = TreeUpdate[TLSRoute]{}
-
-	// Manually handle the Listeners map
-	listeners := r.Listeners
-	r.Listeners.Clear()
 
 	var copied TLSRoute
 
-	data, err := json.Marshal(r)
-	if err != nil {
-		// Restore before returning
-		r.Listeners = listeners
-		r.TreeStatus = treeStatus
-		return nil
-	}
+	data, _ := json.Marshal(r)
 	_ = json.Unmarshal(data, &copied) // Deserialize to a new struct
 
-	// Restore the original object
-	r.Listeners = listeners
-	r.TreeStatus = treeStatus
+	// Manually deep copy the Listeners KeyMap.
+	newListeners := utils.NewKeyMap[gatewayv1.ParentReference, []*Listener](utils.ParentRefToKey)
+	for key, value := range r.Listeners.Iterate {
+		parentRef, err := utils.KeyToParentRef(key)
+		if err != nil {
+			continue // continue iteration
+		}
 
-	// Manually copy the Listeners map
-	copied.Listeners = listeners.DeepCopy()
+		copiedListeners := make([]*Listener, len(value))
+		for i, l := range value {
+			copiedListeners[i] = l.DeepCopy()
+		}
+		newListeners.Set(parentRef, copiedListeners)
+	}
+	copied.Listeners = newListeners
 
 	return &copied
 }
