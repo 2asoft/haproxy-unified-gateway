@@ -68,10 +68,24 @@ type CRReference struct {
 	// Name is the name of the referent.
 	Name v1.ObjectName `json:"name"`
 }
+
+type CaptureRequestHeader struct {
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	Length int64 `json:"length,omitempty"`
+}
+
+type HaproxyDefaults struct {
+	LogFormat             string                 `json:"logFormat,omitempty"`
+	LogRequestHeaderNames bool                   `json:"logRequestHeaderNames,omitempty"`
+	CaptureRequestHeaders []CaptureRequestHeader `json:"captureRequestHeaders,omitempty"`
+}
 type ControllerConfSpec struct {
-	GlobalRef   *CRReference `json:"globalRef,omitempty"`
-	DefaultsRef *CRReference `json:"defaultsRef,omitempty"`
-	Logging     Logging      `json:"logging"`
+	GlobalRef       *CRReference     `json:"globalRef,omitempty"`
+	DefaultsRef     *CRReference     `json:"defaultsRef,omitempty"`
+	Logging         Logging          `json:"logging"`
+	HaproxyDefaults *HaproxyDefaults `json:"haproxyDefaults,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -19,6 +19,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/templates"
 	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type HaproxyConfMgrParams struct {
@@ -26,6 +27,7 @@ type HaproxyConfMgrParams struct {
 	mapsStorage        storage.MapsStorage
 	extractGVK         utilsk8s.ExtractGVK
 	HaproxyConfParams
+	ControllerConfNsName types.NamespacedName
 }
 
 type HaproxyConfParams struct {
@@ -80,12 +82,13 @@ type HaproxyDirs struct {
 }
 
 func NewHaproxyConfMgrParams(extractGVK utilsk8s.ExtractGVK, haproxyConfParams HaproxyConfParams,
-	certificateStorage storage.CertificateStorage, mapsStorageEx storage.MapsStorage,
+	certificateStorage storage.CertificateStorage, mapsStorage storage.MapsStorage, controllerConfNsName types.NamespacedName,
 ) (HaproxyConfMgrParams, error) {
 	return HaproxyConfMgrParams{
-		extractGVK:         extractGVK,
-		HaproxyConfParams:  haproxyConfParams,
-		certificateStorage: certificateStorage,
-		mapsStorage:        mapsStorageEx,
+		extractGVK:           extractGVK,
+		HaproxyConfParams:    haproxyConfParams,
+		certificateStorage:   certificateStorage,
+		mapsStorage:          mapsStorage,
+		ControllerConfNsName: controllerConfNsName,
 	}, nil
 }

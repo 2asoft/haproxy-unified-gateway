@@ -106,6 +106,7 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 	// Clear the previous configuration diffs
 	// This is important to ensure that we only transfer the current configuration changes.
 	b.configuration.resetDiffs()
+	forceUpsert := b.reconcileFrontendLogFormat()
 	// Refresh the backends impacted in the refresh cycle
 	b.backendsImpactedInCycle = BackendsImpactedInCycle{
 		Upserted:     make(map[string]map[client.ObjectKey]BackendImpactedInCycle),
@@ -114,7 +115,7 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 	}
 
 	// Build HAProxy configuration for the Gateways
-	if err := b.processVirtualListener(); err != nil {
+	if err := b.processVirtualListener(forceUpsert); err != nil {
 		logger.LogAttrs(context.Background(), slog.LevelError, "Failed to build Gateways",
 			logging.LogAttrError(err))
 	}

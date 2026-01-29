@@ -36,8 +36,11 @@ type Configuration struct {
 	structured structured.Structured
 	// mergeStrategies holds the merge strategies currently applied for each config type.
 	// It is used to detect changes in merge strategy even when the config content is unchanged.
-	mergeStrategies diffs.MergeStrategies
-	diffs           diffs.HaproxyConfDiffs
+	mergeStrategies               diffs.MergeStrategies
+	diffs                         diffs.HaproxyConfDiffs
+	frontendLogFormat             string
+	frontendCaptureHeaders        []captureRequestHeader
+	frontendLogRequestHeaderNames bool
 }
 
 func (c *Configuration) resetDiffs() {

@@ -4,6 +4,13 @@ metadata:
   name: hugconf
   namespace: haproxy-unified-gateway
 spec:
+  # logFormat can include captured headers, be careful with sensitive values
+  haproxyDefaults:
+    logFormat: "'%[capture.req.hdr(0)] %ci'"
+    logRequestHeaderNames: true
+    captureRequestHeaders:
+      - name: Authorization
+        length: 256
   logging:
     defaultLevel: "Info"
     categoryLevelList:

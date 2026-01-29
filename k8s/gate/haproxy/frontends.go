@@ -16,6 +16,7 @@ package haproxy
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 
 	"github.com/haproxytech/client-native/v6/models"
@@ -34,12 +35,45 @@ func (b *HaproxyConfMgrImpl) getFrontendName(vListenerName string) string {
 	return b.params.LinkID + "_" + vListenerName
 }
 
-func (b *HaproxyConfMgrImpl) processVirtualListener() error {
+func (b *HaproxyConfMgrImpl) captureRequestHeaderRules() []*models.HTTPRequestRule {
+	if len(b.configuration.frontendCaptureHeaders) == 0 {
+		return nil
+	}
+
+	rules := make([]*models.HTTPRequestRule, 0, len(b.configuration.frontendCaptureHeaders))
+	for _, header := range b.configuration.frontendCaptureHeaders {
+		rules = append(rules, &models.HTTPRequestRule{
+			Type:          "capture",
+			CaptureLen:    header.Length,
+			CaptureSample: fmt.Sprintf("req.hdr(%s)", header.Name),
+		})
+	}
+
+	return rules
+}
+
+func (b *HaproxyConfMgrImpl) requestHeaderNamesRule() *models.HTTPRequestRule {
+	if !b.configuration.frontendLogRequestHeaderNames {
+		return nil
+	}
+	return &models.HTTPRequestRule{
+		Type:     "set-var",
+		VarName:  requestHeaderNamesVarName,
+		VarScope: requestHeaderNamesVarScope,
+		VarExpr:  requestHeaderNamesSample,
+	}
+}
+
+func (b *HaproxyConfMgrImpl) processVirtualListener(forceUpsert bool) error {
 	var errors utils.Errors
 	// VirtualListeners are mapped 1 to 1 with Frontends,
 	// so we can directly create/update/delete Frontends while processing VirtualListeners
 	for vlName, vListener := range b.controllerStore.GateTree.VirtualListeners {
-		switch vListener.Status {
+		status := vListener.Status
+		if forceUpsert && status == store.StatusUnchanged {
+			status = store.StatusUpserted
+		}
+		switch status {
 		case store.StatusUnchanged:
 			continue
 		case store.StatusUpserted:
@@ -355,6 +389,16 @@ func (b *HaproxyConfMgrImpl) newFrontend(vListenerName string, vListener *tree.V
 				},
 			},
 		}
+		preRules := make([]*models.HTTPRequestRule, 0, len(b.configuration.frontendCaptureHeaders)+1)
+		if rule := b.requestHeaderNamesRule(); rule != nil {
+			preRules = append(preRules, rule)
+		}
+		if captureRules := b.captureRequestHeaderRules(); len(captureRules) != 0 {
+			preRules = append(preRules, captureRules...)
+		}
+		if len(preRules) != 0 {
+			httpRules = append(preRules, httpRules...)
+		}
 		backendSwitchingRules = []*models.BackendSwitchingRule{
 			{
 				Name:     "%[var(txn.backend)]",
@@ -397,6 +441,10 @@ func (b *HaproxyConfMgrImpl) newFrontend(vListenerName string, vListener *tree.V
 		TCPRequestRuleList:       tcpRules,
 		HTTPRequestRuleList:      httpRules,
 		BackendSwitchingRuleList: backendSwitchingRules,
+	}
+
+	if fe.FrontendBase.Mode == "http" && b.configuration.frontendLogFormat != "" {
+		fe.FrontendBase.LogFormat = b.configuration.frontendLogFormat
 	}
 
 	// Set other frontend properties based on the listener

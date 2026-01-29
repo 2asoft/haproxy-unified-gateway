@@ -205,7 +205,7 @@ func Add(
 		HugServiceLabelKey:         cfg.HugServiceLabelKey,
 		HugServiceLabelVal:         cfg.HugServiceLabelVal,
 	}
-	haproxyCfgMgrParams, err := haproxy.NewHaproxyConfMgrParams(extractGVK, cfg.HaproxyParams, certificateStorage, mapsStorage)
+	haproxyCfgMgrParams, err := haproxy.NewHaproxyConfMgrParams(extractGVK, cfg.HaproxyParams, certificateStorage, mapsStorage, cfg.HugConfCRD)
 	if err != nil {
 		return err
 	}
