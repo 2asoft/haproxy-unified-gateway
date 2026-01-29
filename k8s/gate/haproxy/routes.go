@@ -137,13 +137,17 @@ func (b *RouteMgrImpl) onValidTLSRouteUpserted(_ k8stypes.NamespacedName,
 		for _, hostname := range acceptedHostnamesForRoute {
 			if tlsRouteRule.Valid {
 				if isDomainWildcard(string(hostname)) {
-					mapSNIDomainWildcardMap.AddData(string(hostname), routeValue)
+					mapSNIDomainWildcardMap.AddData(removeDomainWildcard(string(hostname)), routeValue)
 				} else {
 					mapSNI.AddData(string(hostname), routeValue)
 				}
 				hostnamesInserted[string(hostname)] = struct{}{}
 			} else if _, ok := hostnamesInserted[string(hostname)]; !ok {
-				mapSNI.DeleteData(string(hostname))
+				if isDomainWildcard(string(hostname)) {
+					mapSNI.DeleteData(removeDomainWildcard(string(hostname)))
+				} else {
+					mapSNI.DeleteData(string(hostname))
+				}
 			}
 		}
 	}
@@ -219,7 +223,6 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapData, acceptedHostnamesForRoute []string,
 ) error { //revive:disable:function-length,cognitive-complexity
-	hostnames := route.K8sResource.Spec.Hostnames
 	for _, rule := range route.Rules {
 		// if !rule.Valid {
 		// find the old rule in route.TreeStatus.OldTreeResource.Rules, name is optional
@@ -305,42 +308,23 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 			}
 
 			if rule.Valid {
-				for _, hostname := range hostnames {
-					fullpath := string(hostname) + path
-					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
-						mapDomainWPathExact.AddData(fullpath, routeValue)
-					} else {
-						mapData.AddData(fullpath, routeValue)
-						// I need to create a runtime command to add the map entry
-					}
-				}
-			} else {
-				for _, hostname := range hostnames {
-					fullpath := string(hostname) + path
-					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
-						mapDomainWPathExact.DeleteData(fullpath)
-					} else {
-						mapData.DeleteData(fullpath)
-					}
-				}
-			}
-
-			if rule.Valid {
 				for _, hostname := range acceptedHostnamesForRoute {
-					fullpath := string(hostname) + path
 					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
+						fullpath := removeDomainWildcard(string(hostname)) + path
 						mapDomainWPathExact.AddData(fullpath, routeValue)
 					} else {
+						fullpath := string(hostname) + path
 						mapData.AddData(fullpath, routeValue)
 						// I need to create a runtime command to add the map entry
 					}
 				}
 			} else {
 				for _, hostname := range acceptedHostnamesForRoute {
-					fullpath := string(hostname) + path
 					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
+						fullpath := removeDomainWildcard(string(hostname)) + path
 						mapDomainWPathExact.DeleteData(fullpath)
 					} else {
+						fullpath := string(hostname) + path
 						mapData.DeleteData(fullpath)
 					}
 				}

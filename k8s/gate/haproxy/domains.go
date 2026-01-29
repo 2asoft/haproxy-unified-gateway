@@ -19,3 +19,7 @@ import "strings"
 func isDomainWildcard(domain string) bool {
 	return strings.HasPrefix(domain, "*.")
 }
+
+func removeDomainWildcard(domain string) string {
+	return strings.TrimPrefix(domain, "*")
+}
