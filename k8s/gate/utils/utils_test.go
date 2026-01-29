@@ -86,7 +86,7 @@ func TestGetHostnamesForRouteWithListener(t *testing.T) {
 		{&hostname, []string{hostname}, []string{hostname}},
 		{&hostname, []string{hostname, otherHostname}, []string{hostname}},
 		{nil, []string{hostname, fooHostname}, []string{hostname, fooHostname}},
-		{nil, []string{}, []string{}},
+		{nil, []string{}, []string{""}},
 		{&hostnameWildCard, []string{}, []string{hostnameWildCard}},
 		{&hostnameWildCard, []string{hostname}, []string{hostname}},
 		{&hostnameWildCard, []string{hostname, fooExtendedHostname, otherOrgHostname}, []string{fooExtendedHostname, hostname}},

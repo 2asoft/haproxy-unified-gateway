@@ -187,7 +187,11 @@ func GetNamespacedName(name, namespace, defaultNamespace string) types.Namespace
 // If the listener hostname is a wildcard, it checks if it matches any route hostname.
 // If the route hostnames are empty, the listener hostname matches the route hostnames.
 func GetHostnamesForRouteWithListener(listenerHostname *string, routeHostnames []string) []string {
-	if listenerHostname == nil {
+	if len(routeHostnames) == 0 && PointerDefaultValueIfNil(listenerHostname) == "" {
+		return []string{""}
+	}
+
+	if PointerDefaultValueIfNil(listenerHostname) == "" {
 		// no restriction from listeners, all hostnames from route are allowed
 		return routeHostnames
 	}
