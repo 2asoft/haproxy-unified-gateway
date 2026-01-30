@@ -1,0 +1,14 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: tlsroute
+spec:
+  parentRefs:
+    - name: tls-gateway
+      sectionName: tls
+  hostnames:
+    - "example.local"
+  rules:
+    - backendRefs:
+        - name: http-echo
+          port: 443

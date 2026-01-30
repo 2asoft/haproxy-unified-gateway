@@ -1,0 +1,36 @@
+package tlsroute
+
+import (
+	"fmt"
+	"path"
+
+	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
+)
+
+func (s *TLSRouteSuite) Test_TLSRoute_SSL_Passthrough() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "sslpassthrough"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	tlsRouteName := "tlsroute"
+	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, tlsRouteName, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "tls-gateway", "tls", 1)
+
+	// Check SNI Map
+	sniMapFile := "link1_" + s.Test().Namespace + "_tls-gateway_tls"
+
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(sniMapFile, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", sniMapFile))
+}

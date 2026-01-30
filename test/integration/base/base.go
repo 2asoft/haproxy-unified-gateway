@@ -376,6 +376,34 @@ func (b *BaseSuite) CheckEntryInMapFile(mapFileRelativePath, key, value string) 
 	return false
 }
 
+func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string) bool {
+	// 1. take all files from expectedMapPath and see if files exist in mapFile
+	expectedFiles, err := os.ReadDir(expectedMapPath)
+	if err != nil {
+		return false
+	}
+	// 2. check if file content is the same
+	for _, expectedFile := range expectedFiles {
+		expectedFilePath := path.Join(expectedMapPath, expectedFile.Name())
+		expectedFileContent, err := os.ReadFile(expectedFilePath)
+		if err != nil {
+			b.T().Logf("Error reading expected map file %s: %v", expectedFilePath, err)
+			return false
+		}
+		mapFile, err := os.ReadFile(filepath.Join(b.test.HaproxyCfgDir, "maps", mapFileRelativePath, expectedFile.Name()))
+		if err != nil {
+			b.T().Logf("Error reading map file %s: %v", expectedFilePath, err)
+			return false
+		}
+		if string(expectedFileContent) != string(mapFile) {
+			b.T().Logf("Expected map file %s does not match actual map file %s", expectedFilePath, mapFileRelativePath)
+			return false
+		}
+	}
+
+	return true
+}
+
 // func (b *BaseSuite) exportFrontend(fe *models.Frontend) {
 // 	// Marshal the Go struct into a YAML byte slice.
 // 	// This process converts the Go data structure into its YAML representation.
