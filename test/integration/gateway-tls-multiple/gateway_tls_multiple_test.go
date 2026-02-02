@@ -13,18 +13,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package gatewaytls
+package gatewaytlsmultiple
 
 import (
 	"path"
+	"testing"
 
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
+	"github.com/stretchr/testify/suite"
 
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 )
 
-func (s *GatewayTLSTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
+func TestGatewayTLSMultipleTestSuite(t *testing.T) {
+	suite.Run(t, new(GatewayTLSMultipleSuite))
+}
+
+func (s *GatewayTLSMultipleSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "tls_multiple"
 
@@ -45,11 +51,11 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
 	// Check certificates
 	expectedCerts := []*models.SslCertificate{
 		{
-			StorageName: "/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload.pem",
+			StorageName: path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of/e2e-tests-gateway-tls-multiple_offload.pem"),
 			Subject:     "/CN=offload.haproxy",
 		},
 		{
-			StorageName: "/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload2.pem",
+			StorageName: path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of/e2e-tests-gateway-tls-multiple_offload2.pem"),
 			Subject:     "/CN=offload2.haproxy",
 		},
 	}
@@ -58,16 +64,16 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_multiple_same_namespace_ok() {
 	// Check crt-list
 	expectedCrtLists := map[futils.FilePath][]string{ // map[crt-list .File]
 		{
-			Dir:      "/tmp/hug/certlists",
-			FileName: "/e2e-tests-gateway-tls_gateway_https.list",
+			Dir:      path.Join(s.Test().HaproxyCfgDir, "certlists"),
+			FileName: "/e2e-tests-gateway-tls-multiple_gateway_https.list",
 		}: {
-			"/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload.pem",
-			"/tmp/hug/certs/e2e-tests-gateway-tls/of/e2e-tests-gateway-tls_offload2.pem",
+			path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of", "e2e-tests-gateway-tls-multiple_offload.pem"),
+			path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of", "e2e-tests-gateway-tls-multiple_offload2.pem"),
 		},
 	}
 	s.ExpectCrtLists(s.Test().Ctx, expectedCrtLists)
 
 	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
-	expectedFrontends := []string{"link1_e2e-tests-gateway-tls_gateway_http", "link1_e2e-tests-gateway-tls_gateway_https"}
+	expectedFrontends := []string{"link1_e2e-tests-gateway-tls-multiple_gateway_http", "link1_e2e-tests-gateway-tls-multiple_gateway_https"}
 	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
 }

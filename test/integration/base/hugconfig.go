@@ -19,6 +19,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"testing"
 	"time"
 
 	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
@@ -28,11 +29,12 @@ import (
 
 const TestControllerName = "gate.haproxy.org/hug"
 
-func hugConfig(test *IntTest) hugconfig.HUGConfig {
+func hugConfig(test *IntTest, t *testing.T) hugconfig.HUGConfig {
 	cfgDir := os.Getenv("HAPROXY_CFG_DIR")
 	if cfgDir == "" {
 		tmpDir := os.TempDir()
-		cfgDir = path.Join(tmpDir, "hug")
+		cfgDir = path.Join(tmpDir, "hug", test.Namespace)
+		t.Logf("Haproxy config path: %s", cfgDir)
 	}
 
 	haproxyBinDir := os.Getenv("HAPROXY_BIN")
@@ -40,6 +42,8 @@ func hugConfig(test *IntTest) hugconfig.HUGConfig {
 		External:      true,
 		CfgDir:        cfgDir,
 		HaproxyBinary: haproxyBinDir,
+		RuntimeDir:    cfgDir,
+		StateDir:      cfgDir,
 	}
 
 	hconfig := hugconfig.HUGConfig{

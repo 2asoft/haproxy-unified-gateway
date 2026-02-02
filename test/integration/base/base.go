@@ -15,15 +15,13 @@
 package base
 
 import (
-	"bufio"
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
@@ -52,11 +50,6 @@ func (b *BaseSuite) SetupSuite() {
 	var err error
 	b.test, err = NewIntTest(b.T())
 	b.Require().NoError(err)
-
-	process, processErr := haproxyProcess("/tmp/hug/run/haproxy.pid")
-	if processErr != nil && process != nil {
-		_ = process.Signal(syscall.SIGUSR1)
-	}
 
 	b.test.StartTestEnv(b.T())
 }
@@ -123,25 +116,25 @@ func (b *BaseSuite) CleanupFixturesInNamespace(fixturePath, namespace string, ma
 }
 
 // Return HAProxy master process if it exists.
-func haproxyProcess(pidFile string) (*os.Process, error) {
-	file, err := os.Open(pidFile)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	pid, err := strconv.Atoi(scanner.Text())
-	if err != nil {
-		return nil, err
-	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return nil, err
-	}
-	err = process.Signal(syscall.Signal(0))
-	return process, err
-}
+// func haproxyProcess(pidFile string) (*os.Process, error) {
+// 	file, err := os.Open(pidFile)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer file.Close()
+// 	scanner := bufio.NewScanner(file)
+// 	scanner.Scan()
+// 	pid, err := strconv.Atoi(scanner.Text())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	process, err := os.FindProcess(pid)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	err = process.Signal(syscall.Signal(0))
+// 	return process, err
+// }
 
 // For now: only checks the following certificate fields:
 // - StorageName
@@ -157,6 +150,8 @@ func (b *BaseSuite) ExpectCertificates(ctx context.Context, expectedCerts []*mod
 		}
 
 		if len(expectedCerts) != len(certs) {
+			fmt.Printf("len(expectedCerts): %v\n", len(expectedCerts))
+			fmt.Printf("len(certs): %v\n", len(certs))
 			return false
 		}
 		gotCertSkeletonMap := make(map[string]*models.SslCertificate)

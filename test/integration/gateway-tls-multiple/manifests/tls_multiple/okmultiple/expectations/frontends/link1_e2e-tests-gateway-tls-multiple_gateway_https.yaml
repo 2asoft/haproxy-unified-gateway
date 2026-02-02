@@ -1,0 +1,23 @@
+from: haproxytech
+metadata:
+  hug:
+    Gateway:
+      e2e-tests-gateway-tls-multiple/gateway:
+        Generation: 1
+        LinkID: link1
+mode: http
+name: link1_e2e-tests-gateway-tls-multiple_gateway_https
+binds:
+  v4:
+    crt_list: /tmp/hug/e2e-tests-gateway-tls-multiple/certlists/e2e-tests-gateway-tls-multiple_gateway_https.list
+    name: v4
+    ssl: true
+    address: 0.0.0.0
+    port: 8443
+  v6:
+    crt_list: /tmp/hug/e2e-tests-gateway-tls-multiple/certlists/e2e-tests-gateway-tls-multiple_gateway_https.list
+    name: v6
+    ssl: true
+    address: '::'
+    port: 8443
+default_backend: backend_not_found

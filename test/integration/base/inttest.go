@@ -16,17 +16,13 @@
 package base
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 
 	"github.com/haproxytech/client-native/v6/runtime"
@@ -136,12 +132,18 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	// 	Enabled: false,
 	// 	Secure:  false,
 	// }
-	kubeconfigPath, err := WriteKubeconfig(cfg)
-	g.Expect(err).ToNot(gomega.HaveOccurred())
-	t.Logf("kubeconfig path: %s", kubeconfigPath)
 
 	// Controller HUGConfig
-	hugConfig := hugConfig(test)
+	hugConfig := hugConfig(test, t)
+
+	// Cleanup configDir
+	err = os.RemoveAll(hugConfig.HaproxyDirs.CfgDir)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+
+	// Write the kubeconfig file
+	kubeconfigPath, err := WriteKubeconfig(cfg, hugConfig.HaproxyDirs.CfgDir)
+	g.Expect(err).ToNot(gomega.HaveOccurred())
+	t.Logf("kubeconfig path: %s", kubeconfigPath)
 
 	// Ensure route.lua is present in the test HAProxy cfg dir so HAProxy can load it when
 	// the controller emits `lua-load-per-thread route.lua` / `http-request lua.route`.
@@ -209,7 +211,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	ctrlruntime.SetLogger(logrLoggerFromSlog)
 
 	// find and kill any running haproxy
-	test.killAnyRunningHaproxy(t, gateconfig.HaproxyParams.HaproxyBinary)
+	//	test.killAnyRunningHaproxy(t, gateconfig.HaproxyParams.HaproxyBinary)
 	// // ----------------
 	// // Start Haproxy App manager
 	var wg sync.WaitGroup
@@ -279,24 +281,24 @@ func (test *IntTest) StopTestEnv(t *testing.T) {
 	}
 }
 
-func (test *IntTest) killAnyRunningHaproxy(t *testing.T, haproxyBinary string) {
-	g := gomega.NewWithT(t)
-	if !utils.WaitFor(test.Ctx, interval, timeout, func() bool {
-		pid, err := findPID(haproxyBinary, "tmp/hug")
-		if err == nil {
-			p, errF := os.FindProcess(pid)
-			g.Expect(errF).ToNot(gomega.HaveOccurred())
+// func (test *IntTest) killAnyRunningHaproxy(t *testing.T, haproxyBinary string) {
+// 	g := gomega.NewWithT(t)
+// 	if !utils.WaitFor(test.Ctx, interval, timeout, func() bool {
+// 		pid, err := findPID(haproxyBinary, "tmp/hug")
+// 		if err == nil {
+// 			p, errF := os.FindProcess(pid)
+// 			g.Expect(errF).ToNot(gomega.HaveOccurred())
 
-			errS := p.Signal(syscall.SIGKILL)
-			g.Expect(errS).ToNot(gomega.HaveOccurred())
-			return false
-		} else {
-			return true
-		}
-	}) {
-		t.Fatal("could not stop haproxy")
-	}
-}
+// 			errS := p.Signal(syscall.SIGKILL)
+// 			g.Expect(errS).ToNot(gomega.HaveOccurred())
+// 			return false
+// 		} else {
+// 			return true
+// 		}
+// 	}) {
+// 		t.Fatal("could not stop haproxy")
+// 	}
+// }
 
 func (test *IntTest) createNamespace(ns string) error {
 	err := utils.CreateRuntimeObject(test.Ctx, test.Client, &v1.Namespace{
@@ -318,7 +320,7 @@ func (test *IntTest) cleanupNamespace(ns string) error {
 
 // WriteKubeconfig writes the given rest.Config to a kubeconfig file.
 // It returns the path to the file and an error if it fails.
-func WriteKubeconfig(cfg *rest.Config) (string, error) {
+func WriteKubeconfig(cfg *rest.Config, rootPath string) (string, error) {
 	// Create a clientcmdapi.Config object from the rest.Config
 	clusters := make(map[string]*api.Cluster)
 	clusters["envtest-cluster"] = &api.Cluster{
@@ -349,7 +351,7 @@ func WriteKubeconfig(cfg *rest.Config) (string, error) {
 	}
 
 	// Create a temporary file to write the kubeconfig to
-	kubeconfigPath := filepath.Join(os.TempDir(), "kubeconfig")
+	kubeconfigPath := filepath.Join(rootPath, "kubeconfig")
 	if err := clientcmd.WriteToFile(*kubeconfig, kubeconfigPath); err != nil {
 		return "", fmt.Errorf("failed to write kubeconfig file: %w", err)
 	}
@@ -369,39 +371,39 @@ func writeInitialHaproxyCfg(dstFile, content string) error {
 }
 
 // findPID finds the PID of a process that matches the given filters.
-func findPID(processName, filterArg string) (int, error) {
-	// Use pgrep with the -a flag to list the full command line of processes.
-	cmd := exec.Command("pgrep", "-af", processName)
-	var out bytes.Buffer
-	cmd.Stdout = &out
+// func findPID(processName, filterArg string) (int, error) {
+// 	// Use pgrep with the -a flag to list the full command line of processes.
+// 	cmd := exec.Command("pgrep", "-af", processName)
+// 	var out bytes.Buffer
+// 	cmd.Stdout = &out
 
-	if err := cmd.Run(); err != nil {
-		// pgrep returns an error if no process is found, which is a normal case.
-		// We'll return a more specific message if the command itself fails.
-		if _, ok := err.(*exec.ExitError); ok {
-			return 0, fmt.Errorf("no process found matching '%s'", processName)
-		}
-		return 0, fmt.Errorf("failed to run pgrep: %w", err)
-	}
+// 	if err := cmd.Run(); err != nil {
+// 		// pgrep returns an error if no process is found, which is a normal case.
+// 		// We'll return a more specific message if the command itself fails.
+// 		if _, ok := err.(*exec.ExitError); ok {
+// 			return 0, fmt.Errorf("no process found matching '%s'", processName)
+// 		}
+// 		return 0, fmt.Errorf("failed to run pgrep: %w", err)
+// 	}
 
-	// Split the output into lines to process each process entry.
-	lines := strings.Split(out.String(), "\n")
+// 	// Split the output into lines to process each process entry.
+// 	lines := strings.Split(out.String(), "\n")
 
-	// Iterate over each line and apply the additional filter.
-	for _, line := range lines {
-		if strings.Contains(line, filterArg) {
-			// Found a matching line. Now, extract the PID (the first word).
-			fields := strings.Fields(line)
-			if len(fields) > 0 {
-				pid, err := strconv.Atoi(fields[0])
-				if err != nil {
-					return 0, fmt.Errorf("failed to parse PID from line '%s': %w", line, err)
-				}
-				// Return the first matching PID found.
-				return pid, nil
-			}
-		}
-	}
+// 	// Iterate over each line and apply the additional filter.
+// 	for _, line := range lines {
+// 		if strings.Contains(line, filterArg) {
+// 			// Found a matching line. Now, extract the PID (the first word).
+// 			fields := strings.Fields(line)
+// 			if len(fields) > 0 {
+// 				pid, err := strconv.Atoi(fields[0])
+// 				if err != nil {
+// 					return 0, fmt.Errorf("failed to parse PID from line '%s': %w", line, err)
+// 				}
+// 				// Return the first matching PID found.
+// 				return pid, nil
+// 			}
+// 		}
+// 	}
 
-	return 0, fmt.Errorf("no process found matching both '%s' and '%s'", processName, filterArg)
-}
+// 	return 0, fmt.Errorf("no process found matching both '%s' and '%s'", processName, filterArg)
+// }
