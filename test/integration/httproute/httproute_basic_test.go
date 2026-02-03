@@ -49,7 +49,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo"
@@ -87,7 +87,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo"
@@ -115,7 +115,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo"
@@ -143,7 +143,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo"
@@ -162,7 +162,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 
 	// 2- Now create a 2nd route
 	s.CreateFixtures(fixturePath, []string{"route-2.yaml"})
-	expectedCondPath = path.Join(expectationsPath, "conditions-2.yaml")
+	expectedCondPath = path.Join(expectationsPath, "route-conditions-2.yaml")
 	expectedConditions = s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName = "route-echo-2"
@@ -189,7 +189,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo"
@@ -217,7 +217,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() 
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo"

@@ -35,7 +35,7 @@ func (s *TLSRouteSuite) TearDownSuite() {
 	s.BaseSuite.TearDownSuite()
 }
 
-func (s *TLSRouteSuite) expectConditionsUpdated(ctx context.Context, namespace, name string, expectedConditions rc.RouteConditions) {
+func (s *TLSRouteSuite) expectConditionsRouteUpdated(ctx context.Context, namespace, name string, expectedConditions rc.RouteConditions) {
 	route := &gatewayv1alpha2.TLSRoute{}
 	var gotConditions rc.RouteConditions
 	if !utils.WaitFor(ctx, interval, timeout, func() bool {

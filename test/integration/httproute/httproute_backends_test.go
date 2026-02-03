@@ -35,7 +35,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo-1"
@@ -67,7 +67,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_filter() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo-1"
@@ -104,7 +104,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_bac
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo-1"
@@ -156,7 +156,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_1_backend_dynamic_de
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo-1"

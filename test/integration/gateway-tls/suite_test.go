@@ -44,7 +44,7 @@ func (s *GatewayTLSSuite) TearDownSuite() {
 	s.BaseSuite.TearDownSuite()
 }
 
-func (s *GatewayTLSSuite) expectConditionsUpdated(ctx context.Context, namespace, name string,
+func (s *GatewayTLSSuite) expectGwConditionsUpdated(ctx context.Context, namespace, name string,
 	expectedConditions conditions.Conditions,
 	expectedListenerStatuses []gatewayv1.ListenerStatus,
 ) {

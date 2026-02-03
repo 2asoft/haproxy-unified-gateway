@@ -32,7 +32,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_basic() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo-backend-cr-basic"
@@ -64,7 +64,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
 	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
 
 	httpRouteName := "route-echo-backend-cr-basic"

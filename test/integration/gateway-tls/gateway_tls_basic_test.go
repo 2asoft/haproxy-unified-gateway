@@ -46,13 +46,13 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_missingSecret() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "missingSecret", "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "gw-conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
-	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses.yaml")
+	expectedListenerStatusesPath := path.Join(expectationsPath, "gw-listener_statuses.yaml")
 	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
 
 	gwName := "gateway"
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Check Maps
 	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
@@ -77,13 +77,13 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_okSecret() {
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "okSecret", "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "gw-conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
-	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses.yaml")
+	expectedListenerStatusesPath := path.Join(expectationsPath, "gw-listener_statuses.yaml")
 	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
 
 	gwName := "gateway"
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Check Maps
 	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
@@ -109,25 +109,25 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
 	// Expected Conditions
 	// 1 - Secret is present OK
 	expectationsPath := path.Join(fixturePath, "dynamicSecret", "expectations")
-	expectedCondPath := path.Join(expectationsPath, "conditions.yaml")
+	expectedCondPath := path.Join(expectationsPath, "gw-conditions.yaml")
 	expectedConditions := s.YamlToConditions(expectedCondPath)
-	expectedListenerStatusesPath := path.Join(expectationsPath, "listener_statuses_ok_1.yaml")
+	expectedListenerStatusesPath := path.Join(expectationsPath, "gw-listener_statuses_ok_1.yaml")
 	expectedListenerStatuses := s.YamlToListenerStatuses(expectedListenerStatusesPath)
 
 	gwName := "gateway"
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// 2 - Delete the secret
 	secret := s.deleteSecret("offload")
-	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses_ko_2.yaml")
+	expectedListenerStatusesPath = path.Join(expectationsPath, "gw-listener_statuses_ko_2.yaml")
 	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// // 3 - Re-create the secret
 	s.createSecret(secret)
-	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses_ok_3.yaml")
+	expectedListenerStatusesPath = path.Join(expectationsPath, "gw-listener_statuses_ok_3.yaml")
 	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
-	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Check Maps
 	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"

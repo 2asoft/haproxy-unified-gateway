@@ -11,7 +11,7 @@ spec:
             kind: TLSRoute
       hostname: example.local
       name: tls
-      port: 31443
+      port: 31445
       protocol: TLS
       tls:
         mode: Passthrough
