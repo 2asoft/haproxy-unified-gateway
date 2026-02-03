@@ -49,7 +49,7 @@ type GateTreeConfig struct {
 	// k8sReader is a Kubernets API reader.
 	K8sReader                  client.Reader
 	CertificateStorage         storage.CertificateStorage
-	MapsStorage                storage.MapsStorage
+	MapsStorage                storage.MapsStorageEx
 	BaseLogger                 *slog.Logger
 	LogCategoryFilterHandler   *logging.CategoryFilterHandler
 	ExtractGVK                 utilsk8s.ExtractGVK

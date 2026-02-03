@@ -16,11 +16,9 @@ package haproxy
 
 import (
 	"context"
-	"errors"
 	"log/slog"
-	"strings"
 
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
@@ -42,12 +40,14 @@ func (e *ErrMapRuntimeUpdate) Error() string {
 func (b *RouteMgrImpl) fillMaps() {
 	b.fillMapsForHTTPRoutes()
 	b.fillMapsForTLSRoutes()
+	mapsStorage := b.topManager.params.mapsStorageEx
+	mapsStorage.ProcessMapFiles()
 }
 
 func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 	var errs utils.Errors
 	controllerStore := b.topManager.controllerStore
-	mapsStorage := b.topManager.params.mapsStorage
+	mapsStorage := b.topManager.params.mapsStorageEx
 	// Managed TLSRoutes => if there is a old resource, clean the state before update
 	for routeKey, route := range controllerStore.GateTree.TLSRoutes {
 		if route.TreeStatus.OldTreeResource == nil {
@@ -61,10 +61,8 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 				}
 				frontendName := b.topManager.getFrontendName(listener.VirtualListenerName)
 
-				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
-				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
-				pathSNIDomainWildcardMap := mapsStorage.MapPath(frontendName, storage.SNI_DOMAIN_WILDCARD_MAP)
-				mapSNIDomainWildcardMap := mapsStorage.GetMapData(pathSNIDomainWildcardMap)
+				mapSNIMap := mapsStorage.GetSniMapFile(frontendName)
+				mapSNIDomainWildcardMap := mapsStorage.GetSniDomainWildcardMapFile(frontendName)
 				err := b.onDeletedTLSRoute(routeKey, route, mapSNIMap, mapSNIDomainWildcardMap)
 				// errs.Add(err)
 				_ = err // TODO ignore error for now
@@ -80,10 +78,8 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 				routesHosnames := utils.ConvertSliceWithFunc(route.K8sResource.Spec.Hostnames, utils.ConvertV1Alpha2HostnameToString)
 				listenerHostname := (*string)(listener.K8sResource.Hostname)
 				acceptedHostnamesForRoute := utils.GetHostnamesForRouteWithListener(listenerHostname, routesHosnames)
-				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
-				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
-				pathSNIDomainWildcardMap := mapsStorage.MapPath(frontendName, storage.SNI_DOMAIN_WILDCARD_MAP)
-				mapSNIDomainWildcardMap := mapsStorage.GetMapData(pathSNIDomainWildcardMap)
+				mapSNIMap := mapsStorage.GetSniMapFile(frontendName)
+				mapSNIDomainWildcardMap := mapsStorage.GetSniDomainWildcardMapFile(frontendName)
 				switch route.TreeStatus.Status {
 				case store.StatusUnchanged:
 					continue
@@ -108,7 +104,7 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 	var errs utils.Errors
 	controllerStore := b.topManager.controllerStore
-	mapsStorage := b.topManager.params.mapsStorage
+	mapsStorage := b.topManager.params.mapsStorageEx
 	// Managed HTTPRoutes => if there is a old resource, clean the state before update
 	for routeKey, route := range controllerStore.GateTree.HTTPRoutes {
 		if route.TreeStatus.OldTreeResource == nil {
@@ -122,15 +118,10 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 					continue
 				}
 				frontendName := b.topManager.getFrontendName(vListenerName)
-
-				pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
-				pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
-				pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
-				pathregexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
-				mapExact := mapsStorage.GetMapData(pathExactMap)
-				mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
-				mapRegex := mapsStorage.GetMapData(pathregexMap)
-				mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
+				mapExact := mapsStorage.GetPathExactMapFile(frontendName)
+				mapPrefix := mapsStorage.GetPathPrefixMapFile(frontendName)
+				mapRegex := mapsStorage.GetPathRegexMapFile(frontendName)
+				mapDomainWPathExact := mapsStorage.GetPathExactDomainWildcardMapFile(frontendName)
 				err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 				// errs.Add(err)
 				_ = err // TODO ignore error for now
@@ -147,14 +138,10 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 				routesHosnames := utils.ConvertSliceWithFunc(route.K8sResource.Spec.Hostnames, utils.ConvertV1Alpha2HostnameToString)
 				listenerHostname := (*string)(listener.K8sResource.Hostname)
 				acceptedHostnamesForRoute := utils.GetHostnamesForRouteWithListener(listenerHostname, routesHosnames)
-				pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
-				pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
-				pathDomainWPathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_DOMAIN_WILDCARD_MAP)
-				pathRegexMap := mapsStorage.MapPath(frontendName, storage.PATH_REGEX_MAP)
-				mapExact := mapsStorage.GetMapData(pathExactMap)
-				mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
-				mapRegex := mapsStorage.GetMapData(pathRegexMap)
-				mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
+				mapExact := mapsStorage.GetPathExactMapFile(frontendName)
+				mapPrefix := mapsStorage.GetPathPrefixMapFile(frontendName)
+				mapRegex := mapsStorage.GetPathRegexMapFile(frontendName)
+				mapDomainWPathExact := mapsStorage.GetPathExactDomainWildcardMapFile(frontendName)
 
 				switch route.TreeStatus.Status {
 				case store.StatusUnchanged:
@@ -181,89 +168,48 @@ func (b *RouteMgrImpl) writeMaps() {
 		return
 	}
 
-	mapsStorage := b.topManager.params.mapsStorage
-	for _, mapData := range mapsStorage.GetMaps() {
-		mapsStorage.WriteOnDisk(*mapData)
-	}
+	mapsStorage := b.topManager.params.mapsStorageEx
+	 for _, mapData := range mapsStorage.GetMaps() {
+		if mapData == nil {
+			continue
+		}
+		mapData.WriteOnDiskIfChanged()
+	 }
 }
 
 // runtimeMapSync updates the runtime maps through runtime API
 func (b *RouteMgrImpl) runtimeMapSync() (mapSyncError error) {
-	// runtime check is done before this func is called
-
-	mapsStorage := b.topManager.params.mapsStorage
+	mapsStorage := b.topManager.params.mapsStorageEx
 	runtimeClient := b.topManager.haproxyClient.RuntimeClient()
+
 	for _, mapData := range mapsStorage.GetMaps() {
-		// first handle deletions
-		for i := len(mapData.DynamicUpdates.Delete) - 1; i >= 0; i-- {
-			key := mapData.DynamicUpdates.Delete[i]
-			mapID := b.getMapID(mapData.Path.FullPath())
-			if mapID == "" {
-				return &ErrMapRuntimeUpdate{
-					Type:    "update",
-					MapName: mapData.Path.FullPath(),
-					Key:     key,
-					Err:     errors.New("map not found"),
-				}
+		mapID := b.getMapID(mapData.FileName)
+		// b.topManager.logger.LogAttrs(context.Background(), 
+		// slog.LevelInfo, "Runtime Sync", slog.String("map", mapData.FileName), slog.String("mapID", mapID))
+		for entryKey, entryValue:= range mapData.Entries  {
+			key:=entryKey.Hostname
+			if entryKey.Path != "" {
+				key += entryKey.Path
 			}
-			err := runtimeClient.DeleteMapEntry(mapID, key)
+			routeValue:=maps.BuildRouteValue(entryValue.DesiredValue)
+			// if routeValue is empty, delete the entry
+			if routeValue == "" {
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Deleting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
+				err := runtimeClient.DeleteMapEntry(mapID, key )
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			// else update the entry
+			b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Upserting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
+			err := runtimeClient.SetMapEntry(mapID, key, routeValue )
 			if err != nil {
-				return &ErrMapRuntimeUpdate{
-					Type:    "delete",
-					MapName: mapData.Path.FileName,
-					Key:     key,
-					Err:     err,
-				}
-			}
-		}
-
-		// then handle additions / updates
-		for key, val := range mapData.DynamicUpdates.Update {
-			mapID := b.getMapID(mapData.Path.FullPath())
-			if mapID == "" {
-				return &ErrMapRuntimeUpdate{
-					Type:    "update",
-					MapName: mapData.Path.FullPath(),
-					Key:     key,
-					Value:   val,
-					Err:     errors.New("map not found"),
-				}
-			}
-			err := runtimeClient.SetMapEntry(mapID, key, val)
-			if err != nil {
-				return &ErrMapRuntimeUpdate{
-					Type:    "update",
-					MapName: mapData.Path.FileName,
-					Key:     key,
-					Value:   val,
-					Err:     err,
-				}
-			}
-		}
-
-		for key, val := range mapData.DynamicUpdates.Add {
-			mapID := b.getMapID(mapData.Path.FullPath())
-			if mapID == "" {
-				return &ErrMapRuntimeUpdate{
-					Type:    "add",
-					MapName: mapData.Path.FullPath(),
-					Key:     key,
-					Value:   val,
-					Err:     errors.New("map not found"),
-				}
-			}
-			err := runtimeClient.AddMapEntry(mapID, key, val)
-			if err != nil && !strings.Contains(err.Error(), "already exists") {
-				return &ErrMapRuntimeUpdate{
-					Type:    "add",
-					MapName: mapData.Path.FileName,
-					Key:     key,
-					Value:   val,
-					Err:     err,
-				}
+				return err
 			}
 		}
 	}
+	
 	return nil
 }
 

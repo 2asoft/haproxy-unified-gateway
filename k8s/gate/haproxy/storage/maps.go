@@ -27,16 +27,6 @@ import (
 	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 )
 
-//revive:disable:var-naming
-const (
-	PATH_EXACT_MAP                 = "path_exact"
-	PATH_EXACT_DOMAIN_WILDCARD_MAP = "domain_wildcard_path_exact"
-	PATH_PREFIX_MAP                = "path_prefix"
-	PATH_REGEX_MAP                 = "path_regex"
-	SNI_MAP                        = "sni"
-	SNI_DOMAIN_WILDCARD_MAP        = "domain_wildcard_sni"
-)
-
 //revive:enable:var-naming
 
 var _ MapsStorage = &MapsStorageDefault{}

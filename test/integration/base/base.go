@@ -15,12 +15,16 @@
 package base
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -79,6 +83,36 @@ func (b *BaseSuite) CreateFixtures(fixturePath string, manifestNames []string) {
 	}
 	err := utils.CreateRuntimeObjectsFromYAMLFiles(params)
 	b.Require().NoError(err)
+}
+
+// CleanupFixturesCheckMapFiles is similar to CleanupFixtures, but it takes an additional
+// argument mapFileRelativePath, which is the path to the map file that should
+// be cleaned up. This is useful for tests that create a map file and then
+// need to clean it up after the test has finished.
+//
+// Note that CleanupFixturesCheckMapFiles will wait until the map file is empty before
+// returning. This is to ensure that the test does not finish before the cleanup
+// has finished.
+func (b *BaseSuite) CleanupFixturesCheckMapFiles(fixturePath string, manifestNames []string, mapFileRelativePath string) {
+	b.T().Logf("Cleaning up fixtures in %s", fixturePath)
+	defer b.T().Logf("End of cleaning up fixtures in %s", fixturePath)
+	params := utils.RuntimeYamlParams{
+		Ctx:               b.Test().Ctx,
+		CrtlruntimeClient: b.Test().Client,
+		Namespace:         b.Test().Namespace,
+		Dir:               fixturePath,
+		WaitForResult:     true,
+		ManifestNames:     manifestNames,
+	}
+	err := utils.DeleteRuntimeObjectsFromYAMLFiles(params)
+	b.Require().NoError(err)
+	b.Eventually(func() bool {
+		emptyMapFile := b.CheckMapContents(mapFileRelativePath, "")
+		if !emptyMapFile {
+			return false
+		}
+		return b.CheckRuntimeMapContents(mapFileRelativePath, "")
+	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFileRelativePath))
 }
 
 func (b *BaseSuite) CreateFixturesInNamespace(fixturePath, namespace string, manifestNames []string) {
@@ -392,6 +426,8 @@ func (b *BaseSuite) ExpectMapContents(mapFilePath, expectedMapPath string) {
 }
 
 func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string) bool {
+	b.T().Logf("Checking map contents in %s", mapFileRelativePath)
+	b.T().Logf("with expected map path %s", expectedMapPath)
 	for _, mapName := range StandardMaps {
 		expectedFilePath := path.Join(expectedMapPath, mapName)
 
@@ -422,6 +458,7 @@ func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string
 			}
 		}
 	}
+	b.T().Logf("Map contents correct for %s", mapFileRelativePath)
 	return true
 }
 
@@ -599,40 +636,113 @@ func (b *BaseSuite) ConsistentlyNoReload(oldPid string, duration time.Duration) 
 	}
 }
 
-// func (b *BaseSuite) exportFrontend(fe *models.Frontend) {
-// 	// Marshal the Go struct into a YAML byte slice.
-// 	// This process converts the Go data structure into its YAML representation.
-// 	jsonData, err := json.Marshal(fe)
-// 	if err != nil {
-// 		log.Fatalf("Error marshaling to YAML: %v", err)
-// 	}
-// 	// Define the output file name.
-// 	filePath := fe.Name + ".yaml"
+func (b *BaseSuite) CheckRuntimeMapContents(mapFileRelativePath, expectedMapPath string) bool {
+	b.T().Logf("Checking runtime map contents for %s with expected map path %s", mapFileRelativePath, expectedMapPath)
+	defer b.T().Logf("End of checking runtime map contents for %s with expected map path %s", mapFileRelativePath, expectedMapPath)
+	socketPath := filepath.Join(b.test.HaproxyCfgDir, "haproxy-runtime-api.sock")
 
-// 	// Write the YAML data to the file.
-// 	// os.WriteFile is a convenience function that creates the file if it doesn't exist,
-// 	// writes the data, and closes the file.
-// 	err = os.WriteFile(filePath, jsonData, 0o644)
-// 	if err != nil {
-// 		log.Fatalf("Error writing file: %v", err)
-// 	}
-// }
+	for _, mapName := range StandardMaps {
+		expectedFilePath := path.Join(expectedMapPath, mapName)
 
-// func (b *BaseSuite) exportBackend(be *models.Backend) {
-// 	// Marshal the Go struct into a YAML byte slice.
-// 	// This process converts the Go data structure into its YAML representation.
-// 	jsonData, err := json.Marshal(be)
-// 	if err != nil {
-// 		log.Fatalf("Error marshaling to YAML: %v", err)
-// 	}
-// 	// Define the output file name.
-// 	filePath := be.Name + ".yaml"
+		// Check if expectation exists
+		expectedContent, err := os.ReadFile(expectedFilePath)
+		expectationExists := err == nil
 
-// 	// Write the YAML data to the file.
-// 	// os.WriteFile is a convenience function that creates the file if it doesn't exist,
-// 	// writes the data, and closes the file.
-// 	err = os.WriteFile(filePath, jsonData, 0o644)
-// 	if err != nil {
-// 		log.Fatalf("Error writing file: %v", err)
-// 	}
-// }
+		// Build runtime map path (must match HAProxy config path exactly)
+		runtimeMapPath := filepath.Join(
+			b.test.HaproxyCfgDir,
+			"maps",
+			mapFileRelativePath,
+			mapName,
+		)
+
+		// Read map from runtime socket
+		actualString, err := readRuntimeMap(socketPath, runtimeMapPath)
+		if err != nil {
+			// If map not found in runtime, treat it as empty
+			actualString = ""
+		}
+
+		expectedNormalized := normalizeMapContent(string(expectedContent))
+		actualNormalized := normalizeMapContent(actualString)
+		if strings.HasPrefix(actualNormalized, "Unknown map identifier") {
+			actualNormalized = ""
+		}
+
+		if expectationExists {
+			b.T().Logf("Runtime map contents: %s", actualNormalized)
+			b.T().Logf("Expected runtime map contents: %s", expectedNormalized)
+			if expectedNormalized != actualNormalized {
+				b.T().Logf(
+					"Runtime map mismatch for %s:\nexpected:\n%q\ngot:\n%q",
+					mapName,
+					expectedNormalized,
+					actualNormalized,
+				)
+				return false
+			}
+		} else {
+			if strings.TrimSpace(actualNormalized) != "" {
+				b.T().Logf(
+					"Runtime map %s should be empty but has content: %q",
+					mapName,
+					actualNormalized,
+				)
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func readRuntimeMap(socketPath, mapPath string) (string, error) {
+	conn, err := net.Dial("unix", socketPath)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	cmd := fmt.Sprintf("show map %s\n", mapPath)
+	if _, err := conn.Write([]byte(cmd)); err != nil {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, conn); err != nil {
+		return "", err
+	}
+
+	output := buf.String()
+
+	if strings.Contains(output, "No such map") {
+		return "", fmt.Errorf("map not found")
+	}
+
+	return output, nil
+}
+
+func normalizeMapContent(content string) string {
+	lines := strings.Split(content, "\n")
+	var cleaned []string
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Fields(line)
+
+		// Remove runtime memory address if present
+		if len(fields) > 1 && strings.HasPrefix(fields[0], "0x") {
+			fields = fields[1:]
+		}
+
+		cleaned = append(cleaned, strings.Join(fields, " "))
+	}
+
+	sort.Strings(cleaned)
+
+	return strings.Join(cleaned, "\n")
+}

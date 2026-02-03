@@ -23,7 +23,7 @@ import (
 
 type HaproxyConfMgrParams struct {
 	certificateStorage storage.CertificateStorage
-	mapsStorage        storage.MapsStorage
+	mapsStorageEx        storage.MapsStorageEx
 	extractGVK         utilsk8s.ExtractGVK
 	HaproxyConfParams
 }
@@ -80,12 +80,12 @@ type HaproxyDirs struct {
 }
 
 func NewHaproxyConfMgrParams(extractGVK utilsk8s.ExtractGVK, haproxyConfParams HaproxyConfParams,
-	certificateStorage storage.CertificateStorage, mapsStorage storage.MapsStorage,
+	certificateStorage storage.CertificateStorage, mapsStorageEx storage.MapsStorageEx,
 ) (HaproxyConfMgrParams, error) {
 	return HaproxyConfMgrParams{
 		extractGVK:         extractGVK,
 		HaproxyConfParams:  haproxyConfParams,
 		certificateStorage: certificateStorage,
-		mapsStorage:        mapsStorage,
+		mapsStorageEx:        mapsStorageEx,
 	}, nil
 }

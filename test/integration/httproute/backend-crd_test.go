@@ -28,8 +28,8 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_basic() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "basic")
 	s.CreateFixtures(fixturePath, nil)
-	defer s.CleanupFixtures(fixturePath, nil)
-
+	mapFileRelativePath := "hug_http_8080"
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -47,10 +47,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_basic() {
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+		if !correctMapContents {
+			return false
+		}
+		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
@@ -60,8 +63,8 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "extended")
 	s.CreateFixtures(fixturePath, nil)
-	defer s.CleanupFixtures(fixturePath, nil)
-
+	mapFileRelativePath := "hug_http_8080"
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -79,9 +82,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
+	
 	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+		if !correctMapContents {
+			return false
+		}
+		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }

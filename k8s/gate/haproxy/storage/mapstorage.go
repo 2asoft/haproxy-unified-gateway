@@ -1,0 +1,153 @@
+// Copyright 2025 HAProxy Technologies LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package storage
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"path/filepath"
+
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
+)
+
+//revive:disable:var-naming
+const (
+	PATH_EXACT_MAP                 = "path_exact"
+	PATH_EXACT_DOMAIN_WILDCARD_MAP = "domain_wildcard_path_exact"
+	PATH_PREFIX_MAP                = "path_prefix"
+	PATH_REGEX_MAP                 = "path_regex"
+	SNI_MAP                        = "sni"
+	SNI_DOMAIN_WILDCARD_MAP        = "domain_wildcard_sni"
+)
+
+var _ MapsStorageEx = &MapsStorageExDefault{}
+
+type MapsStorageEx interface {
+	DeleteFromDisk(mapFilePath string) error
+	GetPathExactMapFile(frontendName string) *maps.MapFileState
+	GetPathPrefixMapFile(frontendName string) *maps.MapFileState
+	GetPathRegexMapFile(frontendName string) *maps.MapFileState
+	GetSniMapFile(frontendName string) *maps.MapFileState
+	GetSniDomainWildcardMapFile(frontendName string) *maps.MapFileState
+	GetPathExactDomainWildcardMapFile(frontendName string) *maps.MapFileState
+	GetMaps() map[string]*maps.MapFileState
+	ProcessMapFiles()
+}
+
+
+type MapsStorageExDefault struct {
+	logger     *slog.Logger
+	MapsBaseDir string
+	mapFiles map[string]*maps.MapFileState // map file path -> map file
+}
+
+// NewMapsStorageEx creates a new instance of MapsStorageEx with the given logger and maps base directory.
+// It returns a pointer to the new instance.
+// The logger is used to log messages related to the MapsStorageEx instance.
+// The maps base directory is the directory where the maps storage will store the maps files.
+func NewMapsStorageEx(logger *slog.Logger, mapsBaseDir string) MapsStorageEx {
+	return &MapsStorageExDefault{
+		logger:     logger,
+		MapsBaseDir: mapsBaseDir,
+		mapFiles: map[string]*maps.MapFileState{},
+	}
+}
+
+
+func (m* MapsStorageExDefault) GetPathExactMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, PATH_EXACT_MAP)
+}
+
+func (m* MapsStorageExDefault) GetPathPrefixMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, PATH_PREFIX_MAP)
+}
+
+func (m* MapsStorageExDefault) GetPathRegexMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, PATH_REGEX_MAP)
+}
+
+func (m* MapsStorageExDefault) GetSniMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, SNI_MAP)
+}
+
+func (m* MapsStorageExDefault) GetSniDomainWildcardMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, SNI_DOMAIN_WILDCARD_MAP)
+}
+
+func (m* MapsStorageExDefault) GetPathExactDomainWildcardMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, PATH_EXACT_DOMAIN_WILDCARD_MAP)
+}
+
+// getMapFile returns the MapFileState for the given frontend name and map name.
+// If the map file does not exist, it creates a new instance of MapFileState,
+// reads the map file from disk, and stores the map file in the mapFiles map.
+// If there is an error reading the map file from disk, it logs an error message.
+// It returns a pointer to the MapFileState.
+func (m* MapsStorageExDefault) getMapFile(frontendName string, mapName string) *maps.MapFileState {
+	mapFilePath := filepath.Join(m.MapsBaseDir, frontendName, mapName+".map")
+	mapFile := m.mapFiles[mapFilePath]
+	if mapFile == nil {
+		mapFile = maps.NewMapFileState(mapFilePath, m.logger)
+		m.mapFiles[mapFilePath] = mapFile
+		err := m.readFromDisk(mapFilePath)
+		if err != nil {
+			m.logger.LogAttrs(
+				context.Background(),
+				slog.LevelError,
+				"Error reading map from disk",
+				slog.String("map", mapFilePath),
+				slog.String("error", err.Error()))
+		}
+	}
+
+	return mapFile
+}
+
+func (m *MapsStorageExDefault) readFromDisk(mapFilePath string) error {
+	// TODO Implement the function
+	return nil
+}
+
+func (m *MapsStorageExDefault) DeleteFromDisk(mapFilePath string) error {
+	err:= os.Remove(mapFilePath)
+	if err != nil {
+		return err
+	}
+	m.mapFiles[mapFilePath] = nil
+	return nil
+}
+
+// GetMaps returns a map of all MapFileState objects currently stored in MapsStorageExDefault.
+// It returns a map of string (map file path) to MapFileState objects.
+// The map file path is the full path to the map file including the base directory.
+// The MapFileState objects contain the current state of the map file including the entries,
+// desired values, and diff values.
+// The map is read-only and should not be modified directly.
+func (m *MapsStorageExDefault) GetMaps() map[string]*maps.MapFileState {
+	return m.mapFiles
+}
+
+// ProcessMapFiles processes all the map files stored in MapsStorageExDefault.
+// It iterates over each map file and calls ProcessMapFiles on each map file.
+// ProcessMapFiles is a blocking call and should be called in a goroutine to avoid blocking the application.
+func (m *MapsStorageExDefault) ProcessMapFiles() {
+	for _, mapFile := range m.mapFiles {
+		if mapFile == nil {
+			continue
+		}
+		mapFile.ProcessMapFiles()
+	}
+}

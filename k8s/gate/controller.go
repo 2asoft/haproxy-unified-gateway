@@ -180,10 +180,7 @@ func Add(
 		return err
 	}
 
-	mapsStorage, err := storage.NewMapsStorage(cfg.Logger, extractGVK, cfg.HaproxyParams.StoreMapsStructureType, cfg.HaproxyParams.MapsDir)
-	if err != nil {
-		return err
-	}
+	mapsStorage := storage.NewMapsStorageEx(cfg.Logger, cfg.HaproxyParams.MapsDir)
 
 	gateTreeConfig := handler.GateTreeConfig{
 		BaseLogger:                 cfg.Logger,
