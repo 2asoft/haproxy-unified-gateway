@@ -45,6 +45,7 @@ format:
         junit-report add --status=ok --message="format check passed successfully"
       else
         junit-report add --status=failed --message="go code not formatted" --description="$(git diff)"
+        git diff
       fi
   artifacts:
     when: on_failure
