@@ -97,6 +97,18 @@ spec:
       # nodePort is needed for NodePort service type
       nodePort: 31443
       protocol: TCP
+    - name: http2
+      port: 31081
+      targetPort: 31081
+      # nodePort is needed for NodePort service type
+      nodePort: 31081
+      protocol: TCP
+    - name: https2
+      port: 31444
+      targetPort: 31444
+      # nodePort is needed for NodePort service type
+      nodePort: 31444
+      protocol: TCP
     - name: stat
       port: 31024
       targetPort: 31024
