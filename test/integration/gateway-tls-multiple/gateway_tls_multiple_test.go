@@ -16,6 +16,7 @@
 package gatewaytlsmultiple
 
 import (
+	"fmt"
 	"path"
 	"testing"
 
@@ -76,4 +77,16 @@ func (s *GatewayTLSMultipleSuite) Test_Gateway_TLS_multiple_same_namespace_ok() 
 	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
 	expectedFrontends := []string{"link1_e2e-tests-gateway-tls-multiple_gateway_http", "link1_e2e-tests-gateway-tls-multiple_gateway_https"}
 	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }

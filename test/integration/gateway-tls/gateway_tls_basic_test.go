@@ -16,6 +16,7 @@
 package gatewaytls
 
 import (
+	"fmt"
 	"path"
 	"testing"
 
@@ -52,6 +53,18 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_missingSecret() {
 
 	gwName := "gateway"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *GatewayTLSTestSuite) Test_Gateway_TLS_okSecret() {
@@ -71,6 +84,18 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_okSecret() {
 
 	gwName := "gateway"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *GatewayTLSTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
@@ -103,6 +128,18 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
 	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses_ok_3.yaml")
 	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *GatewayTLSTestSuite) deleteSecret(name string) *v1.Secret {

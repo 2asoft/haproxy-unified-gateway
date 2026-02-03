@@ -16,6 +16,7 @@
 package httproute
 
 import (
+	"fmt"
 	"path"
 
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
@@ -47,6 +48,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route() {
 	backendsExpectationsPath := path.Join(expectationsPath, "backends")
 	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo-1_80__", "link1_e2e-tests-httproute_http-echo-2_80__", "link1_e2e-tests-httproute_http-echo-3_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_filter() {
@@ -76,6 +84,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_filter() {
 		"link1_e2e-tests-httproute_http-echo-3_80__",
 	}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_backend() {
@@ -103,6 +118,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_bac
 	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo-1_80__", "link1_e2e-tests-httproute_http-echo-2_80__", "link1_e2e-tests-httproute_http-echo-3_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
 	// Now remove for example
 	// - name: http-echo-2
 	//   port: 80
@@ -115,6 +137,12 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_bac
 	expectedBackends = []string{"link1_e2e-tests-httproute_http-echo-1_80__", "link1_e2e-tests-httproute_http-echo-3_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 	s.ExpectBackendsDoNotExist(s.Test().Ctx, "link1_e2e-tests-httproute_http-echo-2_80__")
+
+	// Check Maps
+	expectedMapsPath = path.Join(expectedMapsPath, "v2")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_1_backend_dynamic_delete_service() {
@@ -141,6 +169,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_1_backend_dynamic_de
 	backendsExpectationsPath := path.Join(expectationsPath, "backends")
 	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo-1_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
 	// Now remove the Service http-echo-1
 	// Backend link1_e2e-tests-httproute_http-echo-1_80__ should be deleted

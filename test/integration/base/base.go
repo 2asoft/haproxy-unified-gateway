@@ -371,31 +371,46 @@ func (b *BaseSuite) CheckEntryInMapFile(mapFileRelativePath, key, value string) 
 	return false
 }
 
-func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string) bool {
-	// 1. take all files from expectedMapPath and see if files exist in mapFile
-	expectedFiles, err := os.ReadDir(expectedMapPath)
-	if err != nil {
-		return false
-	}
-	// 2. check if file content is the same
-	for _, expectedFile := range expectedFiles {
-		expectedFilePath := path.Join(expectedMapPath, expectedFile.Name())
-		expectedFileContent, err := os.ReadFile(expectedFilePath)
-		if err != nil {
-			b.T().Logf("Error reading expected map file %s: %v", expectedFilePath, err)
-			return false
-		}
-		mapFile, err := os.ReadFile(filepath.Join(b.test.HaproxyCfgDir, "maps", mapFileRelativePath, expectedFile.Name()))
-		if err != nil {
-			b.T().Logf("Error reading map file %s: %v", expectedFilePath, err)
-			return false
-		}
-		if string(expectedFileContent) != string(mapFile) {
-			b.T().Logf("Expected map file %s does not match actual map file %s", expectedFilePath, mapFileRelativePath)
-			return false
-		}
-	}
+var StandardMaps = []string{
+	"domain_wildcard_path_exact.map",
+	"domain_wildcard_sni.map",
+	"path_exact.map",
+	"path_prefix.map",
+	"path_regex.map",
+	"sni.map",
+}
 
+func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string) bool {
+	for _, mapName := range StandardMaps {
+		expectedFilePath := path.Join(expectedMapPath, mapName)
+
+		// Check if expectation exists
+		expectedContent, err := os.ReadFile(expectedFilePath)
+		expectationExists := err == nil
+
+		// Read actual map
+		actualMapPath := filepath.Join(b.test.HaproxyCfgDir, "maps", mapFileRelativePath, mapName)
+		actualContent, err := os.ReadFile(actualMapPath)
+		// If actual map doesn't exist, we treat it as empty string
+		var actualString string
+		if err == nil {
+			actualString = string(actualContent)
+		}
+
+		if expectationExists {
+			// Check if content matches
+			if string(expectedContent) != actualString {
+				b.T().Logf("Map mismatch for %s: expected %q, got %q", mapName, string(expectedContent), actualString)
+				return false
+			}
+		} else {
+			// Check if actual is empty
+			if strings.TrimSpace(actualString) != "" {
+				b.T().Logf("Map %s should be empty but has content: %q", mapName, actualString)
+				return false
+			}
+		}
+	}
 	return true
 }
 

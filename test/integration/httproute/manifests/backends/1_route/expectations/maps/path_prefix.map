@@ -1,0 +1,2 @@
+example.haproxy/route1 {"a":"wr","l":"link1_e2e-tests-httproute_http-echo-1_80__:10,link1_e2e-tests-httproute_http-echo-2_80__:90"}
+example.haproxy/route3 link1_e2e-tests-httproute_http-echo-3_80__

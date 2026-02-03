@@ -16,6 +16,7 @@
 package httproute
 
 import (
+	"fmt"
 	"path"
 	"testing"
 	"time"
@@ -63,16 +64,17 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
-	httpPathPrefixMapFile := "link1_" + s.Test().Namespace + "_gateway_http/path_prefix.map"
-	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
-		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
-		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
-	}
-	httpPathPrefixMapFile = "link1_" + s.Test().Namespace + "_gateway_http2/path_prefix.map"
-	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
-		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
-		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
-	}
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_http2"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
@@ -94,6 +96,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
 	// Check AttachedRoutes on Gateway status
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 0)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
@@ -115,6 +124,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
 	// Check AttachedRoutes on Gateway status
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 0)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
@@ -136,6 +152,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 	// Check AttachedRoutes on Gateway status
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
 	// 2- Now create a 2nd route
 	s.CreateFixtures(fixturePath, []string{"route-2.yaml"})
@@ -175,6 +198,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 	// Check AttachedRoutes on Gateway status
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http", 1)
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() {
@@ -202,14 +232,15 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() 
 	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo_80__"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
-	httpPathPrefixMapFile := "link1_" + s.Test().Namespace + "_gateway_http/path_prefix.map"
-	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
-		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
-		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
-	}
-	httpPathPrefixMapFile = "link1_" + s.Test().Namespace + "_gateway_http2/path_prefix.map"
-	if !s.CheckEntryInMapFile(httpPathPrefixMapFile,
-		"example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__") {
-		s.T().Fatalf("Map file %s , missing entry : %s->%s", httpPathPrefixMapFile, "example.haproxy/path1", "link1_e2e-tests-httproute_http-echo_80__")
-	}
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_http2"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }

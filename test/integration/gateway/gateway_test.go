@@ -16,6 +16,7 @@
 package gateway
 
 import (
+	"fmt"
 	"path"
 	"testing"
 	"time"
@@ -55,6 +56,13 @@ func (s *GatewayTestSuite) Test_Gateway_InvalidRef() {
 
 	gwName := "gateway"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *GatewayTestSuite) Test_Gateway_validRef() {
@@ -74,6 +82,13 @@ func (s *GatewayTestSuite) Test_Gateway_validRef() {
 
 	gwName := "gateway"
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *GatewayTestSuite) Test_Gateway_conflict_at_least_1_listener_ok() {
@@ -108,6 +123,18 @@ func (s *GatewayTestSuite) Test_Gateway_conflict_at_least_1_listener_ok() {
 	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
 	expectedFrontends := []string{"link1_e2e-tests-gateway_gateway_http-8081", "link1_e2e-tests-gateway_gateway2_http-9090"}
 	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
+
+	// Check Maps
+	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http-8081"
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway2_http-9090"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 }
 
 func (s *GatewayTestSuite) Test_Gateway_conflict_0_listener_ok() {
