@@ -28,7 +28,7 @@ func TestTLSRouteSuite(t *testing.T) {
 }
 
 func (s *TLSRouteSuite) SetupSuite() {
-	s.BaseSuite.SetupSuite()
+	s.BaseSuite.SetupSuite("", 0)
 }
 
 func (s *TLSRouteSuite) TearDownSuite() {

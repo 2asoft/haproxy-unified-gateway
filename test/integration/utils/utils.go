@@ -25,10 +25,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-func GetIntTestNamespace() (string, error) {
+func GetIntTestNamespace(levelsUp int) (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
+	}
+	for i := 0; i < levelsUp; i++ {
+		dir = filepath.Dir(dir)
 	}
 	dir = filepath.Base(dir)
 	dir = strings.Map(func(r rune) rune {

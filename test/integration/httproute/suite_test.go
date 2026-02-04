@@ -30,7 +30,7 @@ type HTTPRouteSuite struct {
 }
 
 func (s *HTTPRouteSuite) SetupSuite() {
-	s.BaseSuite.SetupSuite()
+	s.BaseSuite.SetupSuite("", 0)
 }
 
 func (s *HTTPRouteSuite) TearDownSuite() {

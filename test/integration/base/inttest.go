@@ -88,21 +88,24 @@ type IntTest struct {
 	HaproxyCfgDir string
 }
 
-func NewIntTest(t *testing.T) (test IntTest, err error) {
+func NewIntTest(t *testing.T, crdRelativePath string, levelsUp int) (test IntTest, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	g := gomega.NewWithT(t)
 
 	// Namespace
-	namespace, err := utils.GetIntTestNamespace()
+	namespace, err := utils.GetIntTestNamespace(levelsUp)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	testEnvVersion := os.Getenv("ENVTEST_VERSION")
 	installPath := os.Getenv("KUBEBUILDER_ASSETS")
 
+	gatewayCRDsPath := filepath.Join(crdRelativePath, "../api")
+	hugCRDsPath := filepath.Join(crdRelativePath, "../../../api/definition")
+
 	testEnv := &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			"../../../api/definition",
-			"../api",
+			hugCRDsPath,
+			gatewayCRDsPath,
 		},
 		ErrorIfCRDPathMissing:       true,
 		DownloadBinaryAssets:        true,

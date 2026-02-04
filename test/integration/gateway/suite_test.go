@@ -31,7 +31,7 @@ type GatewaySuite struct {
 }
 
 func (s *GatewaySuite) SetupSuite() {
-	s.BaseSuite.SetupSuite()
+	s.BaseSuite.SetupSuite("", 0)
 }
 
 func (s *GatewaySuite) TearDownSuite() {

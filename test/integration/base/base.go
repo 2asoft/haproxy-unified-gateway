@@ -24,11 +24,15 @@ import (
 	"strings"
 	"time"
 
+	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/yaml"
 
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
 	"github.com/stretchr/testify/suite"
 )
 
@@ -46,9 +50,9 @@ func (b *BaseSuite) Test() IntTest {
 	return b.test
 }
 
-func (b *BaseSuite) SetupSuite() {
+func (b *BaseSuite) SetupSuite(crdRelativePath string, levelsUp int) {
 	var err error
-	b.test, err = NewIntTest(b.T())
+	b.test, err = NewIntTest(b.T(), crdRelativePath, levelsUp)
 	b.Require().NoError(err)
 
 	b.test.StartTestEnv(b.T())
@@ -412,6 +416,47 @@ func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string
 		}
 	}
 	return true
+}
+
+func (b *BaseSuite) ExpectRouteConditionsUpdated(ctx context.Context, namespace, name string, expectedConditions rc.RouteConditions) {
+	route := &gatewayv1.HTTPRoute{}
+	var gotConditions rc.RouteConditions
+	if !utils.WaitFor(ctx, interval, timeout, func() bool {
+		if err := b.Test().Client.Get(
+			b.Test().Ctx,
+			types.NamespacedName{Name: name, Namespace: namespace}, route); err != nil {
+			return false
+		}
+
+		gotConditions = rc.NewRouteConditionsFromV1RouteConditions(route.Status.Parents, TestControllerName)
+
+		res := gotConditions.Equal(expectedConditions)
+
+		return res
+	}) {
+		b.T().Fatalf("conditions not correct,\nGot %+v\nExpected %+v\n", gotConditions, expectedConditions)
+	}
+}
+
+func (b *BaseSuite) ExpectAttachedRoute(ctx context.Context, namespace, gwName, listenerName string, expectNbAttachedRoutes int32) {
+	gw := &gatewayv1.Gateway{}
+	if !utils.WaitFor(ctx, interval, timeout, func() bool {
+		if err := b.Test().Client.Get(
+			b.Test().Ctx,
+			types.NamespacedName{Name: gwName, Namespace: namespace}, gw); err != nil {
+			return false
+		}
+
+		for _, listenerStatus := range gw.Status.Listeners {
+			if string(listenerStatus.Name) == listenerName {
+				return listenerStatus.AttachedRoutes == expectNbAttachedRoutes
+			}
+		}
+
+		return false
+	}) {
+		b.T().Fatal("AttachedRoutes not correct")
+	}
 }
 
 // func (b *BaseSuite) exportFrontend(fe *models.Frontend) {

@@ -22,5 +22,10 @@ kubectl apply -f .
 ```sh
 curl --header "Host: offload.haproxy" http://127.0.0.1:31081/api/foo
 curl --header "Host: offload.haproxy"  https://127.0.0.1:31444/api/foo -k
-
+curl --header "Host: offload.haproxy" http://127.0.0.1:31081/api/
+curl --header "Host: offload.haproxy"  https://127.0.0.1:31444/api/ -k
+curl --header "Host: other.haproxy" http://127.0.0.1:31081/api/foo
+curl --header "Host: other.haproxy"  https://127.0.0.1:31444/api/foo -k
+curl --header "Host: other.haproxy" http://127.0.0.1:31081/api/
+curl --header "Host: other.haproxy"  https://127.0.0.1:31444/api/ -k
 ```

@@ -37,7 +37,7 @@ type GatewayTLSSuite struct {
 }
 
 func (s *GatewayTLSSuite) SetupSuite() {
-	s.BaseSuite.SetupSuite()
+	s.BaseSuite.SetupSuite("", 0)
 }
 
 func (s *GatewayTLSSuite) TearDownSuite() {

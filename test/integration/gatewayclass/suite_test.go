@@ -30,7 +30,7 @@ type GatewayClassSuite struct {
 }
 
 func (s *GatewayClassSuite) SetupSuite() {
-	s.BaseSuite.SetupSuite()
+	s.BaseSuite.SetupSuite("", 0)
 }
 
 func (s *GatewayClassSuite) TearDownSuite() {
