@@ -17,6 +17,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strings"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
@@ -206,9 +208,14 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 				mapData = mapPrefix
 			case gatewayv1.PathMatchRegularExpression:
 				mapData = mapRegex
+				path = strings.TrimPrefix(path, "^")
 			}
 			for _, hostname := range hostnames {
-				fullpath := string(hostname) + path
+				sanitizedHostname := sanitizeHostname(string(hostname), pathType)
+				fullpath := string(sanitizedHostname) + path
+				if pathType == gatewayv1.PathMatchRegularExpression {
+					fullpath = sanitizeRegexp(fullpath)
+				}
 				if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
 					mapDomainWPathExact.DeleteData(fullpath)
 				} else {
@@ -288,7 +295,6 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 			if match.Path.Value != nil {
 				path = *match.Path.Value
 			}
-
 			var pathType gatewayv1.PathMatchType
 			var mapData *maps.MapData
 
@@ -305,15 +311,21 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 				mapData = mapPrefix
 			case gatewayv1.PathMatchRegularExpression:
 				mapData = mapRegex
+				// Any path regex that starts with "^", we must remove the "^"
+				path = strings.TrimPrefix(path, "^")
 			}
 
 			if rule.Valid {
 				for _, hostname := range acceptedHostnamesForRoute {
+					sanitizedHostname := sanitizeHostname(hostname, pathType)
 					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
-						fullpath := removeDomainWildcard(string(hostname)) + path
+						fullpath := sanitizedHostname + path
 						mapDomainWPathExact.AddData(fullpath, routeValue)
 					} else {
-						fullpath := string(hostname) + path
+						fullpath := string(sanitizedHostname) + path
+						if pathType == gatewayv1.PathMatchRegularExpression {
+							fullpath = sanitizeRegexp(fullpath)
+						}
 						mapData.AddData(fullpath, routeValue)
 						// I need to create a runtime command to add the map entry
 					}
@@ -325,6 +337,9 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 						mapDomainWPathExact.DeleteData(fullpath)
 					} else {
 						fullpath := string(hostname) + path
+						if pathType == gatewayv1.PathMatchRegularExpression {
+							fullpath = sanitizeRegexp(fullpath)
+						}
 						mapData.DeleteData(fullpath)
 					}
 				}
@@ -343,4 +358,40 @@ func (RouteMgrImpl) onInvalidHTTPRouteUpserted(_ k8stypes.NamespacedName, _ *tre
 	// TODO we might need to remove it from the maps
 
 	return nil
+}
+
+func sanitizeHostname(hostname string, pathType gatewayv1.PathMatchType) string {
+	var result string
+	switch pathType {
+	case gatewayv1.PathMatchExact:
+		if isDomainWildcard(string(hostname)) {
+			result = removeDomainWildcard(string(hostname))
+		} else {
+			result = string(hostname)
+		}
+	case gatewayv1.PathMatchPathPrefix:
+		result = string(hostname)
+	case gatewayv1.PathMatchRegularExpression:
+		if !isDomainWildcard(string(hostname)) {
+			result = "^" + string(hostname)
+		} else {
+			result = removeDomainWildcard(string(hostname))
+		}
+	}
+	return result
+}
+
+func sanitizeRegexp(s string) string {
+	// This regex finds either ".*" OR a "."
+	re := regexp.MustCompile(`(\.\*)|(\.)`)
+
+	result := re.ReplaceAllStringFunc(s, func(match string) string {
+		// If the match is ".*", return it unchanged
+		if match == ".*" {
+			return match
+		}
+		// Otherwise, it's a single ".", so escape it
+		return `\.`
+	})
+	return result
 }
