@@ -50,6 +50,13 @@ tasks:
       - task: lint
       - task: test
 
+  test-todo:
+    desc: "run Go tests"
+    cmds:
+      - task: test
+        vars:
+          TEST_TAGS: "test_todo"
+
   test:
     desc: "run Go tests"
     deps:
@@ -72,7 +79,7 @@ tasks:
         POD_NAMESPACE={{.POD_NAMESPACE}} \
         HAPROXY_BIN={{.HAPROXY_BIN}} \
         POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS HAPROXY_BIN=$HAPROXY_BIN \
-        /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --format-icons=hivis --format=testdox --format-hide-empty-pkg -- -count=1  ./...
+        /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --format-icons=hivis --format=testdox --format-hide-empty-pkg -- -count=1 -tags="{{.TEST_TAGS}}" -v ./...
 
   tidy:
     desc: "run Go mod tidy"
