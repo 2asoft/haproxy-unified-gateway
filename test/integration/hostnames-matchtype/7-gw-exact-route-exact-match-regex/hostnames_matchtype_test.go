@@ -1,5 +1,3 @@
-//go:build test_todo
-
 // Copyright 2025 HAProxy Technologies LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +42,7 @@ func (s *HostnamesMatchtypeSuite7) Test_7_Exact_Route_Exact_Match_Regex() {
 	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "https", 1)
 
 	// Check Maps
-	expectedMapsPath := path.Join(expectationsPath, "maps")
+	expectedMapsPath := path.Join("expectations", "maps")
 
 	// For FE http
 	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"

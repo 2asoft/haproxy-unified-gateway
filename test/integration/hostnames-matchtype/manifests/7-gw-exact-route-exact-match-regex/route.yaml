@@ -14,7 +14,7 @@ spec:
   - matches:
     - path:
         type: RegularExpression
-        value: ^/api/.*
+        value: "^/api/.*"
     backendRefs:
     - name: http-echo
       port: 80

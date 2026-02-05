@@ -1,5 +1,3 @@
-//go:build test_todo
-
 // Copyright 2025 HAProxy Technologies LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hostnames_matchtype3
+package hostnames_matchtype11
 
 import (
 	"fmt"
@@ -23,9 +21,9 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 )
 
-func (s *HostnamesMatchtypeSuite3) Test_3_Exact_Route_Exact_Match_Exact_Nomatch() {
+func (s *HostnamesMatchtypeSuite11) Test_11_Exact_Route_Empty_Match_Regex() {
 	fixtureDirPath := path.Join("../", utils.GetCRDFixturePath())
-	fixtureDir := "3-gw-exact-route-exact-math-exact-nomatch"
+	fixtureDir := "11-gw-exact-route-empty-match-regex"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
@@ -44,7 +42,7 @@ func (s *HostnamesMatchtypeSuite3) Test_3_Exact_Route_Exact_Match_Exact_Nomatch(
 	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "https", 1)
 
 	// Check Maps
-	expectedMapsPath := path.Join(expectationsPath, "maps")
+	expectedMapsPath := path.Join("expectations", "maps")
 
 	// For FE http
 	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"

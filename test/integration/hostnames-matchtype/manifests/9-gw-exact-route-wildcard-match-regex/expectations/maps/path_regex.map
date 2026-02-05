@@ -1,1 +1,1 @@
-.*\.haproxy/^/api/.* link1_e2e-tests-hostnames-matchtype_http-echo_80__
+^offload\.haproxy/api/.* link1_e2e-tests-hostnames-matchtype_http-echo_80__

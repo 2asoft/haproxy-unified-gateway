@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hostnames_matchtype11
+package hostnames_matchtype3
 
 import (
 	"fmt"
@@ -23,9 +23,9 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 )
 
-func (s *HostnamesMatchtypeSuite11) Test_11_Exact_Route_Empty_Match_Regex() {
+func (s *HostnamesMatchtypeSuite3) Test_3_Exact_Route_Exact_Match_Exact_Nomatch() {
 	fixtureDirPath := path.Join("../", utils.GetCRDFixturePath())
-	fixtureDir := "11-gw-exact-route-empty-match-regex"
+	fixtureDir := "3-gw-exact-route-exact-match-exact-nomatch"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)

@@ -404,7 +404,7 @@ func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string
 		if expectationExists {
 			// Check if content matches
 			if string(expectedContent) != actualString {
-				b.T().Logf("Map mismatch for %s: expected %q, got %q", mapName, string(expectedContent), actualString)
+				b.T().Logf("Map mismatch for %s: \nexpected %q, \ngot      %q", mapName, string(expectedContent), actualString)
 				return false
 			}
 		} else {

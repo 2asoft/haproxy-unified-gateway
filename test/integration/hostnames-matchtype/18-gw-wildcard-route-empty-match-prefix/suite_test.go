@@ -34,7 +34,7 @@ type HostnamesMatchtypeSuite18 struct {
 	base.BaseSuite
 }
 
-func TestHostnamesMatchtypeSuite(t *testing.T) {
+func TestHostnamesMatchtypeSuite18(t *testing.T) {
 	suite.Run(t, new(HostnamesMatchtypeSuite18))
 }
 

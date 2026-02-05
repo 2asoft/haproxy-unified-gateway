@@ -1,5 +1,3 @@
-//go:build test_todo
-
 // Copyright 2025 HAProxy Technologies LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +32,7 @@ type HostnamesMatchtypeSuite9 struct {
 	base.BaseSuite
 }
 
-func TestHostnamesMatchtypeSuite(t *testing.T) {
+func TestHostnamesMatchtypeSuite9(t *testing.T) {
 	suite.Run(t, new(HostnamesMatchtypeSuite9))
 }
 
