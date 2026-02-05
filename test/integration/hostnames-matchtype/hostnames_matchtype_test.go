@@ -779,11 +779,145 @@ func (s *HostnamesMatchtypeSuite) Test_28_Empty_Route_Empty_Match_Regex() {
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 }
 
-//-------------------------------------------------------
-
 func (s *HostnamesMatchtypeSuite) Test_22_Empty_Route_Exact_Match_Regex() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "22-gw-empty-route-exact-match-regex"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	route := "route-echo-http"
+	s.ExpectRouteConditionsUpdated(s.Test().Ctx, s.Test().Namespace, route, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "http", 1)
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "https", 1)
+
+	// Check Maps
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+
+	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+
+	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+}
+
+func (s *HostnamesMatchtypeSuite) Test_15_Wildcard_Route_Wildcard_Match_Prefix() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "15-gw-wildcard-route-wildcard-match-prefix"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	route := "route-echo-http"
+	s.ExpectRouteConditionsUpdated(s.Test().Ctx, s.Test().Namespace, route, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "http", 1)
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "https", 1)
+
+	// Check Maps
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+
+	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+
+	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+}
+
+func (s *HostnamesMatchtypeSuite) Test_18_Wildcard_Route_Empty_Match_Prefix() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "18-gw-wildcard-route-empty-match-prefix"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	route := "route-echo-http"
+	s.ExpectRouteConditionsUpdated(s.Test().Ctx, s.Test().Namespace, route, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "http", 1)
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "https", 1)
+
+	// Check Maps
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+
+	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+
+	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+}
+
+func (s *HostnamesMatchtypeSuite) Test_21_Empty_Route_Exact_Match_Prefix() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "21-gw-empty-route-exact-match-prefix"
+
+	fixturePath := path.Join(fixtureDirPath, fixtureDir)
+	s.CreateFixtures(fixturePath, nil)
+	defer s.CleanupFixtures(fixturePath, nil)
+
+	// Expected Conditions
+	expectationsPath := path.Join(fixturePath, "expectations")
+	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
+	expectedConditions := s.YamlToRouteConditions(expectedCondPath)
+
+	route := "route-echo-http"
+	s.ExpectRouteConditionsUpdated(s.Test().Ctx, s.Test().Namespace, route, expectedConditions)
+
+	// Check AttachedRoutes on Gateway status
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "http", 1)
+	s.ExpectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "hug-gateway", "https", 1)
+
+	// Check Maps
+	expectedMapsPath := path.Join(expectationsPath, "maps")
+
+	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+
+	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFilePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+}
+
+func (s *HostnamesMatchtypeSuite) Test_24_Empty_Route_Wildcard_Match_Prefix() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixtureDir := "24-gw-empty-route-wildcard-match-prefix"
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
