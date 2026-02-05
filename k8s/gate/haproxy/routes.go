@@ -331,7 +331,6 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 
 			if rule.Valid {
 				for _, hostname := range acceptedHostnamesForRoute {
-
 					// Special case for Host wildcard + PathPrefix => we go into path_regex.map
 					if pathType == gatewayv1.PathMatchPathPrefix && isDomainWildcard(string(hostname)) {
 						mapData = mapRegex
@@ -389,13 +388,7 @@ func (RouteMgrImpl) onInvalidHTTPRouteUpserted(_ k8stypes.NamespacedName, _ *tre
 func sanitizeHostname(hostname string, pathType gatewayv1.PathMatchType) string {
 	var result string
 	switch pathType {
-	case gatewayv1.PathMatchExact:
-		if isDomainWildcard(hostname) {
-			result = removeDomainWildcard(hostname)
-		} else {
-			result = hostname
-		}
-	case gatewayv1.PathMatchPathPrefix:
+	case gatewayv1.PathMatchExact, gatewayv1.PathMatchPathPrefix:
 		if isDomainWildcard(hostname) {
 			result = removeDomainWildcard(hostname)
 		} else {
