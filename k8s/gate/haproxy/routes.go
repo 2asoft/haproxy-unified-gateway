@@ -208,17 +208,31 @@ func (RouteMgrImpl) onDeletedHTTPRoute(_ k8stypes.NamespacedName, route *tree.HT
 				mapData = mapPrefix
 			case gatewayv1.PathMatchRegularExpression:
 				mapData = mapRegex
+				// Any path regex that starts with "^", we must remove the "^"
 				path = strings.TrimPrefix(path, "^")
 			}
+
 			for _, hostname := range hostnames {
-				sanitizedHostname := sanitizeHostname(string(hostname), pathType)
-				fullpath := string(sanitizedHostname) + path
-				if pathType == gatewayv1.PathMatchRegularExpression {
-					fullpath = sanitizeRegexp(fullpath)
+				// Special case for Host wildcard + PathPrefix => we go into path_regex.map
+				if pathType == gatewayv1.PathMatchPathPrefix && isDomainWildcard(string(hostname)) {
+					mapData = mapRegex
 				}
+
+				sanitizedHostname := sanitizeHostname(string(hostname), pathType)
 				if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
+					fullpath := sanitizedHostname + path
 					mapDomainWPathExact.DeleteData(fullpath)
 				} else {
+					fullpath := string(sanitizedHostname) + path
+
+					if pathType == gatewayv1.PathMatchRegularExpression {
+						fullpath = sanitizeRegexp(fullpath)
+					}
+					if pathType == gatewayv1.PathMatchPathPrefix && isDomainWildcard(string(hostname)) {
+						fullpath = fullpath + ".*"
+						fullpath = sanitizeRegexp(fullpath)
+					}
+
 					mapData.DeleteData(fullpath)
 				}
 			}
@@ -317,15 +331,27 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 
 			if rule.Valid {
 				for _, hostname := range acceptedHostnamesForRoute {
+
+					// Special case for Host wildcard + PathPrefix => we go into path_regex.map
+					if pathType == gatewayv1.PathMatchPathPrefix && isDomainWildcard(string(hostname)) {
+						mapData = mapRegex
+					}
+
 					sanitizedHostname := sanitizeHostname(hostname, pathType)
 					if pathType == gatewayv1.PathMatchExact && isDomainWildcard(string(hostname)) {
 						fullpath := sanitizedHostname + path
 						mapDomainWPathExact.AddData(fullpath, routeValue)
 					} else {
 						fullpath := string(sanitizedHostname) + path
+
 						if pathType == gatewayv1.PathMatchRegularExpression {
 							fullpath = sanitizeRegexp(fullpath)
 						}
+						if pathType == gatewayv1.PathMatchPathPrefix && isDomainWildcard(string(hostname)) {
+							fullpath = fullpath + ".*"
+							fullpath = sanitizeRegexp(fullpath)
+						}
+
 						mapData.AddData(fullpath, routeValue)
 						// I need to create a runtime command to add the map entry
 					}
@@ -364,18 +390,22 @@ func sanitizeHostname(hostname string, pathType gatewayv1.PathMatchType) string 
 	var result string
 	switch pathType {
 	case gatewayv1.PathMatchExact:
-		if isDomainWildcard(string(hostname)) {
-			result = removeDomainWildcard(string(hostname))
+		if isDomainWildcard(hostname) {
+			result = removeDomainWildcard(hostname)
 		} else {
-			result = string(hostname)
+			result = hostname
 		}
 	case gatewayv1.PathMatchPathPrefix:
-		result = string(hostname)
-	case gatewayv1.PathMatchRegularExpression:
-		if !isDomainWildcard(string(hostname)) {
-			result = "^" + string(hostname)
+		if isDomainWildcard(hostname) {
+			result = removeDomainWildcard(hostname)
 		} else {
-			result = removeDomainWildcard(string(hostname))
+			result = hostname
+		}
+	case gatewayv1.PathMatchRegularExpression:
+		if !isDomainWildcard(hostname) {
+			result = "^" + hostname
+		} else {
+			result = removeDomainWildcard(hostname)
 		}
 	}
 	return result
