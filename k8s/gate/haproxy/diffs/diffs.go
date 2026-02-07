@@ -16,6 +16,8 @@ package diffs
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/haproxytech/client-native/v6/models"
@@ -40,6 +42,41 @@ type HaproxyConfResult struct {
 	GatewayObservedGenerations GatewayObservedGenerations
 }
 
+func (g GatewayObservedGenerations) ToStringMap() map[string]int64 {
+	result := make(map[string]int64, len(g))
+	for key, generation := range g {
+		result[key.String()] = generation
+	}
+	return result
+}
+
+func (g GatewayObservedGenerations) MarshalJSON() ([]byte, error) {
+	return json.Marshal(g.ToStringMap())
+}
+
+func (g GatewayObservedGenerations) LogValue() slog.Value {
+	keys := make([]string, 0, len(g))
+	values := g.ToStringMap()
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	attrs := make([]slog.Attr, 0, len(keys))
+	for _, key := range keys {
+		attrs = append(attrs, slog.Int64(key, values[key]))
+	}
+	return slog.GroupValue(attrs...)
+}
+
+func (r HaproxyConfResult) LogValue() slog.Value {
+	attrs := []slog.Attr{slog.Any("gatewayObservedGenerations", r.GatewayObservedGenerations)}
+	if r.Err != nil {
+		attrs = append(attrs, slog.String("err", r.Err.Error()))
+	}
+	return slog.GroupValue(attrs...)
+}
+
 type HaproxyConfDiffs struct {
 	Created structured.Structured
 	Updated structured.Structured
@@ -57,11 +94,19 @@ type HaproxyConfDiffs struct {
 	ResultCh chan HaproxyConfResult
 
 	MergeStrategies MergeStrategies
+	GlobalLogTuning *GlobalLogTuning
 	ReloadNeed      bool
 }
 
+type LogLineLength int64
+
+type GlobalLogTuning struct {
+	LogLineLength *LogLineLength
+	HTTPLogURILen *LogLineLength
+}
+
 func (c HaproxyConfDiffs) IsEmpty() bool {
-	return c.Created.IsEmpty() && c.Updated.IsEmpty() && c.Deleted.IsEmpty()
+	return c.Created.IsEmpty() && c.Updated.IsEmpty() && c.Deleted.IsEmpty() && c.GlobalLogTuning == nil
 }
 
 // GatewayObservedGenerations builds a map of gateway → max generation from
@@ -136,11 +181,12 @@ func parseNamespacedName(s string) types.NamespacedName {
 }
 
 func (c HaproxyConfDiffs) Stats() string {
-	return fmt.Sprintf("Created/Updated/Deleted FE:[%d/%d/%d] BE[%d/%d/%d] Global[%d/%d/%d] Defaults[%d/%d/%d] Reload[%t]",
+	return fmt.Sprintf("Created/Updated/Deleted FE:[%d/%d/%d] BE[%d/%d/%d] Global[%d/%d/%d] Defaults[%d/%d/%d] GlobalLogTuning[%t] Reload[%t]",
 		len(c.Created.Frontends), len(c.Updated.Frontends), len(c.Deleted.Frontends),
 		len(c.Created.Backends), len(c.Updated.Backends), len(c.Deleted.Backends),
 		len(c.Created.Globals), len(c.Updated.Globals), len(c.Deleted.Globals),
 		len(c.Created.Defaults), len(c.Updated.Defaults), len(c.Deleted.Defaults),
+		c.GlobalLogTuning != nil,
 		c.ReloadNeed,
 	)
 }

@@ -112,6 +112,20 @@ spec:
                     logRequestHeaderNames:
                       type: boolean
                   type: object
+                  x-kubernetes-validations:
+                  - message: logFormat is required when logRequestHeaderNames is enabled
+                    rule: '!self.logRequestHeaderNames || size(self.logFormat) > 0'
+                haproxyGlobal:
+                  properties:
+                    httpLogUriLen:
+                      format: int64
+                      minimum: 1
+                      type: integer
+                    logLineLength:
+                      format: int64
+                      minimum: 1
+                      type: integer
+                  type: object
                 logging:
                   properties:
                     categoryLevelList:

@@ -58,6 +58,81 @@ func (s *HTTPRouteTestSuite) Test_HugConf_DefaultLogFormat() {
 	}) {
 		s.T().Fatalf("log format or header capture not applied in %s", cfgPath)
 	}
+	if strings.Contains(gotCfg, "tune.http.logurilen") || strings.Contains(gotCfg, "len 65535") {
+		s.T().Fatalf("log line length tuning should be omitted in %s", cfgPath)
+	}
+}
+
+func (s *HTTPRouteTestSuite) Test_HugConf_LogLineLengthTuning() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixturePath := path.Join(fixtureDirPath, "hugconf", "log-format")
+
+	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml"})
+
+	s.CreateFixtures(fixturePath, []string{"namespace.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"namespace.yaml"})
+
+	s.CreateFixturesInNamespace(fixturePath, "test", []string{"hugconf-log-length.yaml"})
+
+	cfgPath := path.Join(s.Test().HaproxyCfgDir, "haproxy.cfg")
+	if !utils.WaitFor(s.Test().Ctx, interval, timeout, func() bool {
+		data, err := os.ReadFile(cfgPath)
+		if err != nil {
+			return false
+		}
+		cfg := string(data)
+		return strings.Contains(cfg, "log stdout len 65535") &&
+			strings.Contains(cfg, "tune.http.logurilen 65535")
+	}) {
+		s.T().Fatalf("log line length tuning not applied in %s", cfgPath)
+	}
+}
+
+func (s *HTTPRouteTestSuite) Test_HugConf_LogLineLengthTuning_RemovesUnsetValues() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixturePath := path.Join(fixtureDirPath, "hugconf", "log-format")
+
+	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml"})
+
+	s.CreateFixtures(fixturePath, []string{"namespace.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"namespace.yaml"})
+
+	s.CreateFixturesInNamespace(fixturePath, "test", []string{"hugconf-log-length.yaml"})
+	defer s.CleanupFixturesInNamespace(fixturePath, "test", []string{"hugconf-log-length.yaml"})
+
+	cfgPath := path.Join(s.Test().HaproxyCfgDir, "haproxy.cfg")
+	if !utils.WaitFor(s.Test().Ctx, interval, timeout, func() bool {
+		data, err := os.ReadFile(cfgPath)
+		if err != nil {
+			return false
+		}
+		cfg := string(data)
+		return strings.Contains(cfg, "log stdout len 65535") &&
+			strings.Contains(cfg, "tune.http.logurilen 65535")
+	}) {
+		s.T().Fatalf("log line length tuning not applied in %s", cfgPath)
+	}
+
+	s.CreateFixturesInNamespace(fixturePath, "test", []string{"hugconf-initial.yaml"})
+
+	if !utils.WaitFor(s.Test().Ctx, interval, timeout, func() bool {
+		data, err := os.ReadFile(cfgPath)
+		if err != nil {
+			return false
+		}
+		cfg := string(data)
+		if !strings.Contains(cfg, "log stdout format raw daemon") {
+			return false
+		}
+		if strings.Contains(cfg, "log stdout len 65535") {
+			return false
+		}
+		return !strings.Contains(cfg, "tune.http.logurilen")
+	}) {
+		s.T().Fatalf("log line length tuning not removed from %s", cfgPath)
+	}
 }
 
 func (s *HTTPRouteTestSuite) Test_HugConf_DefaultLogFormat_UpdatesExistingFrontends() {
@@ -111,5 +186,53 @@ func (s *HTTPRouteTestSuite) Test_HugConf_DefaultLogFormat_UpdatesExistingFronte
 		return strings.Contains(strings.ToLower(cfg), "http-request set-var(txn.req_header_names) req.hdr_names")
 	}) {
 		s.T().Fatalf("log format or header capture not applied in %s", cfgPath)
+	}
+}
+
+func (s *HTTPRouteTestSuite) Test_HugConf_DefaultLogFormat_DisablesRequestHeaderNames() {
+	fixtureDirPath := utils.GetCRDFixturePath()
+	fixturePath := path.Join(fixtureDirPath, "hugconf", "log-format")
+
+	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml"})
+
+	s.CreateFixtures(fixturePath, []string{"namespace.yaml"})
+	defer s.CleanupFixtures(fixturePath, []string{"namespace.yaml"})
+
+	s.CreateFixturesInNamespace(fixturePath, "test", []string{"hugconf.yaml"})
+	defer s.CleanupFixturesInNamespace(fixturePath, "test", []string{"hugconf.yaml"})
+
+	cfgPath := path.Join(s.Test().HaproxyCfgDir, "haproxy.cfg")
+	if !utils.WaitFor(s.Test().Ctx, interval, timeout, func() bool {
+		data, err := os.ReadFile(cfgPath)
+		if err != nil {
+			return false
+		}
+		cfg := string(data)
+		if !strings.Contains(cfg, "headers=%[var(txn.req_header_names)]") {
+			return false
+		}
+		return strings.Contains(strings.ToLower(cfg), "http-request set-var(txn.req_header_names) req.hdr_names")
+	}) {
+		s.T().Fatalf("request header names logging not enabled in %s", cfgPath)
+	}
+
+	s.CreateFixturesInNamespace(fixturePath, "test", []string{"hugconf-log-header-names-disabled.yaml"})
+
+	if !utils.WaitFor(s.Test().Ctx, interval, timeout, func() bool {
+		data, err := os.ReadFile(cfgPath)
+		if err != nil {
+			return false
+		}
+		cfg := string(data)
+		if !strings.Contains(cfg, "log-format '%[capture.req.hdr(0)] %ci'") {
+			return false
+		}
+		if strings.Contains(cfg, "headers=%[var(txn.req_header_names)]") {
+			return false
+		}
+		return !strings.Contains(strings.ToLower(cfg), "http-request set-var(txn.req_header_names) req.hdr_names")
+	}) {
+		s.T().Fatalf("request header names logging not disabled in %s", cfgPath)
 	}
 }

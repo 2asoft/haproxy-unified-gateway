@@ -1,0 +1,10 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: HugConf
+metadata:
+  name: hugconf
+spec:
+  haproxyGlobal:
+    logLineLength: 65535
+    httpLogUriLen: 65535
+  logging:
+    defaultLevel: "Info"

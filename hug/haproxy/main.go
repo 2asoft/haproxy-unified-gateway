@@ -135,6 +135,16 @@ func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs)
 		return err
 	}
 
+	if haproxyCfgDiffs.GlobalLogTuning != nil {
+		err = h.client.UpdateGlobalLogTuning(*haproxyCfgDiffs.GlobalLogTuning)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to update global log tuning",
+				logging.LogAttrError(err),
+			)
+			return err
+		}
+	}
+
 	if err = h.processCreate(haproxyCfgDiffs.Created, haproxyCfgDiffs.MergeStrategies); err != nil {
 		return err
 	}

@@ -32,7 +32,7 @@ const (
 )
 
 func (b *HaproxyConfMgrImpl) reconcileFrontendLogFormat() bool {
-	conf := b.controllerStore.ClusterStore.ControllerConfs[b.params.ControllerConfNsName]
+	conf := b.controllerStore.ClusterStore.HugConfs[b.params.ControllerConfNsName]
 	if conf == nil || conf.Spec.HaproxyDefaults == nil {
 		changed := b.configuration.frontendLogFormat != "" || len(b.configuration.frontendCaptureHeaders) != 0 || b.configuration.frontendLogRequestHeaderNames
 		b.configuration.frontendLogFormat = ""

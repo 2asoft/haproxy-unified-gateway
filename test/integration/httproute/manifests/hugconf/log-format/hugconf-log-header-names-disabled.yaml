@@ -1,0 +1,13 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: HugConf
+metadata:
+  name: hugconf
+spec:
+  haproxyDefaults:
+    logFormat: "'%[capture.req.hdr(0)] %ci'"
+    logRequestHeaderNames: false
+    captureRequestHeaders:
+    - name: Authorization
+      length: 256
+  logging:
+    defaultLevel: "Info"

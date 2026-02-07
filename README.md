@@ -34,6 +34,10 @@ task k0s-create
 
 Examples about deployment can be seen in [example](./example/README.md) folder.
 
+## Logging
+
+Use `spec.haproxyGlobal.logLineLength` to set `log ... len` on global log targets and `spec.haproxyGlobal.httpLogUriLen` to set `tune.http.logurilen`. If these fields are omitted, HAProxy defaults apply. If log lines are still cut off in `kubectl logs`, check container runtime or log aggregation limits. For long header values, adjust `spec.haproxyDefaults.captureRequestHeaders[].length` in HugConf.
+
 ## HAProxy Helm Charts
 
 Helm Chart are available in [haproxytech/helm-charts](https://github.com/haproxytech/helm-charts) repository

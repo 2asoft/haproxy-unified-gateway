@@ -41,13 +41,15 @@ type Configuration struct {
 	frontendLogFormat             string
 	frontendCaptureHeaders        []captureRequestHeader
 	frontendLogRequestHeaderNames bool
+	globalLogTuning               diffs.GlobalLogTuning
 }
 
 func (c *Configuration) resetDiffs() {
 	c.diffs = diffs.HaproxyConfDiffs{
-		Created: structured.NewStructuredConf(),
-		Updated: structured.NewStructuredConf(),
-		Deleted: structured.NewStructuredConf(),
+		Created:         structured.NewStructuredConf(),
+		Updated:         structured.NewStructuredConf(),
+		Deleted:         structured.NewStructuredConf(),
+		GlobalLogTuning: nil,
 	}
 }
 

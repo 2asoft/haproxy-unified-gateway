@@ -29,6 +29,7 @@ import (
 	runtimeoptions "github.com/haproxytech/client-native/v6/runtime/options"
 	defaultcrs "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/default_cr"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/mandatory"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
@@ -42,6 +43,7 @@ type HAProxyClient interface { //nolint:interfacebloat
 	Backend
 	Defaults
 	Global
+	GlobalLogTuning
 	RuntimeClient() runtime.Runtime
 }
 
@@ -77,6 +79,10 @@ type Global interface {
 type Defaults interface {
 	DefaultsSectionGet(name string) (*models.Defaults, error)
 	DefaultsSectionEdit(defaults *models.Defaults, mergeStrategy string) error
+}
+
+type GlobalLogTuning interface {
+	UpdateGlobalLogTuning(tuning diffs.GlobalLogTuning) error
 }
 
 type Server interface {

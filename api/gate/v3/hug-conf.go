@@ -76,6 +76,14 @@ type CaptureRequestHeader struct {
 	Length int64 `json:"length,omitempty"`
 }
 
+type HaproxyGlobal struct {
+	// +kubebuilder:validation:Minimum=1
+	LogLineLength *int64 `json:"logLineLength,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	HTTPLogURILen *int64 `json:"httpLogUriLen,omitempty"`
+}
+
+// +kubebuilder:validation:XValidation:rule="!self.logRequestHeaderNames || size(self.logFormat) > 0",message="logFormat is required when logRequestHeaderNames is enabled"
 type HaproxyDefaults struct {
 	LogFormat             string                 `json:"logFormat,omitempty"`
 	LogRequestHeaderNames bool                   `json:"logRequestHeaderNames,omitempty"`
@@ -86,6 +94,7 @@ type ControllerConfSpec struct {
 	DefaultsRef     *CRReference     `json:"defaultsRef,omitempty"`
 	Logging         Logging          `json:"logging"`
 	HaproxyDefaults *HaproxyDefaults `json:"haproxyDefaults,omitempty"`
+	HaproxyGlobal   *HaproxyGlobal   `json:"haproxyGlobal,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

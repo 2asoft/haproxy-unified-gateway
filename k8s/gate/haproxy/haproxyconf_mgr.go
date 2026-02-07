@@ -107,6 +107,7 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 	// This is important to ensure that we only transfer the current configuration changes.
 	b.configuration.resetDiffs()
 	forceUpsert := b.reconcileFrontendLogFormat()
+	b.reconcileGlobalLogTuning()
 	// Refresh the backends impacted in the refresh cycle
 	b.backendsImpactedInCycle = BackendsImpactedInCycle{
 		Upserted:     make(map[string]map[client.ObjectKey]BackendImpactedInCycle),
