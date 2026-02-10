@@ -16,12 +16,16 @@ package gateway
 
 import (
 	"context"
+	"slices"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/status"
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/base"
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -43,6 +47,7 @@ func (s *GatewaySuite) expectConditionsUpdated(ctx context.Context, namespace, n
 	expectedListenerStatuses []gatewayv1.ListenerStatus,
 ) {
 	gw := &gatewayv1.Gateway{}
+	var gotConditions conditions.Conditions
 	if !utils.WaitFor(ctx, interval, timeout, func() bool {
 		if err := s.Test().Client.Get(
 			s.Test().Ctx,
@@ -50,7 +55,7 @@ func (s *GatewaySuite) expectConditionsUpdated(ctx context.Context, namespace, n
 			return false
 		}
 
-		gotConditions := conditions.NewConditionsFromMetav1Conditions(gw.Status.Conditions)
+		gotConditions = conditions.NewConditionsFromMetav1Conditions(gw.Status.Conditions)
 
 		if resGwConds := gotConditions.Equal(expectedConditions); !resGwConds {
 			return false
@@ -58,6 +63,35 @@ func (s *GatewaySuite) expectConditionsUpdated(ctx context.Context, namespace, n
 
 		return status.ListenerStatusesEqual(gw.Status.Listeners, expectedListenerStatuses)
 	}) {
-		s.T().Fatal("conditions not correct")
+		// Define the option
+		opts := cmpopts.IgnoreTypes(v1.Time{})
+		diffConds := cmp.Diff(expectedConditions, gotConditions, opts)
+		sortListenerStatus(expectedListenerStatuses)
+		sortListenerStatus(gw.Status.Listeners)
+		diffListeners := cmp.Diff(expectedListenerStatuses, gw.Status.Listeners, opts)
+		s.T().Fatalf("conditions not correct for Gateway [%s/%s]. Diff conds: \n%v. Diff listener conds \n%v", namespace, name, diffConds, diffListeners)
+	}
+}
+
+func sortListenerStatus(listeners []gatewayv1.ListenerStatus) {
+	slices.SortFunc(listeners, func(a, b gatewayv1.ListenerStatus) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		if a.Name > b.Name {
+			return 1
+		}
+		return 0
+	})
+	for _, l := range listeners {
+		slices.SortFunc(l.Conditions, func(a, b v1.Condition) int {
+			if a.Type < b.Type {
+				return -1
+			}
+			if a.Type > b.Type {
+				return 1
+			}
+			return 0
+		})
 	}
 }
