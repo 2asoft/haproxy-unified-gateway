@@ -20,7 +20,7 @@ import (
 
 type GateTreeBuilder struct {
 	cfg GateTreeConfig
-	tree.ControllerStore
+	*tree.ControllerStore
 	referenceManager *tree.ReferenceManager
 	builder          []tree.Builder
 }
@@ -29,7 +29,7 @@ func (b *GateTreeBuilder) GetTree() *tree.GateTree {
 	return b.GateTree
 }
 
-func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig) GateTreeBuilder {
+func NewGateTreeBuilder(controllerStore *tree.ControllerStore, cfg GateTreeConfig) GateTreeBuilder {
 	// --------------
 	// Update References
 	// --------------
@@ -48,6 +48,9 @@ func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig
 		ControllerStore:    controllerStore,
 		CertificateStorage: cfg.CertificateStorage,
 	})
+
+	// VirtualListener
+	virtualListenerBuilder := tree.NewVirtualListenerBuilder(controllerStore)
 
 	// --------------
 	// Secret
@@ -84,6 +87,7 @@ func NewGateTreeBuilder(controllerStore tree.ControllerStore, cfg GateTreeConfig
 			secretBuilder,
 			gatewayClassBuilder,
 			gatewayBuilder,
+			virtualListenerBuilder,
 			certificateBuilder,
 			serviceBuilder,
 			httpRouteBuilder,

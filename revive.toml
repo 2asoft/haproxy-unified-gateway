@@ -43,6 +43,7 @@ enableAllRules = true
 
 [rule.function-length]
   arguments = [55, 100]
+  exclude = ["**/*_test.go"]
 
 [rule.argument-limit]
   arguments = [10]

@@ -175,7 +175,7 @@ func Add(
 	var err error
 
 	certificateStorage, err = storage.NewCertificateStorage(cfg.Logger, extractGVK, cfg.HaproxyParams.StoreCertificateStructureType,
-		cfg.HaproxyParams.CertsDir, cfg.HaproxyParams.CertListDir)
+		cfg.HaproxyParams.LinkID, cfg.HaproxyParams.CertsDir, cfg.HaproxyParams.CertListDir)
 	if err != nil {
 		return err
 	}

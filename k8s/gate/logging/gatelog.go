@@ -122,6 +122,10 @@ func LogAttrServerName(name string) slog.Attr {
 	return slog.String("serverName", name)
 }
 
+func LogAttrVirtualListenerName(name string) slog.Attr {
+	return slog.String("virtualListenerName", name)
+}
+
 func LogAttrRouteGroupKinds(routesGK []gatewayv1.RouteGroupKind) slog.Attr {
 	return slog.String("routeGroupKinds", utils.RouteGroupKindsToString(routesGK))
 }

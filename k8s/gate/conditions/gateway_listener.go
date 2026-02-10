@@ -119,12 +119,12 @@ func NewListenerAcceptedOK() generic.Conditions {
 // ---------------------------------------------------------
 // ListenerConditionConflicted
 
-func NewListenerConflicted(msg string) generic.Conditions {
+func NewListenerConflicted(msg, reason string) generic.Conditions {
 	return generic.Conditions{
 		generic.ConditionType(gatewayv1.ListenerConditionConflicted): {
 			Type:    generic.ConditionType(gatewayv1.ListenerConditionConflicted),
 			Status:  metav1.ConditionTrue,
-			Reason:  string(gatewayv1.ListenerReasonProtocolConflict),
+			Reason:  reason,
 			Message: msg,
 		},
 		generic.ConditionType(gatewayv1.ListenerConditionAccepted): {

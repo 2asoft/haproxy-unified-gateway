@@ -54,9 +54,10 @@ type CertificateStorageDefault struct {
 	CertsBaseDir string
 	// CertFilesBaseDir is the base directory where crt-list files are stored
 	CertFilesBaseDir string
+	LinkID           string
 }
 
-func NewCertificateStorage(logger *slog.Logger, extractGVK utilsk8s.ExtractGVK, structureType StructureType, certsBaseDir, certFileBaseDir string) (CertificateStorage, error) {
+func NewCertificateStorage(logger *slog.Logger, extractGVK utilsk8s.ExtractGVK, structureType StructureType, linkID, certsBaseDir, certFileBaseDir string) (CertificateStorage, error) {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogCategoryCertsStorage))
 
 	switch structureType {
@@ -66,6 +67,7 @@ func NewCertificateStorage(logger *slog.Logger, extractGVK utilsk8s.ExtractGVK, 
 			CertFilesBaseDir: certFileBaseDir,
 			logger:           mylogger,
 			extractGVK:       extractGVK,
+			LinkID:           linkID,
 		}
 		cs.empty(certsBaseDir)
 		cs.empty(certFileBaseDir)
@@ -91,7 +93,7 @@ func NewCertificateStorage(logger *slog.Logger, extractGVK utilsk8s.ExtractGVK, 
 func (c *CertificateStorageDefault) CertPath(secretKey client.ObjectKey) futils.FilePath {
 	return futils.FilePath{
 		Dir:      filepath.Join(c.CertsBaseDir, secretKey.Namespace, secretKey.Name[:2]),
-		FileName: fmt.Sprintf("%s_%s.pem", secretKey.Namespace, secretKey.Name),
+		FileName: fmt.Sprintf("%s_%s_%s.pem", c.LinkID, secretKey.Namespace, secretKey.Name),
 	}
 }
 

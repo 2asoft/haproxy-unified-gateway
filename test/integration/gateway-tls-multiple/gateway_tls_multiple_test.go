@@ -52,11 +52,11 @@ func (s *GatewayTLSMultipleSuite) Test_Gateway_TLS_multiple_same_namespace_ok() 
 	// Check certificates
 	expectedCerts := []*models.SslCertificate{
 		{
-			StorageName: path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of/e2e-tests-gateway-tls-multiple_offload.pem"),
+			StorageName: path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of/hug_e2e-tests-gateway-tls-multiple_offload.pem"),
 			Subject:     "/CN=offload.haproxy",
 		},
 		{
-			StorageName: path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of/e2e-tests-gateway-tls-multiple_offload2.pem"),
+			StorageName: path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of/hug_e2e-tests-gateway-tls-multiple_offload2.pem"),
 			Subject:     "/CN=offload2.haproxy",
 		},
 	}
@@ -66,26 +66,26 @@ func (s *GatewayTLSMultipleSuite) Test_Gateway_TLS_multiple_same_namespace_ok() 
 	expectedCrtLists := map[futils.FilePath][]string{ // map[crt-list .File]
 		{
 			Dir:      path.Join(s.Test().HaproxyCfgDir, "certlists"),
-			FileName: "/e2e-tests-gateway-tls-multiple_gateway_https.list",
+			FileName: "/hug_https_8443.list",
 		}: {
-			path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of", "e2e-tests-gateway-tls-multiple_offload.pem"),
-			path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of", "e2e-tests-gateway-tls-multiple_offload2.pem"),
+			path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of", "hug_e2e-tests-gateway-tls-multiple_offload.pem"),
+			path.Join(s.Test().HaproxyCfgDir, "certs", s.Test().Namespace, "of", "hug_e2e-tests-gateway-tls-multiple_offload2.pem"),
 		},
 	}
 	s.ExpectCrtLists(s.Test().Ctx, expectedCrtLists)
 
 	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
-	expectedFrontends := []string{"hug_e2e-tests-gateway-tls-multiple_gateway_http", "hug_e2e-tests-gateway-tls-multiple_gateway_https"}
+	expectedFrontends := []string{"hug_http_8080", "hug_https_8443"}
 	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
-	mapFileRelativePath = "hug_" + s.Test().Namespace + "_gateway_https"
+	mapFileRelativePath = "hug_https_8443"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))

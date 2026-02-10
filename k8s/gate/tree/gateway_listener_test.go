@@ -112,3 +112,127 @@ func TestSupportedKinds(t *testing.T) {
 		})
 	}
 }
+
+func Test_matchesWithWildcard(t *testing.T) {
+	tests := []struct {
+		name     string
+		wildcard string
+		hostname string
+		want     bool
+	}{
+		{
+			name:     "subdomain",
+			wildcard: "*.example.com",
+			hostname: "foo.example.com",
+			want:     true,
+		},
+		{
+			name:     "not a subdomain, just the domain",
+			wildcard: "*.example.com",
+			hostname: "example.com",
+			want:     false, // Gateway API spec: A wildcard domain does not match the parent domain
+		},
+		{
+			name:     "not a subdomain, just the suffix",
+			wildcard: "*.example.com",
+			hostname: ".example.com",
+			want:     false,
+		},
+		{
+			name:     "non-matching domain",
+			wildcard: "*.example.com",
+			hostname: "foo.example.org",
+			want:     false,
+		},
+		{
+			name:     "empty hostname",
+			wildcard: "*.example.com",
+			hostname: "",
+			want:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := matchesWithWildcard(tt.wildcard, tt.hostname); got != tt.want {
+				t.Errorf("matchesWildcard() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_overlaps(t *testing.T) {
+	tests := []struct {
+		name      string
+		hostname1 string
+		hostname2 string
+		want      bool
+	}{
+		{
+			name:      "exact match",
+			hostname1: "example.com",
+			hostname2: "example.com",
+			want:      true,
+		},
+		{
+			name:      "case-insensitive match",
+			hostname1: "Example.com",
+			hostname2: "example.com",
+			want:      true,
+		},
+		{
+			name:      "wildcard h1 matches h2",
+			hostname1: "*.example.com",
+			hostname2: "foo.example.com",
+			want:      true,
+		},
+		{
+			name:      "wildcard h2 matches h1",
+			hostname1: "foo.example.com",
+			hostname2: "*.example.com",
+			want:      true,
+		},
+		{
+			name:      "wildcard does not match parent domain",
+			hostname1: "*.example.com",
+			hostname2: "example.com",
+			want:      false, // Gateway API spec: A wildcard domain does not match the parent domain
+		},
+		{
+			name:      "wildcards are identical",
+			hostname1: "*.example.com",
+			hostname2: "*.example.com",
+			want:      true,
+		},
+		{
+			name:      "wildcards do not overlap",
+			hostname1: "*.foo.com",
+			hostname2: "*.bar.com",
+			want:      false,
+		},
+		{
+			name:      "no match",
+			hostname1: "one.com",
+			hostname2: "two.com",
+			want:      false,
+		},
+		{
+			name:      "empty hostname #1",
+			hostname1: "",
+			hostname2: "one.com",
+			want:      true,
+		},
+		{
+			name:      "empty hostname #2",
+			hostname1: "one.com",
+			hostname2: "",
+			want:      true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := overlaps(tt.hostname1, tt.hostname2); got != tt.want {
+				t.Errorf("overlaps() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

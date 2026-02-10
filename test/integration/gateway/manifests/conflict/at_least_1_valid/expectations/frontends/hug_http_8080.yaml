@@ -7,13 +7,13 @@ metadata:
         Generation: 1
         LinkID: hug
 mode: http
-name: hug_e2e-tests-gateway_gateway_http-8081
+name: hug_http_8080
 binds:
   v4:
     name: v4
     address: 0.0.0.0
-    port: 8081
+    port: 8080
   v6:
     name: v6
     address: '::'
-    port: 8081
+    port: 8080

@@ -1,0 +1,19 @@
+default_backend: backend_not_found
+from: haproxytech
+metadata:
+  hug:
+    Gateway:
+      e2e-tests-gateway/gateway2:
+        Generation: 1
+        LinkID: hug
+mode: http
+name: hug_http_9090
+binds:
+  v4:
+    name: v4
+    address: 0.0.0.0
+    port: 9090
+  v6:
+    name: v6
+    address: '::'
+    port: 9090

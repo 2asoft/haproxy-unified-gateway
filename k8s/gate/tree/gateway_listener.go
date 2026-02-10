@@ -40,6 +40,8 @@ type Listener struct {
 	AttachedRoutes AttachedRoutes
 	// Owner is the gateway that this listener is connected to
 	Owner client.ObjectKey
+	// VirtualListenerName is the virtual listener name that this listener is attached to, identified by its port and protocol category
+	VirtualListenerName string
 	// Checks results
 	CheckRouteGroupKind CheckResult
 	CheckProtocol       CheckResult
@@ -206,6 +208,21 @@ func (l *Listener) checkProtocol(gateSupportedRouteKinds map[gatewayv1.ProtocolT
 		}
 		return
 	}
+	if listener.Protocol == gatewayv1.TLSProtocolType &&
+		listener.TLS != nil &&
+		listener.TLS.Mode != nil &&
+		*listener.TLS.Mode == gatewayv1.TLSModeTerminate {
+		valErr := field.NotSupported(
+			field.NewPath("protocol"),
+			listener.Protocol,
+			[]string{"TLS/Passthrough"},
+		)
+		l.CheckProtocol = CheckResult{
+			Valid:      false,
+			Conditions: conditions.NewListenerAcceptedUnsupportedProtocol(valErr.Error()),
+		}
+		return
+	}
 
 	l.CheckProtocol = CheckResult{
 		Valid: true,
@@ -251,30 +268,93 @@ func (l *Listener) checkCertificateRefs(treeGw *Gateway, gateSecrets map[types.N
 	}
 }
 
-func (l *Listener) checkConflict(treeGw *Gateway, multipleListenersPerPort map[gatewayv1.PortNumber][]gatewaylistener) {
+// checkConflict checks if the listener has conflict with other listeners
+// If it has, it set the listener condition type gatewayv1.ListenerConditionConflicted
+// with the reason:
+// - gatewayv1.ListenerReasonProtocolConflict
+// - gatewayv1.ListenerReasonHostnameConflict
+func (l *Listener) checkConflict(treeGw *Gateway, listenersPerPort map[gatewayv1.PortNumber]listenerConflict) {
 	if !treeGw.Valid {
 		l.CheckConflict = CheckResult{}
 		return
 	}
 	listener := l.K8sResource
-	if gls, ok := multipleListenersPerPort[listener.Port]; ok {
-		// There are multiple listeners on this port
-		// Should be rejected. It's not allowed to pick one of the listeners
-		// All listeners should be rejects.
-		// The Gateway by itself should be accepted only if there is at least 1 valid Listener remaining
-		// after rejecting all invalid listeners
-		conflictingKeys := make([]string, 0, len(gls))
-		for _, gl := range gls {
-			conflictingKeys = append(conflictingKeys, gl.listenerKey.String())
+	listenersOnPort, ok := listenersPerPort[listener.Port]
+	if !ok {
+		// Should not happen
+		return
+	}
+
+	conflictingKeys := make([]string, 0)
+	lk := NewListenerKey(treeGw.K8sResource, listener)
+	if _, ok := listenersOnPort[lk]; !ok {
+		// should not happen
+		return
+	}
+
+	// 1- No conflict for this listener, it's the winnier
+	if !listenersOnPort[lk].hasConflict {
+		// If there is no conflict for this listener
+		l.CheckConflict = CheckResult{}
+		return
+	}
+
+	// 2- Conflicts
+	for glk := range listenersOnPort {
+		// if the listener is itself, just continue
+		if glk.String() == NewListenerKey(treeGw.K8sResource, listener).String() {
+			continue
 		}
+		conflictingKeys = append(conflictingKeys, glk.String())
+	}
+	if len(conflictingKeys) > 0 {
 		slices.Sort(conflictingKeys)
 		msg := fmt.Sprintf("Conflicting listeners: %s", strings.Join(conflictingKeys, ", "))
-		cond := conditions.NewListenerConflicted(msg)
+		cond := conditions.NewListenerConflicted(msg, listenersOnPort[lk].reason)
 		l.CheckConflict = CheckResult{
 			Valid:      false,
 			Conditions: cond,
 		}
 	}
+}
+
+// overlaps checks if h1 and h2 represent the same or overlapping traffic.
+func overlaps(h1, h2 string) bool {
+	// 0. "" (empty) matches all hostnames
+	if h1 == "" || h2 == "" {
+		return true
+	}
+	// 1. Standardize to lowercase (Hostnames are case-insensitive)
+	h1 = strings.ToLower(strings.TrimSuffix(h1, "."))
+	h2 = strings.ToLower(strings.TrimSuffix(h2, "."))
+
+	// 2. Exact match
+	if h1 == h2 {
+		return true
+	}
+
+	// 3. Handle Wildcards (e.g., *.example.com)
+	if strings.HasPrefix(h1, "*.") {
+		return matchesWithWildcard(h1, h2)
+	}
+	if strings.HasPrefix(h2, "*.") {
+		return matchesWithWildcard(h2, h1)
+	}
+
+	return false
+}
+
+// matchesWithWildcard checks if hostname2 matches the wildcard pattern of hostname1.
+func matchesWithWildcard(wildcard, hostname string) bool {
+	// An empty hostname implies it matches all hostnames, including wildcards,
+	// aligning with the Gateway API's interpretation of an empty hostname.
+	if hostname == "" {
+		return true
+	}
+	// Remove the "*." prefix
+	suffix := wildcard[1:] // results in ".example.com"
+	// Check if the hostname ends with that suffix and isn't just the suffix itself
+	return strings.HasSuffix(hostname, suffix) && len(hostname) > len(suffix)
 }
 
 func (*Listener) isSupportedCertKindGroup(certRef gatewayv1.SecretObjectReference) bool {
@@ -331,11 +411,16 @@ func (l *Listener) resetChecks() {
 	l.CheckConflict = CheckResult{}
 }
 
-// ListenerKey returns the Listener owner key appending the listener name to it
+// NewListenerKey returns the Listener owner key appending the listener name to it
 // For Gateway ns/gateway, if the Listener name is "https", will return
 // ns/gateway_https
 // = Listener Key
-func ListenerKey(gw *gatewayv1.Gateway, listener gatewayv1.Listener) client.ObjectKey {
+//
+//	Listener Key = NamespaceName {
+//	  Namespace : <gateway_ns>
+//	  Name:     : <gateway-name>_<listener_name>
+//	}
+func NewListenerKey(gw *gatewayv1.Gateway, listener gatewayv1.Listener) client.ObjectKey {
 	return ListenerKeyFromListenerName(gw, listener.Name)
 }
 

@@ -24,10 +24,10 @@ import (
 )
 
 type GateBuilderImpl struct {
-	ControllerStore
+	*ControllerStore
 }
 
-func NewGateBuilder(params ControllerStore) *GateBuilderImpl {
+func NewGateBuilder(params *ControllerStore) *GateBuilderImpl {
 	builder := &GateBuilderImpl{
 		ControllerStore: params,
 	}

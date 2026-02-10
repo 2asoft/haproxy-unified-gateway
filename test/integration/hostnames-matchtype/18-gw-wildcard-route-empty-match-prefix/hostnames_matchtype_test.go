@@ -45,13 +45,13 @@ func (s *HostnamesMatchtypeSuite18) Test_18_Wildcard_Route_Empty_Match_Prefix() 
 	expectedMapsPath := path.Join("expectations", "maps")
 
 	// For FE http
-	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_http_31081"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
 	// For FE https
-	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_https_31444"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))

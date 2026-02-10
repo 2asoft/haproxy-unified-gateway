@@ -47,7 +47,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_basic() {
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -79,7 +79,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)

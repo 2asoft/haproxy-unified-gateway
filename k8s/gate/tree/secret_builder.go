@@ -22,10 +22,10 @@ import (
 var _ Builder = &SecretBuilderImpl{}
 
 type SecretBuilderImpl struct {
-	ControllerStore
+	*ControllerStore
 }
 
-func NewSecretBuilder(controllerStore ControllerStore) Builder {
+func NewSecretBuilder(controllerStore *ControllerStore) Builder {
 	return &SecretBuilderImpl{
 		ControllerStore: controllerStore,
 	}
@@ -55,7 +55,7 @@ func (b *SecretBuilderImpl) computeTreeSecretUpdate(secretKey client.ObjectKey, 
 		} else {
 			treeSecret = NewSecret(secretUpdate.NewObject)
 		}
-		treeSecret.SetAsManaged(b.Logger, b.ControllerStore)
+		treeSecret.SetAsManaged(b.Logger, *b.ControllerStore)
 	case store.StatusDeleted:
 		if treeSecret != nil {
 			treeSecret.SetAsDeleted(b.Logger)

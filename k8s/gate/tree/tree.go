@@ -42,12 +42,14 @@ type Builder interface {
 // GateTree is a Graph-like representation of Gateway API resources.
 type GateTree struct {
 	// GatewayClasses holds the GatewayClasses resource that are accepted and ignored
-	GatewayClasses map[types.NamespacedName]*GatewayClass
-	Gateways       map[types.NamespacedName]*Gateway
-	Secrets        map[types.NamespacedName]*Secret
-	HTTPRoutes     map[types.NamespacedName]*HTTPRoute
-	TLSRoutes      map[types.NamespacedName]*TLSRoute
-	Services       map[types.NamespacedName]*Service
+	GatewayClasses           map[types.NamespacedName]*GatewayClass
+	Gateways                 map[types.NamespacedName]*Gateway
+	Secrets                  map[types.NamespacedName]*Secret
+	HTTPRoutes               map[types.NamespacedName]*HTTPRoute
+	TLSRoutes                map[types.NamespacedName]*TLSRoute
+	Services                 map[types.NamespacedName]*Service
+	VirtualListeners         map[string]*VirtualListener // map[virtualListener.name()]VirtualListener
+	PreviousVirtualListeners map[string]*VirtualListener // map[virtualListener.name()]VirtualListener
 }
 
 type ReferencedObjects struct {
@@ -79,12 +81,13 @@ type CheckResultRoute struct {
 
 func NewGateTree() *GateTree {
 	return &GateTree{
-		GatewayClasses: make(map[types.NamespacedName]*GatewayClass),
-		Gateways:       make(map[types.NamespacedName]*Gateway),
-		Secrets:        make(map[types.NamespacedName]*Secret),
-		HTTPRoutes:     make(map[types.NamespacedName]*HTTPRoute),
-		TLSRoutes:      make(map[types.NamespacedName]*TLSRoute),
-		Services:       make(map[types.NamespacedName]*Service),
+		GatewayClasses:   make(map[types.NamespacedName]*GatewayClass),
+		Gateways:         make(map[types.NamespacedName]*Gateway),
+		Secrets:          make(map[types.NamespacedName]*Secret),
+		HTTPRoutes:       make(map[types.NamespacedName]*HTTPRoute),
+		TLSRoutes:        make(map[types.NamespacedName]*TLSRoute),
+		Services:         make(map[types.NamespacedName]*Service),
+		VirtualListeners: make(map[string]*VirtualListener),
 	}
 }
 

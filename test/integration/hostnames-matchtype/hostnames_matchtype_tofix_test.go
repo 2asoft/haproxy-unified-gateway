@@ -48,12 +48,12 @@ func (s *HostnamesMatchtypeSuite) Test_3_Exact_Route_Exact_Match_Exact_Nomatch()
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_http_31081"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_https_31444"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))

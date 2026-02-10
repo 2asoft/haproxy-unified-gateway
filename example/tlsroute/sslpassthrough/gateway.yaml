@@ -9,9 +9,9 @@ spec:
         kinds:
           - group: gateway.networking.k8s.io
             kind: TLSRoute
-      hostname: example.local
+      hostname: "*.haproxy"
       name: tls
-      port: 31443
+      port: 31444
       protocol: TLS
       tls:
         mode: Passthrough

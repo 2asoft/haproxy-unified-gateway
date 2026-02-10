@@ -40,9 +40,6 @@ var _ HaproxyConfMgr = &HaproxyConfMgrImpl{}
 type HaproxyConfMgrImpl struct {
 	// backendsImpactedInCycle are all the upserted/deleted backends in the refresh cycle
 	backendsImpactedInCycle BackendsImpactedInCycle
-	// frontendsOwnedbyGateway keeps track of frontends owned by each Gateway
-	// This is usefull to cleanup the frontends removed from a Gateway (some listeners removed)
-	frontendsOwnedbyGateway FrontendsOwnedbyGateway // map[gwKey] -> map[frontendName]struct{}
 	metadataManager         metadata.Manager
 	// haproxyClient is set if HaproxyConfMgrParams.UpdateHaproxyThroughRuntime is true
 	haproxyClient api.HAProxyClient
@@ -51,7 +48,7 @@ type HaproxyConfMgrImpl struct {
 	backendOwners   BackendReferencedBy // map[backendName] -> map[ownerType] -> map[ownerName] -> struct{}
 	logger          *slog.Logger
 	mu              *sync.Mutex
-	controllerStore tree.ControllerStore
+	controllerStore *tree.ControllerStore
 	configuration   Configuration
 	firstSync       FirstSync
 	params          HaproxyConfMgrParams
@@ -70,7 +67,7 @@ type FirstSync struct {
 	flag bool // True if this is the initial sync
 }
 
-func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore, startupStructured structured.Structured,
+func NewHaproxyConfMgr(logger *slog.Logger, controllerStore *tree.ControllerStore, startupStructured structured.Structured,
 	params HaproxyConfMgrParams, haproxyClient api.HAProxyClient, k8sClient client.Client,
 ) HaproxyConfMgr {
 	impl := HaproxyConfMgrImpl{
@@ -85,14 +82,13 @@ func NewHaproxyConfMgr(logger *slog.Logger, controllerStore tree.ControllerStore
 			backends:  make(map[string]struct{}),
 			flag:      true,
 		},
-		frontendsOwnedbyGateway: NewFrontendsOwnedbyGateway(),
-		backendOwners:           NewBackendOwners(),
+		backendOwners: NewBackendOwners(),
 		backendsImpactedInCycle: BackendsImpactedInCycle{
 			Upserted:     make(map[string]map[client.ObjectKey]BackendImpactedInCycle),
 			Deleted:      make(map[string]struct{}),
 			Unreferenced: make(map[string]struct{}),
 		},
-		metadataManager: metadata.NewManager(params.extractGVK, params.LinkID),
+		metadataManager: metadata.NewManager(params.extractGVK, controllerStore, params.LinkID),
 		haproxyClient:   haproxyClient,
 		k8sClient:       k8sClient,
 		mu:              &sync.Mutex{},
@@ -118,7 +114,7 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 	}
 
 	// Build HAProxy configuration for the Gateways
-	if err := b.processGateways(); err != nil {
+	if err := b.processVirtualListener(); err != nil {
 		logger.LogAttrs(context.Background(), slog.LevelError, "Failed to build Gateways",
 			logging.LogAttrError(err))
 	}

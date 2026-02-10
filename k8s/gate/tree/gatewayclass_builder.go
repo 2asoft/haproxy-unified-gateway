@@ -20,13 +20,13 @@ import (
 )
 
 type GatewayClassBuilderImpl struct {
-	ControllerStore
+	*ControllerStore
 }
 
 var _ Builder = &GatewayClassBuilderImpl{}
 
 type GatewayClassBuilderParams struct {
-	ControllerStore
+	*ControllerStore
 }
 
 func NewGatewayClassBuilder(params GatewayClassBuilderParams) Builder {
@@ -101,16 +101,16 @@ func (b *GatewayClassBuilderImpl) computeTreeGatewayClassUpdate(gwcKey client.Ob
 		}
 		// Perform Validity Check on all updated GatewayClasses
 		// Do we keep it in Managed or Unmanaged???
-		treeGwc.checkParametersRef(b.ControllerStore)
+		treeGwc.checkParametersRef(*b.ControllerStore)
 		// Validity is based only on treeGwc.CheckParamsRef.Valid
 		// We are in best effort mode for Version and accept GatewayClass with invalid version
 		// treeGwc.Valid = b.GateTree.IsGwAPIVersionValid && treeGwc.CheckParamsRef.Valid
 		treeGwc.Valid = treeGwc.CheckParamsRef.Valid
-		treeGwc.BuildConditions(b.ControllerStore)
+		treeGwc.BuildConditions(*b.ControllerStore)
 		if treeGwc.Managed {
-			treeGwc.SetAsManaged(b.Logger, b.ControllerStore)
+			treeGwc.SetAsManaged(b.Logger, *b.ControllerStore)
 		} else {
-			treeGwc.SetAsUnmanaged(b.Logger, b.ControllerStore)
+			treeGwc.SetAsUnmanaged(b.Logger, *b.ControllerStore)
 		}
 	case store.StatusDeleted:
 		if treeGwc != nil {

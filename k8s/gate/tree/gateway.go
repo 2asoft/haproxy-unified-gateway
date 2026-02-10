@@ -26,6 +26,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 
 	"github.com/imdario/mergo"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -63,6 +64,17 @@ func NewGateway(k8sObject *gatewayv1.Gateway) *Gateway {
 			OldTreeResource: nil,
 		},
 	}
+}
+
+func (g *Gateway) GetCreationTimestamp() metav1.Time {
+	if g != nil && g.K8sResource != nil {
+		return g.K8sResource.GetCreationTimestamp()
+	}
+	return metav1.Time{}
+}
+
+func (g *Gateway) GetName() string {
+	return g.K8sResource.GetName()
 }
 
 func (g *Gateway) GetK8sResource() *gatewayv1.Gateway {
@@ -222,40 +234,37 @@ func (g *Gateway) checkGatewayClassIsValid(controllerStore ControllerStore) {
 	}
 }
 
-func (g *Gateway) checkListenerConflicts(portWithoutConflict map[gatewayv1.PortNumber]struct{}) {
-	// Iterate over each listener port
-	// see if at least one of them does not have conflict
-	gw := g.K8sResource
-	found1PortWithoutConflict := false
-	for _, listener := range gw.Spec.Listeners {
-		if _, ok := portWithoutConflict[listener.Port]; ok {
-			found1PortWithoutConflict = true
-			break
-		}
-	}
+// checkListenerConflicts on the Gateway checks if there is at least one Listener that has no conflict
+// - if there is at least one listener for this Gateway that has no conflict, then the Gateway status is "Accepted"
+// - if none listener are valid, then the Gateway condition type Accepted is False
+func (g *Gateway) checkListenerConflicts(mapPort2ListenerConflict map[gatewayv1.PortNumber]listenerConflict) {
+	// See if at least one of them does not have conflict
+	// Or if they all have confict
 
-	someListenersrAreConflicted := false
-	for _, l := range g.Listeners {
-		_, exists := l.Conditions.GetCondition(generic.ConditionType(gatewayv1.ListenerConditionConflicted))
-		if exists {
-			someListenersrAreConflicted = true
-			break
-		}
-	}
-	if someListenersrAreConflicted {
-		if !found1PortWithoutConflict {
+	nbListenersWithAndWithoutConflict := nbListenersWithAndWithoutConflict(mapPort2ListenerConflict, g)
+
+	if nbListenersWithAndWithoutConflict.withConflict > 0 {
+		// Some listeners conflict for this Gateway
+		if nbListenersWithAndWithoutConflict.withoutConflict == 0 {
+			// 1- All listeners conflict for this Gateway
 			g.CheckConflict = CheckResult{
 				Valid:      false,
 				Conditions: conditions.NewGatewayAcceptedListenerNotValidAllInvalid(),
 			}
 		} else {
+			// 2- Some listeners conflict for this Gateway
+			// but at least 1 is Valid
 			g.CheckConflict = CheckResult{
 				Valid:      true,
 				Conditions: conditions.NewGatewayAcceptedListenerNotValidAtLeast1Valid(),
 			}
 		}
 	} else {
-		g.CheckConflict.Valid = true
+		// 3- No listener conflict for this Gateway
+		g.CheckConflict = CheckResult{
+			Valid:      true,
+			Conditions: conditions.NewGatewayAcceptedOK(),
+		}
 	}
 	g.Valid = g.Valid && g.CheckConflict.Valid
 }

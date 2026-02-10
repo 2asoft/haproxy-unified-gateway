@@ -31,33 +31,33 @@ import (
 
 type CrtListStorage interface {
 	// CertListPath returns the FilePath for the crt-file file.
-	CertListPath(listenerKey client.ObjectKey) futils.FilePath
+	CertListPath(virtualListenerName string) futils.FilePath
 	// DeleteCrtListFromDisk deletes a crt-list from disk
 	DeleteCrtListFromDisk(crtListData certificate.CrtListData) error
 	// NewCrtListData returns the new CrtListData
-	NewCrtListData(listenerKey client.ObjectKey, secretKeys map[client.ObjectKey]struct{}) certificate.CrtListData
+	NewCrtListData(virtualListenerName string, secretKeys map[client.ObjectKey]struct{}) certificate.CrtListData
 	// WriteCrtListOnDisk writes a new crt-list on disk
 	WriteCrtListOnDisk(crtList certificate.CrtListData) error
 	// UpdateCrtListOnDisk updates a crt-list on disk with new certificates and removed ones
-	UpdateCrtListOnDisk(gatewayKey client.ObjectKey, newSecretKeys, removedSecretKeys map[client.ObjectKey]struct{}) error
+	UpdateCrtListOnDisk(virtualListenerName string, newSecretKeys, removedSecretKeys map[client.ObjectKey]struct{}) error
 }
 
 var _ CrtListStorage = &CertificateStorageDefault{}
 
-func (c *CertificateStorageDefault) CertListPath(listenerKey client.ObjectKey) futils.FilePath {
+func (c *CertificateStorageDefault) CertListPath(virtualListenerName string) futils.FilePath {
 	return futils.FilePath{
 		Dir:      c.CertFilesBaseDir,
-		FileName: fmt.Sprintf("%s_%s.list", listenerKey.Namespace, listenerKey.Name),
+		FileName: fmt.Sprintf("%s_%s.list", c.LinkID, virtualListenerName),
 	}
 }
 
-func (c *CertificateStorageDefault) NewCrtListData(listenerKey client.ObjectKey, secretKeys map[client.ObjectKey]struct{}) certificate.CrtListData {
+func (c *CertificateStorageDefault) NewCrtListData(virtualListenerName string, secretKeys map[client.ObjectKey]struct{}) certificate.CrtListData {
 	certFullPaths := make([]string, 0, len(secretKeys))
 	for secretKey := range secretKeys {
 		certFullPaths = append(certFullPaths, c.CertPath(secretKey).FullPath())
 	}
 	slices.Sort(certFullPaths)
-	crtListPath := c.CertListPath(listenerKey)
+	crtListPath := c.CertListPath(virtualListenerName)
 	return certificate.NewCrtListData(crtListPath, certFullPaths)
 }
 
@@ -119,20 +119,20 @@ func (c *CertificateStorageDefault) DeleteCrtListFromDisk(crtListData certificat
 	return err
 }
 
-func (c *CertificateStorageDefault) UpdateCrtListOnDisk(listenerKey client.ObjectKey, newSecretKeys, removedSecretKeys map[client.ObjectKey]struct{}) error {
+func (c *CertificateStorageDefault) UpdateCrtListOnDisk(virtualListenerName string, newSecretKeys, removedSecretKeys map[client.ObjectKey]struct{}) error {
 	// No change, nothing to do
 	if len(newSecretKeys) == 0 && len(removedSecretKeys) == 0 {
 		return nil
 	}
 
-	crtListFilePath := c.CertListPath(listenerKey)
+	crtListFilePath := c.CertListPath(virtualListenerName)
 	crtlistFullPath := crtListFilePath.FullPath()
 
 	crtFullPaths, err := crtListFilePath.ReadLines()
 	if err != nil {
 		c.logger.LogAttrs(context.Background(), slog.LevelError, "crt-list [not written]",
 			slog.String("crt-list", crtlistFullPath),
-			logging.LogAttrKey(listenerKey), logging.LogAttrError(err))
+			logging.LogAttrVirtualListenerName(virtualListenerName), logging.LogAttrError(err))
 		return err
 	}
 
@@ -143,7 +143,7 @@ func (c *CertificateStorageDefault) UpdateCrtListOnDisk(listenerKey client.Objec
 		if err != nil {
 			c.logger.LogAttrs(context.Background(), slog.LevelError, "crt-list [not written]",
 				slog.String("crt-list", crtlistFullPath),
-				logging.LogAttrKey(listenerKey), logging.LogAttrError(err))
+				logging.LogAttrVirtualListenerName(virtualListenerName), logging.LogAttrError(err))
 			return err
 		}
 		secretKeys[secretKey] = struct{}{}

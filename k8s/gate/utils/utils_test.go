@@ -37,16 +37,32 @@ func TestSortByCreationTimestamp_Gateways(t *testing.T) {
 	now := metav1.Now()
 	gateways := []client.Object{
 		newGateway("gateway1", now, 1*time.Minute),
+		nil, // nil value should sort first
 		newGateway("gateway2", now, 0),
 		newGateway("gateway3", now, 2*time.Minute),
+		nil, // another nil value
 	}
 
 	SortByCreationTimestamp(gateways)
 
+	// Verify nil values come first
+	if gateways[0] != nil {
+		t.Errorf("Expected nil at index 0, but got %v", gateways[0])
+	}
+	if gateways[1] != nil {
+		t.Errorf("Expected nil at index 1, but got %v", gateways[1])
+	}
+
+	// Verify non-nil gateways are sorted by creation timestamp
 	expectedOrder := []string{"gateway2", "gateway1", "gateway3"}
-	for i, gateway := range gateways {
-		if gateway.GetName() != expectedOrder[i] {
-			t.Errorf("Expected gateway %s at index %d, but got %s", expectedOrder[i], i, gateway.GetName())
+	for i, expectedName := range expectedOrder {
+		gateway := gateways[i+2] // offset by 2 because of the two nil values
+		if gateway == nil {
+			t.Errorf("Expected gateway %s at index %d, but got nil", expectedName, i+2)
+			continue
+		}
+		if gateway.GetName() != expectedName {
+			t.Errorf("Expected gateway %s at index %d, but got %s", expectedName, i+2, gateway.GetName())
 		}
 	}
 }

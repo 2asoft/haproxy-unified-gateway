@@ -56,18 +56,16 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 		route = route.TreeStatus.OldTreeResource
 		for _, listeners := range route.Listeners.Iterate {
 			for _, listener := range listeners {
-				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
-				if err != nil {
-					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-						logging.LogAttrError(err),
-					)
+				if listener.VirtualListenerName == "" {
+					continue
 				}
+				frontendName := b.topManager.getFrontendName(listener.VirtualListenerName)
 
 				pathSNIMap := mapsStorage.MapPath(frontendName, storage.SNI_MAP)
 				mapSNIMap := mapsStorage.GetMapData(pathSNIMap)
 				pathSNIDomainWildcardMap := mapsStorage.MapPath(frontendName, storage.SNI_DOMAIN_WILDCARD_MAP)
 				mapSNIDomainWildcardMap := mapsStorage.GetMapData(pathSNIDomainWildcardMap)
-				err = b.onDeletedTLSRoute(routeKey, route, mapSNIMap, mapSNIDomainWildcardMap)
+				err := b.onDeletedTLSRoute(routeKey, route, mapSNIMap, mapSNIDomainWildcardMap)
 				// errs.Add(err)
 				_ = err // TODO ignore error for now
 			}
@@ -77,12 +75,8 @@ func (b *RouteMgrImpl) fillMapsForTLSRoutes() {
 	for routeKey, route := range controllerStore.GateTree.TLSRoutes {
 		for _, listener := range route.Listeners.Iterate {
 			for _, listener := range listener {
-				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
-				if err != nil {
-					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-						logging.LogAttrError(err),
-					)
-				}
+				frontendName := b.topManager.getFrontendName(listener.VirtualListenerName)
+
 				routesHosnames := utils.ConvertSliceWithFunc(route.K8sResource.Spec.Hostnames, utils.ConvertV1Alpha2HostnameToString)
 				listenerHostname := (*string)(listener.K8sResource.Hostname)
 				acceptedHostnamesForRoute := utils.GetHostnamesForRouteWithListener(listenerHostname, routesHosnames)
@@ -123,12 +117,11 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 		route = route.TreeStatus.OldTreeResource
 		for _, listeners := range route.Listeners.Iterate {
 			for _, listener := range listeners {
-				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
-				if err != nil {
-					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-						logging.LogAttrError(err),
-					)
+				vListenerName := listener.VirtualListenerName
+				if vListenerName == "" {
+					continue
 				}
+				frontendName := b.topManager.getFrontendName(vListenerName)
 
 				pathExactMap := mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
 				pathPrefixMap := mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
@@ -138,7 +131,7 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 				mapPrefix := mapsStorage.GetMapData(pathPrefixMap)
 				mapRegex := mapsStorage.GetMapData(pathregexMap)
 				mapDomainWPathExact := mapsStorage.GetMapData(pathDomainWPathExactMap)
-				err = b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
+				err := b.onDeletedHTTPRoute(routeKey, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 				// errs.Add(err)
 				_ = err // TODO ignore error for now
 			}
@@ -149,12 +142,8 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 	for routeKey, route := range controllerStore.GateTree.HTTPRoutes {
 		for _, listener := range route.Listeners.Iterate {
 			for _, listener := range listener {
-				frontendName, err := b.topManager.getFrontendName(listener.Owner, listener.K8sResource)
-				if err != nil {
-					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-						logging.LogAttrError(err),
-					)
-				}
+				frontendName := b.topManager.getFrontendName(listener.VirtualListenerName)
+
 				routesHosnames := utils.ConvertSliceWithFunc(route.K8sResource.Spec.Hostnames, utils.ConvertV1Alpha2HostnameToString)
 				listenerHostname := (*string)(listener.K8sResource.Hostname)
 				acceptedHostnamesForRoute := utils.GetHostnamesForRouteWithListener(listenerHostname, routesHosnames)

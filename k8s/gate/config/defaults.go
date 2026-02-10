@@ -67,7 +67,7 @@ func (cfg *Configuration) ApplyDefaults() {
 		cfg.HaproxyParams.ServerNameTemplate = defaultServerNameTemplate
 	}
 	if cfg.HaproxyParams.LinkID == "" {
-		cfg.HaproxyParams.LinkID = "linkid"
+		cfg.HaproxyParams.LinkID = "hug"
 	}
 	if cfg.HaproxyParams.TimeoutWaitForRuntime == 0 {
 		cfg.HaproxyParams.TimeoutWaitForRuntime = DefaultWaitForRuntimeTimeout

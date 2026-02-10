@@ -31,12 +31,12 @@ var _ Builder = &TLSRouteBuilderImpl{}
 
 type TLSRouteBuilderImpl struct {
 	mapsStorage storage.MapsStorage
-	ControllerStore
+	*ControllerStore
 }
 
 type TLSRouteBuilderParams struct {
 	storage.MapsStorage
-	ControllerStore
+	*ControllerStore
 }
 
 func NewTLSRouteBuilder(params TLSRouteBuilderParams) Builder {
@@ -94,7 +94,7 @@ func (b *TLSRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, r
 			treeTLSRoute = NewTLSRoute(routeUpdate.NewObject, b.ControllerStore.ControllerName)
 		}
 
-		treeTLSRoute.processChecks(b.ControllerStore)
+		treeTLSRoute.processChecks(*b.ControllerStore)
 
 		if treeTLSRoute.isManaged() {
 			b.SetAsManaged(treeTLSRoute)
@@ -112,7 +112,7 @@ func (b *TLSRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, r
 			for _, listeners := range treeTLSRoute.Listeners.Iterate {
 				for _, listener := range listeners {
 					// This impact the Gateway object (listener status AttachedRoute), so it needs to be done, even so the HTTPRoute by itself is deleted
-					listener.deleteAttachedRoute(client.ObjectKeyFromObject(treeTLSRoute.K8sResource), b.ControllerStore)
+					listener.deleteAttachedRoute(client.ObjectKeyFromObject(treeTLSRoute.K8sResource), *b.ControllerStore)
 				}
 			}
 			treeTLSRoute.SetAsDeleted(b.Logger)
@@ -170,6 +170,6 @@ func (b *TLSRouteBuilderImpl) buildRules(tlsRoute *TLSRoute) {
 
 	// Performs all needed checks
 	for _, rule := range tlsRoute.Rules {
-		rule.checkBackendRef(tlsRoute, b.ControllerStore)
+		rule.checkBackendRef(tlsRoute, *b.ControllerStore)
 	}
 }

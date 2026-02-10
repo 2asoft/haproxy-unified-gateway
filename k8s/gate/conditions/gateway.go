@@ -87,7 +87,7 @@ func NewGatewayAcceptedListenerNotValidAllInvalid() generic.Conditions {
 			Type:    generic.ConditionType(gatewayv1.GatewayConditionAccepted),
 			Status:  metav1.ConditionFalse,
 			Reason:  string(gatewayv1.GatewayReasonListenersNotValid),
-			Message: "GatewayClass is not accepted - All listeners are conflicting",
+			Message: "Gateway is not accepted - All listeners are conflicting",
 		},
 	}
 }

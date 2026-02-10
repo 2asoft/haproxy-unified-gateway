@@ -20,6 +20,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 	"k8s.io/apimachinery/pkg/types"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 type ControllerStore struct {
@@ -33,6 +34,10 @@ type ControllerStore struct {
 	ExtractGVK             utilsk8s.ExtractGVK
 	CertUpdates            *CertUpdates
 	CrtListUpdates         *CrtListUpdates
+	// mapPort2Listeners is a map for each port:
+	// that contains for each listener if it has a conflict or not
+	previousMapPort2Listeners map[gatewayv1.PortNumber]listenerConflict
+	mapPort2Listeners         map[gatewayv1.PortNumber]listenerConflict
 	// from config
 	ControllerName string
 }
@@ -95,4 +100,43 @@ func (b *ControllerStore) CheckGatewayClassExists(gwcName string) bool {
 	gwcKey := types.NamespacedName{Name: gwcName}
 	_, ok := b.GateTree.GatewayClasses[gwcKey]
 	return ok
+}
+
+// GetListenerForKey returns the Listener for the given listenerKey, or nil if not found.
+// It parses the listenerKey to extract the Gateway and Listener name, then looks up
+// the listener in the GateTree.
+func (b *ControllerStore) GetListenerForKey(listenerKey types.NamespacedName) *Listener {
+	// Parse the listener key to get Gateway and Listener
+	gwKey, listenerName, err := ConvertListenerKeyToGatewayKeyAndListenerName(listenerKey)
+	if err != nil {
+		return nil
+	}
+
+	treeGw, ok := b.GateTree.Gateways[gwKey]
+	if !ok || treeGw == nil {
+		return nil
+	}
+
+	// Get the listener from the gateway
+	listener, ok := treeGw.Listeners[listenerName]
+	if !ok || listener == nil {
+		return nil
+	}
+
+	return listener
+}
+
+// GetGatewayForListener returns the Gateway for the given Listener, or nil if not found.
+// It uses the Listener's Owner field to look up the gateway in the GateTree.
+func (b *ControllerStore) GetGatewayForListener(listener *Listener) *Gateway {
+	if listener == nil {
+		return nil
+	}
+
+	treeGw, ok := b.GateTree.Gateways[listener.Owner]
+	if !ok || treeGw == nil {
+		return nil
+	}
+
+	return treeGw
 }

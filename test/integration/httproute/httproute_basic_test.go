@@ -65,13 +65,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
-	mapFileRelativePath = "hug_" + s.Test().Namespace + "_gateway_http2"
+	mapFileRelativePath = "hug_http_8088"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
@@ -98,7 +98,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 0)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -126,7 +126,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 0)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -154,7 +154,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -200,7 +200,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "gateway", "http2", 1)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -233,13 +233,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() 
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
-	mapFileRelativePath = "hug_" + s.Test().Namespace + "_gateway_http2"
+	mapFileRelativePath = "hug_http_8088"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))

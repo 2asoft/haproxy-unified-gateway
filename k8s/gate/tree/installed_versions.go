@@ -48,10 +48,10 @@ func (s SupportedVersions) String() string {
 }
 
 type InstalledVersionsBuilderImpl struct {
-	ControllerStore
+	*ControllerStore
 }
 
-func NewInstalledVersionsBuilder(params ControllerStore) *InstalledVersionsBuilderImpl {
+func NewInstalledVersionsBuilder(params *ControllerStore) *InstalledVersionsBuilderImpl {
 	return &InstalledVersionsBuilderImpl{
 		ControllerStore: params,
 	}

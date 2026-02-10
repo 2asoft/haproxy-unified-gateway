@@ -30,7 +30,7 @@ var _ Builder = &HTTPRouteBuilderImpl{}
 
 type HTTPRouteBuilderImpl struct {
 	mapsStorage storage.MapsStorage
-	ControllerStore
+	*ControllerStore
 	// runtimeUpdate indicates if the builder should trigger a runtime update of haproxy
 	// when a map is changed
 	runtimeUpdate bool
@@ -38,7 +38,7 @@ type HTTPRouteBuilderImpl struct {
 
 type HTTPRouteBuilderParams struct {
 	storage.MapsStorage
-	ControllerStore
+	*ControllerStore
 	RuntimeUpdate bool
 }
 
@@ -98,7 +98,7 @@ func (b *HTTPRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, 
 			treeHTTPRoute = NewRoute(routeUpdate.NewObject, b.ControllerStore.ControllerName)
 		}
 
-		treeHTTPRoute.processChecks(b.ControllerStore)
+		treeHTTPRoute.processChecks(*b.ControllerStore)
 
 		if treeHTTPRoute.isManaged() {
 			b.SetAsManaged(treeHTTPRoute)
@@ -116,7 +116,7 @@ func (b *HTTPRouteBuilderImpl) computeTreeGatewayUpdate(gwKey client.ObjectKey, 
 			for _, listeners := range treeHTTPRoute.Listeners.Iterate {
 				for _, listener := range listeners {
 					// This impact the Gateway object (listener status AttachedRoute), so it needs to be done, even so the HTTPRoute by itself is deleted
-					listener.deleteAttachedRoute(client.ObjectKeyFromObject(treeHTTPRoute.K8sResource), b.ControllerStore)
+					listener.deleteAttachedRoute(client.ObjectKeyFromObject(treeHTTPRoute.K8sResource), *b.ControllerStore)
 				}
 			}
 			treeHTTPRoute.SetAsDeleted(b.Logger)
@@ -174,6 +174,6 @@ func (b *HTTPRouteBuilderImpl) buildRules(httpRoute *HTTPRoute) {
 
 	// Performs all needed checks
 	for _, rule := range httpRoute.Rules {
-		rule.checkBackendRef(httpRoute, b.ControllerStore)
+		rule.checkBackendRef(httpRoute, *b.ControllerStore)
 	}
 }

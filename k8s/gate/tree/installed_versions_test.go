@@ -62,7 +62,7 @@ func TestValidateOneInstalledGwApiVersion(t *testing.T) {
 
 func TestValidateVersion(t *testing.T) {
 	builder := &InstalledVersionsBuilderImpl{
-		ControllerStore: ControllerStore{
+		ControllerStore: &ControllerStore{
 			GateTree: &GateTree{},
 			InstalledGwAPIVersions: &InstalledVersions{
 				Versions: make(map[string]int),

@@ -7,7 +7,7 @@ metadata:
         Generation: 1
         LinkID: hug
 mode: http
-name: hug_e2e-tests-gateway-tls-multiple_gateway_http
+name: hug_http_8080
 binds:
   v4:
     name: v4

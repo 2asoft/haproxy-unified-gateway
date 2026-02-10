@@ -22,10 +22,10 @@ import (
 var _ Builder = &ServiceBuilderImpl{}
 
 type ServiceBuilderImpl struct {
-	ControllerStore
+	*ControllerStore
 }
 
-func NewServiceBuilder(controllerStore ControllerStore) Builder {
+func NewServiceBuilder(controllerStore *ControllerStore) Builder {
 	return &ServiceBuilderImpl{
 		ControllerStore: controllerStore,
 	}
@@ -55,7 +55,7 @@ func (b *ServiceBuilderImpl) computeTreeServiceUpdate(serviceKey client.ObjectKe
 		} else {
 			treeService = NewService(serviceUpdate.NewObject)
 		}
-		treeService.SetAsManaged(b.Logger, b.ControllerStore)
+		treeService.SetAsManaged(b.Logger, *b.ControllerStore)
 	case store.StatusDeleted:
 		if treeService != nil {
 			treeService.SetAsDeleted(b.Logger)

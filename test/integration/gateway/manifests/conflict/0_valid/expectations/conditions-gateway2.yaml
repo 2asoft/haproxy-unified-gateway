@@ -1,0 +1,5 @@
+- message: Gateway is not accepted - All listeners are conflicting
+  observedGeneration: 1
+  reason: ListenersNotValid
+  status: "False"
+  type: Accepted

@@ -32,20 +32,22 @@ type K8sObjectInfo struct {
 }
 
 type Manager interface {
-	FrontendMetaData(treeGw *tree.Gateway) MetaData
+	FrontendMetaData(vListener *tree.VirtualListener) MetaData
 	BackendMetaData(routesInfo map[string]RouteMetadaInfo) MetaData
 }
 
 type ManagerImpl struct {
 	extractGVK utilsk8s.ExtractGVK
+	cs         *tree.ControllerStore
 	linkID     string
 }
 
 var _ Manager = &ManagerImpl{}
 
-func NewManager(extractGVK utilsk8s.ExtractGVK, linkID string) Manager {
+func NewManager(extractGVK utilsk8s.ExtractGVK, cs *tree.ControllerStore, linkID string) Manager {
 	return &ManagerImpl{
 		extractGVK: extractGVK,
 		linkID:     linkID,
+		cs:         cs,
 	}
 }

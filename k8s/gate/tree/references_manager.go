@@ -19,10 +19,10 @@ import (
 )
 
 type ReferenceManager struct {
-	ControllerStore
+	*ControllerStore
 }
 
-func NewReferenceManager(controllerStore ControllerStore) *ReferenceManager {
+func NewReferenceManager(controllerStore *ControllerStore) *ReferenceManager {
 	return &ReferenceManager{
 		ControllerStore: controllerStore,
 	}
@@ -61,7 +61,7 @@ func (rm *ReferenceManager) buildSecretReferences() {
 				}
 				nsName := GetCertificateRefNamespacedName(certRef, gw)
 				ownerGVK := rm.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway)
-				rm.ReferencedObjects.ReferencedSecrets.AddReferencedByUsingKeys(rm.Logger, nsName, ListenerKey(gw, listener), ownerGVK)
+				rm.ReferencedObjects.ReferencedSecrets.AddReferencedByUsingKeys(rm.Logger, nsName, NewListenerKey(gw, listener), ownerGVK)
 			}
 		}
 	}

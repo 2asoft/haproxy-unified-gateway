@@ -6,16 +6,16 @@ metadata:
         Generation: 1
         LinkID: hug
 mode: http
-name: hug_e2e-tests-gateway-tls-multiple_gateway_https
+name: hug_https_8443
 binds:
   v4:
-    crt_list: /tmp/hug/e2e-tests-gateway-tls-multiple/certlists/e2e-tests-gateway-tls-multiple_gateway_https.list
+    crt_list: /tmp/hug/e2e-tests-gateway-tls-multiple/certlists/hug_https_8443.list
     name: v4
     ssl: true
     address: 0.0.0.0
     port: 8443
   v6:
-    crt_list: /tmp/hug/e2e-tests-gateway-tls-multiple/certlists/e2e-tests-gateway-tls-multiple_gateway_https.list
+    crt_list: /tmp/hug/e2e-tests-gateway-tls-multiple/certlists/hug_https_8443.list
     name: v6
     ssl: true
     address: '::'

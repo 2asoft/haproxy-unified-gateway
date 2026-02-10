@@ -30,14 +30,14 @@ var _ Builder = &CertificateBuilderImpl{}
 
 type CertificateBuilderImpl struct {
 	certStorage storage.CertificateStorage
-	ControllerStore
+	*ControllerStore
 	// storeCertificatesOnDisk is a flag that indicates to the gate library to store certificates on disk
 	storeCertificateOnDisk bool
 	// try to perform runtime update of haproxy using runtime socket
 	runtimeUpdateHaproxy bool
 }
 
-func NewCertificateBuilder(controllerStore ControllerStore, storeCertOnDisk, runtimeUpdate bool, certStorage storage.CertificateStorage) Builder {
+func NewCertificateBuilder(controllerStore *ControllerStore, storeCertOnDisk, runtimeUpdate bool, certStorage storage.CertificateStorage) Builder {
 	return &CertificateBuilderImpl{
 		ControllerStore:        controllerStore,
 		storeCertificateOnDisk: storeCertOnDisk,
@@ -73,9 +73,9 @@ func (*CertificateBuilderImpl) CleanTreeUpdates() {
 // -----------------------------------------------
 
 func (b *CertificateBuilderImpl) computeCertificateDiffs() {
-	// Current secrets referenced by a Gateway
+	// Current secrets referenced by a Listener
 	currentSecretsReferenced := b.ControllerStore.ReferencedObjects.ReferencedSecrets.AllReferenced(b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway))
-	// Previous secrets referenced by a Gateway
+	// Previous secrets referenced by a Listener
 	previousSecretsReferenced := b.ControllerStore.ReferencedObjects.PreviousReferencedSecrets.AllReferenced(b.ControllerStore.ExtractGVK(objtypes.ObjectTypeGateway))
 
 	// Cert
@@ -201,69 +201,115 @@ func (b *CertificateBuilderImpl) handleUpdatedSecretsStorage(previousRefSecrets,
 
 // -----------
 // crt-list
-
+// previousRefSecrets and newRefSecrets are the list of secrets referenced by a Gateway listener,
+// They are a map[SecretKey]map[GatewayListenerKey]struct{}
+// For example:
+//
+//		newRefSecrets =
+//	     map[client.ObjectKey{
+//		  Namespace: "example", Name: "offload"}]   ===> SecretKey
+//		      map[client.ObjectKey{Namespace: "example", Name: hug-gateway_https"}]struct{}{}  ====> Set of GatewayListenerKey referencing this Secret
+//		}
 func (b *CertificateBuilderImpl) handleCrtList(previousRefSecrets, newRefSecrets map[client.ObjectKey]map[client.ObjectKey]struct{}) {
-	previousSecretsByGatewayListener := secretsPerGatewayListener(previousRefSecrets)
-	newSecretsByGatewayListener := secretsPerGatewayListener(newRefSecrets)
+	previousSecretsByGatewayListener := b.secretsPerVirtualListener(previousRefSecrets)
+	newSecretsByGatewayListener := b.secretsPerVirtualListener(newRefSecrets)
 
 	b.handleNewReferencedCrtList(previousSecretsByGatewayListener, newSecretsByGatewayListener)
 	b.handleDeReferencedCrtList(previousSecretsByGatewayListener, newSecretsByGatewayListener)
 	b.handleUpdatedCrtList(previousSecretsByGatewayListener, newSecretsByGatewayListener)
 }
 
-// secretsPerGatewayListener returns for each gateway Key the list of secret Keys
-func secretsPerGatewayListener(gatewaysPerSecret map[client.ObjectKey]map[client.ObjectKey]struct{}) map[client.ObjectKey]map[client.ObjectKey]struct{} {
-	secretsPerGateway := make(map[client.ObjectKey]map[client.ObjectKey]struct{})
-	for secretKey, gateways := range gatewaysPerSecret {
-		for gatewayKey := range gateways {
-			if _, ok := secretsPerGateway[gatewayKey]; !ok {
-				secretsPerGateway[gatewayKey] = make(map[client.ObjectKey]struct{})
+// secretsPerVirtualListener returns for each virtualListener Name the list of secret Keys
+// Input: mapSecret2Listeners
+//
+//	is a map[SecretKey]map[GatewayListenerKey]struct{}
+//
+// For example:
+//
+//		newRefSecrets =
+//	     map[client.ObjectKey{
+//		  Namespace: "example", Name: "offload"}]   ===> SecretKey
+//		      map[client.ObjectKey{Namespace: "example", Name: hug-gateway_https"}]struct{}{}  ====> Set of GatewayListenerKey referencing this Secret
+//		}
+//
+// It returns a map[VirtualListenerName]map[SecretKey]struct{}
+func (b *CertificateBuilderImpl) secretsPerVirtualListener(mapSecret2Listeners map[client.ObjectKey]map[client.ObjectKey]struct{}) map[string]map[client.ObjectKey]struct{} {
+	secretsPerVirtualListener := make(map[string]map[client.ObjectKey]struct{})
+	for secretKey, listenerKeys := range mapSecret2Listeners {
+		for listenerKey := range listenerKeys {
+			listener := b.GetListenerForKey(listenerKey)
+			if listener == nil {
+				continue
 			}
-			secretsPerGateway[gatewayKey][secretKey] = struct{}{}
+			virtualListenerName := listener.VirtualListenerName
+			if _, ok := secretsPerVirtualListener[virtualListenerName]; !ok {
+				secretsPerVirtualListener[virtualListenerName] = make(map[client.ObjectKey]struct{})
+			}
+			secretsPerVirtualListener[virtualListenerName][secretKey] = struct{}{}
 		}
 	}
-	return secretsPerGateway
+	return secretsPerVirtualListener
 }
 
-func (b *CertificateBuilderImpl) handleNewReferencedCrtList(previousSecretsPerGatewayListener, newSecretsPerGatewayListener map[client.ObjectKey]map[client.ObjectKey]struct{}) {
-	newReferencedListeners := utils.SetDifference(newSecretsPerGatewayListener, previousSecretsPerGatewayListener)
+// handleNewReferencedCrtList creates crt-list entries for newly referenced virtual listeners.
+// It compares the previous and new sets of secrets per virtual listener to identify which
+// virtual listeners have been newly referenced (present in new but not in previous).
+// For each newly referenced virtual listener, it filters the associated secrets to keep only
+// existing and non-deleted ones, then creates a new crt-list data entry and marks it as created
+// in the ControllerStore.
+//
+// Parameters:
+//   - previousSecretsPerVirtualListener: Map of virtual listener names to their referenced secrets in the previous state
+//   - newSecretsPerVirtualListener: Map of virtual listener names to their referenced secrets in the current state
+func (b *CertificateBuilderImpl) handleNewReferencedCrtList(previousSecretsPerVirtualListener, newSecretsPerVirtualListener map[string]map[client.ObjectKey]struct{}) {
+	newReferencedListeners := utils.SetDifference(newSecretsPerVirtualListener, previousSecretsPerVirtualListener)
 
-	for listenerKey := range newReferencedListeners {
+	for virtualListenerName := range newReferencedListeners {
 		// Secret Keys for this Gateway
-		secretKeys := newSecretsPerGatewayListener[listenerKey]
+		secretKeys := newSecretsPerVirtualListener[virtualListenerName]
 
 		// Keep only existing secrets
-		filteredSecretKeys := b.keepOnlyExistingSecrets(listenerKey, secretKeys)
+		filteredSecretKeys := b.keepOnlyExistingSecrets(virtualListenerName, secretKeys)
 
 		// Write the crt-list
-		crtListData := b.certStorage.NewCrtListData(listenerKey, filteredSecretKeys)
-		b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [create-newref]", logging.LogAttrKey(listenerKey))
+		crtListData := b.certStorage.NewCrtListData(virtualListenerName, filteredSecretKeys)
+		b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [create-newref]", logging.LogAttrVirtualListenerName(virtualListenerName))
 		b.ControllerStore.addCreatedCrtList(crtListData)
 	}
 }
 
-func (b *CertificateBuilderImpl) handleDeReferencedCrtList(previousSecretsByGatewayListener, newSecretsByGatewayListener map[client.ObjectKey]map[client.ObjectKey]struct{}) {
-	deReferencedListeners := utils.SetDifference(previousSecretsByGatewayListener, newSecretsByGatewayListener)
-	for listenerKey := range deReferencedListeners {
-		crtListData := b.certStorage.NewCrtListData(listenerKey, nil)
-		b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [delete-unref]", logging.LogAttrKey(listenerKey))
+// handleDeReferencedCrtList deletes crt-list entries for virtual listeners that are no longer referenced.
+// It compares the previous and new sets of secrets per virtual listener to identify which
+// virtual listeners have been de-referenced (present in previous but not in new).
+// For each de-referenced virtual listener, it creates a crt-list data entry with nil secrets
+// and marks it as deleted in the ControllerStore, signaling that the crt-list should be removed
+// from HAProxy configuration.
+//
+// Parameters:
+//   - previousSecretsByVirtualListener: Map of virtual listener names to their referenced secrets in the previous state
+//   - newSecretsByVirtualListener: Map of virtual listener names to their referenced secrets in the current state
+func (b *CertificateBuilderImpl) handleDeReferencedCrtList(previousSecretsByVirtualListener, newSecretsByVirtualListener map[string]map[client.ObjectKey]struct{}) {
+	deReferencedListeners := utils.SetDifference(previousSecretsByVirtualListener, newSecretsByVirtualListener)
+	for virtualListenerName := range deReferencedListeners {
+		crtListData := b.certStorage.NewCrtListData(virtualListenerName, nil)
+		b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [delete-unref]", logging.LogAttrVirtualListenerName(virtualListenerName))
 		b.addDeletedCrtList(crtListData)
 	}
 }
 
-func (b *CertificateBuilderImpl) keepOnlyExistingSecrets(listenerKey client.ObjectKey, secretKeys map[client.ObjectKey]struct{}) map[client.ObjectKey]struct{} {
+func (b *CertificateBuilderImpl) keepOnlyExistingSecrets(virtualListenerName string, secretKeys map[client.ObjectKey]struct{}) map[client.ObjectKey]struct{} {
 	res := make(map[client.ObjectKey]struct{})
 
 	// Keep only existing secrets
 	for secretKey := range secretKeys {
 		if _, ok := b.GateTree.Secrets[secretKey]; !ok {
-			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [discard][non-existing]", logging.LogAttrKey(listenerKey),
+			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [discard][non-existing]", logging.LogAttrVirtualListenerName(virtualListenerName),
 				slog.String("secretKey", secretKey.String()))
 			delete(secretKeys, secretKey)
 			continue
 		}
 		if b.GateTree.Secrets[secretKey].TreeStatus.Status == store.StatusDeleted {
-			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [discard][deleted]", logging.LogAttrKey(listenerKey),
+			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [discard][deleted]", logging.LogAttrVirtualListenerName(virtualListenerName),
 				slog.String("secretKey", secretKey.String()))
 			delete(secretKeys, secretKey)
 			continue
@@ -275,16 +321,39 @@ func (b *CertificateBuilderImpl) keepOnlyExistingSecrets(listenerKey client.Obje
 	return res
 }
 
-func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayListener, newSecretsByGatewayListener map[client.ObjectKey]map[client.ObjectKey]struct{}) {
+// handleUpdatedCrtList updates crt-list entries for virtual listeners whose secret references have changed.
+// It processes virtual listeners that were referencing secrets before and still are, but where the set
+// of referenced secrets or their statuses have changed. The function determines whether a crt-list needs
+// to be updated by tracking:
+//   - Newly added secret references (filtered to keep only existing secrets)
+//   - Secret references that were removed
+//   - Unchanged secret references that have been created, updated, or deleted
+//
+// For each virtual listener with changes, it rebuilds the crt-list by:
+//  1. Adding new secret references (if the secrets exist)
+//  2. Adding unchanged secret references, including newly created or updated secrets
+//  3. Excluding deleted secrets from unchanged references
+//  4. Detecting removed secret references
+//
+// If the crt-list was updated and still has secrets, it's marked as updated in the ControllerStore.
+// If the crt-list was updated but has no remaining secrets, it's marked as deleted.
+//
+// Note: Changes to secret content (certificate data) don't trigger crt-list updates, as that
+// information is stored in Cert objects, not crt-lists. Only the list of secrets itself matters.
+//
+// Parameters:
+//   - previousSecretsByVirtualListener: Map of virtual listener names to their referenced secrets in the previous state
+//   - newSecretsByVirtualListener: Map of virtual listener names to their referenced secrets in the current state
+func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByVirtualListener, newSecretsByVirtualListener map[string]map[client.ObjectKey]struct{}) {
 	// Gateway listeners that were referencing secrets and still are...
 	// But Secrets might have been created or deleted
 	// Secret content change is ok, it's stored in Cert, not in crt-list
-	listenersIntersection := utils.SetIntersection(previousSecretsByGatewayListener, newSecretsByGatewayListener)
+	listenersIntersection := utils.SetIntersection(previousSecretsByVirtualListener, newSecretsByVirtualListener)
 
 	// Computing which one have an updated crt-list content (= list of secrets modified)
-	for listenerKey := range listenersIntersection {
-		previousSecretRefKeys := previousSecretsByGatewayListener[listenerKey]
-		newSecretRefKeys := newSecretsByGatewayListener[listenerKey]
+	for virtualListenerName := range listenersIntersection {
+		previousSecretRefKeys := previousSecretsByVirtualListener[virtualListenerName]
+		newSecretRefKeys := newSecretsByVirtualListener[virtualListenerName]
 
 		// Added/Removed/Unchanged
 		addedSecretRefsForListener := utils.SetDifference(newSecretRefKeys, previousSecretRefKeys)
@@ -297,13 +366,13 @@ func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayLi
 		// 1- Add the new cert if exisiting....
 		secretKeys := make(map[client.ObjectKey]struct{})
 		for secretKey := range addedSecretRefsForListener {
-			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-newref]", logging.LogAttrKey(listenerKey),
+			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-newref]", logging.LogAttrVirtualListenerName(virtualListenerName),
 				slog.String("secretKey", secretKey.String()))
 			secretKeys[secretKey] = struct{}{}
 		}
-		secretKeys = b.keepOnlyExistingSecrets(listenerKey, secretKeys)
+		secretKeys = b.keepOnlyExistingSecrets(virtualListenerName, secretKeys)
 		if len(secretKeys) != 0 {
-			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [updated][new entries]", logging.LogAttrKey(listenerKey))
+			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [updated][new entries]", logging.LogAttrVirtualListenerName(virtualListenerName))
 			crtlistUpdated = true
 		}
 
@@ -311,30 +380,30 @@ func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayLi
 		for secretKey := range unchangedSecretRefsForListener {
 			treeSecret, ok := b.GateTree.Secrets[secretKey]
 			if !ok {
-				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][skip-notfound]", logging.LogAttrKey(listenerKey),
+				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][skip-notfound]", logging.LogAttrVirtualListenerName(virtualListenerName),
 					slog.String("secretKey", secretKey.String()))
 				continue
 			}
 			if treeSecret.TreeStatus.Status == store.StatusUpserted {
 				if treeSecret.TreeStatus.OldTreeResource == nil {
-					b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-new]", logging.LogAttrKey(listenerKey),
+					b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-new]", logging.LogAttrVirtualListenerName(virtualListenerName),
 						slog.String("secretKey", secretKey.String()))
 					secretKeys[secretKey] = struct{}{}
 					crtlistUpdated = true
 					continue
 				}
-				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-updated]", logging.LogAttrKey(listenerKey),
+				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-updated]", logging.LogAttrVirtualListenerName(virtualListenerName),
 					slog.String("secretKey", secretKey.String()))
 				crtlistUpdated = true
 				secretKeys[secretKey] = struct{}{}
 			}
 			if treeSecret.TreeStatus.Status == store.StatusDeleted {
-				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][discard-deleted]", logging.LogAttrKey(listenerKey),
+				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][discard-deleted]", logging.LogAttrVirtualListenerName(virtualListenerName),
 					slog.String("secretKey", secretKey.String()))
 				crtlistUpdated = true
 				continue
 			}
-			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-unchanged]", logging.LogAttrKey(listenerKey),
+			b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [content][add-unchanged]", logging.LogAttrVirtualListenerName(virtualListenerName),
 				slog.String("secretKey", secretKey.String()))
 			secretKeys[secretKey] = struct{}{}
 		}
@@ -346,12 +415,12 @@ func (b *CertificateBuilderImpl) handleUpdatedCrtList(previousSecretsByGatewayLi
 
 		if crtlistUpdated {
 			if len(secretKeys) != 0 {
-				crtListData := b.certStorage.NewCrtListData(listenerKey, secretKeys)
-				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [update-content]", logging.LogAttrKey(listenerKey))
+				crtListData := b.certStorage.NewCrtListData(virtualListenerName, secretKeys)
+				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [update-content]", logging.LogAttrVirtualListenerName(virtualListenerName))
 				b.ControllerStore.addUpdatedCrtList(crtListData)
 			} else {
-				crtListData := b.certStorage.NewCrtListData(listenerKey, nil)
-				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [delete-empty]", logging.LogAttrKey(listenerKey))
+				crtListData := b.certStorage.NewCrtListData(virtualListenerName, nil)
+				b.Logger.LogAttrs(context.Background(), slog.LevelDebug, "crt-list [delete-empty]", logging.LogAttrVirtualListenerName(virtualListenerName))
 				b.ControllerStore.addDeletedCrtList(crtListData)
 			}
 		}

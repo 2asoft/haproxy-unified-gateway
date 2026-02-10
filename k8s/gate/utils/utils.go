@@ -35,6 +35,20 @@ type ObjectWithTimestamp interface {
 
 func SortByCreationTimestamp[T ObjectWithTimestamp](objects []T) {
 	slices.SortFunc(objects, func(a, b T) int {
+		// Handle nil cases - nil values sort before non-nil values
+		aIsNil := isNilInterface(a)
+		bIsNil := isNilInterface(b)
+
+		if aIsNil && bIsNil {
+			return 0 // both nil, considered equal
+		}
+		if aIsNil {
+			return -1 // nil comes before non-nil
+		}
+		if bIsNil {
+			return 1 // non-nil comes after nil
+		}
+
 		aTime := a.GetCreationTimestamp()
 		bTime := b.GetCreationTimestamp()
 		if c := aTime.Time.Compare(bTime.Time); c != 0 {
@@ -42,6 +56,21 @@ func SortByCreationTimestamp[T ObjectWithTimestamp](objects []T) {
 		}
 		return cmp.Compare(a.GetName(), b.GetName())
 	})
+}
+
+// isNilInterface checks if an interface value is nil
+func isNilInterface(i any) bool {
+	if i == nil {
+		return true
+	}
+	// Use type assertion to check if the underlying value is nil
+	switch v := i.(type) {
+	case interface{ IsNil() bool }:
+		return v.IsNil()
+	default:
+		// For pointer types, check if nil using reflection-free approach
+		return false
+	}
 }
 
 func MapToSortedListByCreationTimestamp[T ObjectWithTimestamp](objects map[types.NamespacedName]T) []T {

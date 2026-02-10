@@ -16,6 +16,7 @@ package tree
 import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/protocols"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -24,21 +25,26 @@ import (
 var _ Builder = &GatewayBuilderImpl{}
 
 type GatewayBuilderImpl struct {
-	certStorage                       storage.CertificateStorage
-	portsWithOneListener              map[gatewayv1.PortNumber]struct{}
-	portsWithMutipleListeners         map[gatewayv1.PortNumber][]gatewaylistener
-	previousPortsWithMutipleListeners map[gatewayv1.PortNumber][]gatewaylistener
-	ControllerStore
+	certStorage storage.CertificateStorage
+	*ControllerStore
 }
 
-type gatewaylistener struct {
-	listenerKey client.ObjectKey
-	gatewayKey  client.ObjectKey
+type listenerConflictCondition struct {
+	// reason might be:
+	// - gatewayv1.ListenerReasonProtocolConflict
+	// - gatewayv1.ListenerReasonHostnameConflict
+	reason   string
+	protocol protocols.ProtocolCategory
+	// hasConflict is true if the listener has a conflict
+	// false if the listener has no conflict
+	hasConflict bool
 }
+
+type listenerConflict map[client.ObjectKey]listenerConflictCondition // map[listenerKey] for example "default/gw1_l1"
 
 type GatewayBuilderParams struct {
 	storage.CertificateStorage
-	ControllerStore
+	*ControllerStore
 }
 
 func NewGatewayBuilder(params GatewayBuilderParams) Builder {
@@ -59,7 +65,6 @@ func (b *GatewayBuilderImpl) ComputeTreeUpdates() {
 	// Including the one impacted by:
 	// - GatewayClass updates
 	b.computeGateTreeUpdates()
-	// Here we check for Listener conflicts
 }
 
 func (b *GatewayBuilderImpl) computeGateTreeUpdates() {
@@ -88,7 +93,7 @@ func (b *GatewayBuilderImpl) computeGateTreeUpdates() {
 			for _, listener := range treeGw.Listeners {
 				listener.BuildConditions(treeGw)
 			}
-			treeGw.checkListenerConflicts(b.portsWithOneListener)
+			treeGw.checkListenerConflicts(b.ControllerStore.mapPort2Listeners)
 			treeGw.BuildConditions()
 		}
 	}
@@ -131,14 +136,14 @@ func (b *GatewayBuilderImpl) processManagementChecks(treeGw *Gateway) {
 		return
 	}
 
-	treeGw.checkParametersRef(b.ControllerStore)
-	treeGw.checkGatewayClassIsValid(b.ControllerStore)
+	treeGw.checkParametersRef(*b.ControllerStore)
+	treeGw.checkGatewayClassIsValid(*b.ControllerStore)
 	treeGw.Valid = treeGw.CheckParamsRef.Valid && treeGw.CheckValidGatewayClass.Valid
 
 	if treeGw.isManaged() {
-		treeGw.SetAsManaged(b.Logger, b.ControllerStore)
+		treeGw.SetAsManaged(b.Logger, *b.ControllerStore)
 	} else {
-		treeGw.SetAsUnmanaged(b.Logger, b.ControllerStore)
+		treeGw.SetAsUnmanaged(b.Logger, *b.ControllerStore)
 	}
 }
 
@@ -170,62 +175,36 @@ func (b *GatewayBuilderImpl) buildListeners(treeGw *Gateway) {
 		listener.resetChecks()
 		switch listener.K8sResource.Protocol {
 		// This switch will be completed with all needed checks per protocol
-		case gatewayv1.HTTPProtocolType:
+		case gatewayv1.HTTPProtocolType, gatewayv1.TLSProtocolType:
 			listener.checkRouteGroupKind(treeGw, gateSupportedRouteKindsByProtocol)
 			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
-			listener.checkConflict(treeGw, b.portsWithMutipleListeners)
+			listener.checkConflict(treeGw, b.ControllerStore.mapPort2Listeners)
 		case gatewayv1.HTTPSProtocolType:
 			listener.checkRouteGroupKind(treeGw, gateSupportedRouteKindsByProtocol)
 			listener.checkCertificateRefs(treeGw, b.GateTree.Secrets)
 			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
-			listener.checkConflict(treeGw, b.portsWithMutipleListeners)
+			listener.checkConflict(treeGw, b.ControllerStore.mapPort2Listeners)
 		default:
 			listener.checkProtocol(gateSupportedRouteKindsByProtocol)
-			listener.checkConflict(treeGw, b.portsWithMutipleListeners)
+			listener.checkConflict(treeGw, b.ControllerStore.mapPort2Listeners)
 		}
 	}
 }
 
 func (b *GatewayBuilderImpl) resetListenerConflicts() {
-	b.previousPortsWithMutipleListeners = b.portsWithMutipleListeners
-	b.portsWithOneListener = make(map[gatewayv1.PortNumber]struct{})
-	b.portsWithMutipleListeners = make(map[gatewayv1.PortNumber][]gatewaylistener)
+	b.ControllerStore.mapPort2Listeners = make(map[gatewayv1.PortNumber]listenerConflict)
+	b.ControllerStore.previousMapPort2Listeners = make(map[gatewayv1.PortNumber]listenerConflict)
 }
 
-// -----------------------------------------------
-
 // checkListenerConflicts checks the conflicts between all Gateway listeners
-// We accept only 1 Gateway Listener per port
+// See computeListenerConflicts to see how the conflicts are detected
 // For now, as there are only a few number of Gateways, we do this check on all Gateway/ all listeners
 func (b *GatewayBuilderImpl) checkListenerConflicts() {
 	oldGwWithPortConflicts := b.previousGatewaysWithPortConflicts()
-	listenersByPort := make(map[gatewayv1.PortNumber][]gatewaylistener)
 
-	for _, treeGw := range b.GateTree.Gateways {
-		if treeGw.K8sResource == nil {
-			// ... deleted
-			continue
-		}
-		for _, listener := range treeGw.K8sResource.Spec.Listeners {
-			if _, ok := listenersByPort[listener.Port]; !ok {
-				listenersByPort[listener.Port] = []gatewaylistener{}
-			}
-			gl := gatewaylistener{
-				listenerKey: ListenerKey(treeGw.K8sResource, listener),
-				gatewayKey:  client.ObjectKeyFromObject(treeGw.K8sResource),
-			}
+	// Detect new conflicts
+	b.computeListenerConflicts()
 
-			listenersByPort[listener.Port] = append(listenersByPort[listener.Port], gl)
-		}
-	}
-
-	for port, gls := range listenersByPort {
-		if len(gls) > 1 {
-			b.portsWithMutipleListeners[port] = gls
-			continue
-		}
-		b.portsWithOneListener[port] = struct{}{}
-	}
 	newGwWithPortConflict := b.gatewaysWithPortConflicts()
 	oldAndNewGwWithPortConflicts := map[client.ObjectKey]struct{}{}
 	for gwKey := range newGwWithPortConflict {
@@ -249,20 +228,56 @@ func (b *GatewayBuilderImpl) checkListenerConflicts() {
 
 // gatewaysWithPortConflicts returns a map of Gateway keys which have a conflict
 func (b *GatewayBuilderImpl) gatewaysWithPortConflicts() map[client.ObjectKey]struct{} {
-	return gatewaysWithPortConflicts(b.portsWithMutipleListeners)
+	return gatewaysWithPortConflicts(b.ControllerStore.mapPort2Listeners)
 }
 
 // previousGatewaysWithPortConflicts returns a map of Gateway keys which have a conflict
 func (b *GatewayBuilderImpl) previousGatewaysWithPortConflicts() map[client.ObjectKey]struct{} {
-	return gatewaysWithPortConflicts(b.previousPortsWithMutipleListeners)
+	return gatewaysWithPortConflicts(b.ControllerStore.previousMapPort2Listeners)
 }
 
-func gatewaysWithPortConflicts(portsWithMultipleListeners map[gatewayv1.PortNumber][]gatewaylistener) map[client.ObjectKey]struct{} {
+// gatewaysWithPortConflicts returns a set of Gateway keys that have at least one listener with a conflict.
+func gatewaysWithPortConflicts(mapPort2ListenerConflict map[gatewayv1.PortNumber]listenerConflict) map[client.ObjectKey]struct{} {
 	gwKeys := map[client.ObjectKey]struct{}{}
-	for _, gls := range portsWithMultipleListeners {
-		for _, gl := range gls {
-			gwKeys[gl.gatewayKey] = struct{}{}
+	for _, conflictMap := range mapPort2ListenerConflict {
+		for glk, v := range conflictMap {
+			// If there is a conflict for this listener
+			if v.hasConflict {
+				// Compute the Gw key from the listener key
+				gwKey := ConvertListenerKeyToGatewayKey(glk)
+				gwKeys[gwKey] = struct{}{}
+			}
 		}
 	}
 	return gwKeys
+}
+
+type nbListeners struct {
+	withConflict    int32
+	withoutConflict int32
+}
+
+// nbListenersWithAndWithoutConflict returns the number of listeners that have a conflict
+// and the number of listeners that do not have a conflict for a given Gateway.
+func nbListenersWithAndWithoutConflict(mapPort2ListenerConflict map[gatewayv1.PortNumber]listenerConflict, treeGw *Gateway) nbListeners {
+	nbListeners := nbListeners{}
+	for _, conflictMap := range mapPort2ListenerConflict {
+		for glk, v := range conflictMap {
+			// First rebuild the Gateway key from the listenerKey
+			mapgwk := ConvertListenerKeyToGatewayKey(glk)
+			gwk := client.ObjectKeyFromObject(treeGw.K8sResource)
+			// Not our Gateway, continue
+			if mapgwk != gwk {
+				continue
+			}
+
+			// If there is a conflict for this listener
+			if v.hasConflict {
+				nbListeners.withConflict++
+			} else {
+				nbListeners.withoutConflict++
+			}
+		}
+	}
+	return nbListeners
 }

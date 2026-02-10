@@ -14,220 +14,77 @@
 package haproxy
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"html/template"
 	"log/slog"
 
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/templates"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/protocols"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
-	k8stypes "k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-type FrontendsOwnedbyGateway struct {
-	current           map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
-	byUpdatedGateways map[client.ObjectKey]map[string]struct{} // map[gwKey] -> map[frontendName]struct{}
+func (b *HaproxyConfMgrImpl) getFrontendName(vListenerName string) string {
+	return b.params.LinkID + "_" + vListenerName
 }
 
-func (b *HaproxyConfMgrImpl) getFrontendName(gwKey k8stypes.NamespacedName, listener gatewayv1.Listener) (string, error) {
-	tmpl, err := template.New("frontend").Parse(b.params.FrontendNameTemplate)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse frontend name template: %w", err)
-	}
-
-	data := templates.TemplateData{
-		GATEWAY_NAMESPACE: gwKey.Namespace,
-		GATEWAY_NAME:      gwKey.Name,
-		LISTENER_NAME:     string(listener.Name),
-		LINK_ID:           b.params.LinkID,
-	}
-
-	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, data)
-	if err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
-func (b *HaproxyConfMgrImpl) processGateways() error {
+func (b *HaproxyConfMgrImpl) processVirtualListener() error {
 	var errors utils.Errors
-	// Managed Gateways => Create / update/ delete frontends
-	for gwKey, gateway := range b.controllerStore.GateTree.Gateways {
-		switch gateway.TreeStatus.Status {
+	// VirtualListeners are mapped 1 to 1 with Frontends,
+	// so we can directly create/update/delete Frontends while processing VirtualListeners
+	for vlName, vListener := range b.controllerStore.GateTree.VirtualListeners {
+		switch vListener.Status {
 		case store.StatusUnchanged:
 			continue
 		case store.StatusUpserted:
-			err := b.onUpsertedGateway(gwKey, gateway)
+			err := b.onUpsertedVirtualListener(vlName, vListener)
 			errors.Add(err)
 		case store.StatusDeleted:
-			err := b.onDeletedGateway(gwKey, gateway)
+			err := b.onDeletedVirtualListener(vlName)
 			errors.Add(err)
 		}
 	}
 
-	// Unmanaged Gateways => Delete frontends
-	for gwKey, gateway := range b.controllerStore.UnmanagedGateTree.Gateways {
-		err := b.onUnmanagedGateway(gwKey, gateway)
-		errors.Add(err)
-	}
-
-	// Cleanup frontends for gateways that were updated
-	if err := b.cleanupFrontendsForGateways(); err != nil {
-		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to cleanup frontends for gateways",
-			logging.LogAttrError(err),
-		)
-		errors.Add(err)
-	}
-
-	// Finalize frontends by gateway
-	b.finalizeFrontendsByGateway()
 	return errors.Result()
 }
 
-func (b *HaproxyConfMgrImpl) onUpsertedGateway(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	switch gw.Valid {
-	case true:
-		err := b.onValidGatewayUpserted(gwKey, gw)
-		if err != nil {
-			return err
-		}
-	case false:
-		err := b.onInvalidGatewayUpserted(gwKey, gw)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (b *HaproxyConfMgrImpl) onValidGatewayUpserted(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	b.logGatewayUpdate("upserted", gwKey)
-	err := b.upsertFrontends(gwKey, gw)
+func (b *HaproxyConfMgrImpl) onUpsertedVirtualListener(vlName string, vListener *tree.VirtualListener) error {
+	b.logVirtualListenerUpdate("upserted", vlName)
+	err := b.upsertFrontends(vlName, vListener)
 	return err
 }
 
-func (b *HaproxyConfMgrImpl) onInvalidGatewayUpserted(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	b.logGatewayUpdate("upserted-invalid", gwKey)
-	err := b.deleteFrontendForAllListeners(gwKey, gw)
+func (b *HaproxyConfMgrImpl) onDeletedVirtualListener(vlName string) error {
+	b.logVirtualListenerUpdate("deleted", vlName)
+	err := b.deleteFrontendForVirtualListener(vlName)
 	return err
 }
 
-func (b *HaproxyConfMgrImpl) onDeletedGateway(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	b.logGatewayUpdate("deleted", gwKey)
-	err := b.deleteFrontendForAllListeners(gwKey, gw)
-	return err
-}
-
-func (b *HaproxyConfMgrImpl) onUnmanagedGateway(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	b.logGatewayUpdate("unmanaged", gwKey)
-	err := b.deleteFrontendForAllListeners(gwKey, gw)
-	return err
-}
-
-func (b *HaproxyConfMgrImpl) upsertFrontends(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	for _, listener := range gw.Listeners {
-		if !listener.Valid {
-			if errDel := b.deleteFrontendForListener(gwKey, listener.K8sResource); errDel != nil {
-				feName, errName := b.getFrontendName(gwKey, listener.K8sResource)
-				if errName != nil {
-					b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-						slog.String("frontendNameTemplate", b.params.FrontendNameTemplate),
-						logging.LogAttrKey(gwKey))
-				}
-				b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to delete frontend",
-					logging.LogAttrFrontendName(feName),
-					logging.LogAttrError(errDel))
-			}
-			// Proceed with next listeners
-			continue
-		}
-
-		newFe, err := b.newFrontend(newFrontendParams{
-			gwKey:        gwKey,
-			treeGw:       gw,
-			treeListener: listener,
-		})
-		if err != nil {
-			return err
-		}
-		if b.firstSync.flag {
-			b.firstSync.frontends[newFe.Name] = struct{}{}
-		}
-		if err := b.configuration.upsertFrontend(b.logger, newFe); err != nil {
-			b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to upsert frontend",
-				logging.LogAttrFrontendName(newFe.Name),
-				logging.LogAttrError(err))
-			continue
-		}
-		b.frontendsOwnedbyGateway.AddToUpdated(gwKey, newFe.Name)
-	}
-
-	return nil
-}
-
-func (b *HaproxyConfMgrImpl) cleanupFrontendsForGateways() error {
-	// For each updated gateway, check if the frontend is still present
-	for gwKey := range b.frontendsOwnedbyGateway.byUpdatedGateways {
-		for frontendName := range b.frontendsOwnedbyGateway.current[gwKey] {
-			b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Cleaning up frontend for gateway",
-				logging.LogAttrKey(gwKey),
-				slog.Any("current frontends", b.frontendsOwnedbyGateway.current[gwKey]))
-			if _, ok := b.frontendsOwnedbyGateway.byUpdatedGateways[gwKey][frontendName]; !ok {
-				if err := b.deleteFrontend(gwKey, frontendName); err != nil {
-					b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to deleted frontend",
-						logging.LogAttrFrontendName(frontendName),
-						logging.LogAttrError(err))
-					continue
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (b *HaproxyConfMgrImpl) finalizeFrontendsByGateway() {
-	// For each updated gateway, check if the frontend is still present
-	for gwKey := range b.frontendsOwnedbyGateway.byUpdatedGateways {
-		b.frontendsOwnedbyGateway.current[gwKey] = b.frontendsOwnedbyGateway.byUpdatedGateways[gwKey]
-		delete(b.frontendsOwnedbyGateway.byUpdatedGateways, gwKey)
-	}
-}
-
-type newFrontendParams struct {
-	treeGw       *tree.Gateway
-	treeListener *tree.Listener
-	gwKey        k8stypes.NamespacedName
-}
-
-func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Frontend, error) { //revive:disable:function-length
-	gwKey := params.gwKey
-	treeGw := params.treeGw
-	treeListener := params.treeListener
-
-	listener := treeListener.K8sResource
-
-	// Create a frontend for each listener
-	frontendName, err := b.getFrontendName(gwKey, listener)
+func (b *HaproxyConfMgrImpl) upsertFrontends(vListenerName string, vListener *tree.VirtualListener) error {
+	newFe, err := b.newFrontend(vListenerName, vListener)
 	if err != nil {
-		b.logger.LogAttrs(context.Background(), slog.LevelError,
-			"Failed to get frontend name",
-			slog.String("frontendNameTemplate", b.params.FrontendNameTemplate),
-			logging.LogAttrKey(gwKey))
-		return nil, fmt.Errorf("failed to get frontend name: %w", err)
+		return err
+	}
+	if b.firstSync.flag {
+		b.firstSync.frontends[newFe.Name] = struct{}{}
+	}
+	if err := b.configuration.upsertFrontend(b.logger, newFe); err != nil {
+		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to upsert frontend",
+			logging.LogAttrFrontendName(newFe.Name),
+			logging.LogAttrError(err))
 	}
 
-	md := b.metadataManager.FrontendMetaData(treeGw)
+	return nil
+}
+
+func (b *HaproxyConfMgrImpl) newFrontend(vListenerName string, vListener *tree.VirtualListener) (*models.Frontend, error) { //revive:disable:function-length
+	// Create a frontend for each listener
+	frontendName := b.getFrontendName(vListenerName)
+
+	md := b.metadataManager.FrontendMetaData(vListener)
 
 	pathExactMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_EXACT_MAP)
 	pathPrefixMap := b.params.mapsStorage.MapPath(frontendName, storage.PATH_PREFIX_MAP)
@@ -248,7 +105,8 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 	var backendSwitchingRules []*models.BackendSwitchingRule
 	var aclList []*models.ACL
 	switch {
-	case listener.TLS != nil && utils.PointerDefaultValueIfNil(listener.TLS.Mode) == gatewayv1.TLSModePassthrough:
+	case vListener.ProtocolCategory == protocols.ProtocolCategoryTLS:
+		// TLS Passthrough
 		tcpRules = []*models.TCPRequestRule{
 			{ // tcp-request content reject if !{ req_ssl_hello_type 1 }
 				Type:     "content",
@@ -432,10 +290,10 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 			Metadata:       md,
 			DefaultBackend: "backend_not_found",
 			Mode: func() string {
-				if listener.Protocol == gatewayv1.HTTPProtocolType || listener.Protocol == gatewayv1.HTTPSProtocolType {
+				if vListener.ProtocolCategory == protocols.ProtocolCategorySecure || vListener.ProtocolCategory == protocols.ProtocolCategoryInsecure {
 					return "http"
 				}
-				if listener.Protocol == gatewayv1.TCPProtocolType {
+				if vListener.ProtocolCategory == protocols.ProtocolCategoryTLS {
 					return "tcp"
 				}
 				return ""
@@ -448,7 +306,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 	}
 
 	// Set other frontend properties based on the listener
-	port := int64(listener.Port)
+	port := int64(vListener.Port)
 	if !b.params.DisableIPv4 {
 		bind := models.Bind{
 			Port: &port,
@@ -458,7 +316,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				}
 				return "0.0.0.0"
 			}(),
-			BindParams: b.bindParams(frontendName, "v4", treeGw, treeListener),
+			BindParams: b.bindParams(frontendName, "v4", vListenerName, vListener),
 		}
 		if fe.Binds == nil {
 			fe.Binds = make(map[string]models.Bind)
@@ -474,7 +332,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 				}
 				return "::"
 			}(),
-			BindParams: b.bindParams(frontendName, "v6", treeGw, treeListener),
+			BindParams: b.bindParams(frontendName, "v6", vListenerName, vListener),
 		}
 		if fe.Binds == nil {
 			fe.Binds = make(map[string]models.Bind)
@@ -484,31 +342,10 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 	return fe, nil
 }
 
-func (b *HaproxyConfMgrImpl) deleteFrontendForAllListeners(gwKey k8stypes.NamespacedName, gw *tree.Gateway) error {
-	// K8s resource might be in:
-	k8sGateway := gw.GetK8sResource()
-	if k8sGateway == nil {
-		return fmt.Errorf("no K8s resource found for gateway %s", gwKey)
-	}
-
-	for _, listener := range k8sGateway.Spec.Listeners {
-		if err := b.deleteFrontendForListener(gwKey, listener); err != nil {
-			continue
-		}
-	}
-	return nil
-}
-
-func (b *HaproxyConfMgrImpl) deleteFrontendForListener(gwKey k8stypes.NamespacedName, listener gatewayv1.Listener) error {
+func (b *HaproxyConfMgrImpl) deleteFrontendForVirtualListener(virtualListenerName string) error {
 	// Frontend for each listener
-	feName, err := b.getFrontendName(gwKey, listener)
-	if err != nil {
-		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to get frontend name",
-			slog.String("frontendNameTemplate", b.params.FrontendNameTemplate),
-			logging.LogAttrKey(gwKey))
-		return err
-	}
-	if err := b.deleteFrontend(gwKey, feName); err != nil {
+	feName := virtualListenerName
+	if err := b.deleteFrontend(feName); err != nil {
 		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to delete frontend",
 			logging.LogAttrFrontendName(feName),
 			logging.LogAttrError(err))
@@ -520,17 +357,13 @@ func (b *HaproxyConfMgrImpl) deleteFrontendForListener(gwKey k8stypes.Namespaced
 	return nil
 }
 
-func (b *HaproxyConfMgrImpl) deleteFrontend(gwKey client.ObjectKey, feName string) error {
-	if err := b.configuration.deleteFrontend(b.logger, feName); err != nil {
-		return err
-	}
-	b.frontendsOwnedbyGateway.RemoveFromUpdated(gwKey, feName)
-	return nil
+func (b *HaproxyConfMgrImpl) deleteFrontend(feName string) error {
+	return b.configuration.deleteFrontend(b.logger, feName)
 }
 
-func (b *HaproxyConfMgrImpl) logGatewayUpdate(action string, gwKey k8stypes.NamespacedName) {
-	b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Processing Gateway ["+action+"]",
-		logging.LogAttrKey(gwKey),
+func (b *HaproxyConfMgrImpl) logVirtualListenerUpdate(action string, virtualListenerName string) {
+	b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Processing VirtualListener ["+action+"]",
+		logging.LogAttrVirtualListenerName(virtualListenerName),
 	)
 }
 
@@ -547,42 +380,18 @@ func DeepCopyFrontend(original *models.Frontend) (*models.Frontend, error) {
 	return &copied, nil
 }
 
-func NewFrontendsOwnedbyGateway() FrontendsOwnedbyGateway {
-	return FrontendsOwnedbyGateway{
-		current:           make(map[client.ObjectKey]map[string]struct{}),
-		byUpdatedGateways: make(map[client.ObjectKey]map[string]struct{}),
-	}
-}
-
-func (f *FrontendsOwnedbyGateway) AddToUpdated(gwKey client.ObjectKey, frontendName string) {
-	if _, ok := f.byUpdatedGateways[gwKey]; !ok {
-		f.byUpdatedGateways[gwKey] = make(map[string]struct{})
-	}
-	f.byUpdatedGateways[gwKey][frontendName] = struct{}{}
-}
-
-func (f *FrontendsOwnedbyGateway) RemoveFromUpdated(gwKey client.ObjectKey, frontendName string) {
-	if _, ok := f.byUpdatedGateways[gwKey]; !ok {
-		f.byUpdatedGateways[gwKey] = make(map[string]struct{})
-	}
-	if _, ok := f.byUpdatedGateways[gwKey]; ok {
-		delete(f.byUpdatedGateways[gwKey], frontendName)
-	}
-}
-
-func (b *HaproxyConfMgrImpl) bindParams(_, bindName string, treeGw *tree.Gateway, treeListener *tree.Listener) models.BindParams {
+func (b *HaproxyConfMgrImpl) bindParams(_, bindName string, vListenerName string, vListener *tree.VirtualListener) models.BindParams {
 	params := models.BindParams{}
 	params.Name = bindName
 
 	// If no TLS
-	if treeListener.K8sResource.TLS == nil {
+	if vListener.ProtocolCategory == protocols.ProtocolCategoryInsecure || vListener.ProtocolCategory == protocols.ProtocolCategoryTLS {
 		return params
 	}
 
 	// TLS terminate
-	if utils.PointerDefaultValueIfNil((*treeListener.K8sResource.TLS).Mode) == gatewayv1.TLSModeTerminate {
-		listenerKey := tree.ListenerKey(treeGw.K8sResource, treeListener.K8sResource)
-		certFileDir := b.params.certificateStorage.CertListPath(listenerKey)
+	if vListener.ProtocolCategory == protocols.ProtocolCategorySecure {
+		certFileDir := b.params.certificateStorage.CertListPath(vListenerName)
 		params.CrtList = certFileDir.FullPath()
 		params.Ssl = true
 	}

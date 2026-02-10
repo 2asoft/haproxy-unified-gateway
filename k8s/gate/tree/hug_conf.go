@@ -24,13 +24,13 @@ import (
 )
 
 type HugConfBuilderImpl struct {
-	ControllerStore
+	*ControllerStore
 	logCategoryFilterHandler *logging.CategoryFilterHandler
 	hugConfNsName            types.NamespacedName
 }
 
 type HugConfBuilderParams struct {
-	ControllerStore
+	*ControllerStore
 	LogCategoryFilterHandler *logging.CategoryFilterHandler
 	HugConfNsName            types.NamespacedName
 }

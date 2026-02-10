@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	timeout  = time.Second * 30
+	timeout  = time.Second * 10
 	interval = time.Second * 1
 )
 
@@ -111,7 +111,7 @@ func (s *GatewayTestSuite) Test_Gateway_conflict_at_least_1_listener_ok() {
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Expected Conditions: Gateway2
-	expectedCondPath = path.Join(expectationsPath, "conditions-gateway.yaml")
+	expectedCondPath = path.Join(expectationsPath, "conditions-gateway2.yaml")
 	expectedConditions = s.YamlToConditions(expectedCondPath)
 	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses-gateway2.yaml")
 	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)
@@ -121,17 +121,22 @@ func (s *GatewayTestSuite) Test_Gateway_conflict_at_least_1_listener_ok() {
 
 	// haproxy.cfg Frontends
 	frontendsExpectationsPath := path.Join(expectationsPath, "frontends")
-	expectedFrontends := []string{"hug_e2e-tests-gateway_gateway_http-8081", "hug_e2e-tests-gateway_gateway2_http-9090"}
+	expectedFrontends := []string{"hug_http_8080", "hug_http_8081", "hug_http_9090"}
 	s.ExpectFrontends(s.Test().Ctx, frontendsExpectationsPath, expectedFrontends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http-8081"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
-	mapFileRelativePath = "hug_" + s.Test().Namespace + "_gateway2_http-9090"
+	mapFileRelativePath = "hug_http_8081"
+	s.Eventually(func() bool {
+		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+
+	mapFileRelativePath = "hug_http_9090"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
@@ -157,7 +162,7 @@ func (s *GatewayTestSuite) Test_Gateway_conflict_0_listener_ok() {
 	s.expectConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Expected Conditions: Gateway2
-	expectedCondPath = path.Join(expectationsPath, "conditions-gateway.yaml")
+	expectedCondPath = path.Join(expectationsPath, "conditions-gateway2.yaml")
 	expectedConditions = s.YamlToConditions(expectedCondPath)
 	expectedListenerStatusesPath = path.Join(expectationsPath, "listener_statuses-gateway2.yaml")
 	expectedListenerStatuses = s.YamlToListenerStatuses(expectedListenerStatusesPath)

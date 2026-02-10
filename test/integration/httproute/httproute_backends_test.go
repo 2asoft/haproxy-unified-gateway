@@ -50,7 +50,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route() {
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -86,7 +86,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_filter() {
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -119,7 +119,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_bac
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -171,7 +171,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_1_backend_dynamic_de
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_http_8080"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)

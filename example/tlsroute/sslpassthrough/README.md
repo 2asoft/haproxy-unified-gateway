@@ -10,16 +10,16 @@ When using passthrough mode, the Gateway forwards the encrypted TLS stream direc
 
 This example installs the following resources:
 
-- **GatewayClass**:  
+- **GatewayClass**:
   `haproxy` — defines a class of Gateways managed by the HAProxy Kubernetes Gateway controller.
 
-- **Gateway**:  
+- **Gateway**:
   `tls-gateway` — exposes a listener on port **31443** configured for **TLS passthrough** and accepting routes for the hostname `example.local`.
 
 - **TLSRoute**:
   - `tlsroute` — matches:
     - SNI: `example.local`
-    - Any path  
+    - Any path
     and forwards traffic to the backend service `http-echo`, which terminates TLS.
 
 ---
@@ -41,10 +41,7 @@ Because the Gateway is in passthrough mode, the backend’s certificate should b
 Run:
 
 ```sh
-curl -v -k \
-  -H "Host: example.local" \
-  --resolve "example.local:31443:127.0.0.1" \
-  https://example.local:31443/
+curl -v -k -H "Host: example.local" --resolve "example.local:31444:127.0.0.1"  https://example.local:31444/
 ```
 You should observe:
 * The TLS handshake showing the backend’s certificate, not the Gateway’s.

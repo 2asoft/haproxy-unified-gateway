@@ -17,30 +17,56 @@ import (
 	"encoding/json"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type FrontendMetaData map[string]map[string]K8sObjectInfo // map[kind] -> map[objectKey]K8sObjectInfo
 
-func (mm *ManagerImpl) FrontendMetaData(treeGw *tree.Gateway) MetaData {
-	k8sResource := treeGw.GetK8sResource()
-	gvk := mm.extractGVK(k8sResource)
-	objKey := client.ObjectKeyFromObject(k8sResource)
+type GatewayInfo struct {
+	gwKey      client.ObjectKey
+	generation int64
+}
 
-	md := FrontendMetadata(objKey, gvk.Kind, k8sResource.GetGeneration(), mm.linkID)
+func (mm *ManagerImpl) FrontendMetaData(vListener *tree.VirtualListener) MetaData {
+	// Build a list of Gateway info to put in the metadata of the frontend
+	infos := make([]GatewayInfo, 0)
+	var gvk schema.GroupVersionKind
+	for _, listener := range vListener.Listeners {
+		treeGw := mm.cs.GetGatewayForListener(listener)
+		if treeGw == nil {
+			continue
+		}
+		k8sResource := treeGw.GetK8sResource()
+		if k8sResource == nil {
+			continue
+		}
+		// gvk are all the same (Gateway), so we can safely override
+		gvk = mm.extractGVK(k8sResource)
+		infos = append(infos, GatewayInfo{
+			gwKey: client.ObjectKeyFromObject(k8sResource),
+			//	gwKind:     gvk.Kind,
+			generation: k8sResource.GetGeneration(),
+		})
+	}
+
+	md := FrontendMetadata(infos, gvk.Kind, mm.linkID)
 	return md
 }
 
-func FrontendMetadata(objKey client.ObjectKey, kind string, generation int64, linkID string) MetaData {
+func FrontendMetadata(infos []GatewayInfo, kind, linkID string) MetaData {
 	frontendMetadata := make(FrontendMetaData)
 
 	gatewayMetadata := make(map[string]K8sObjectInfo)
-	objInfo := K8sObjectInfo{
-		Generation: generation,
-		LinkID:     linkID,
+	for _, info := range infos {
+		objInfo := K8sObjectInfo{
+			Generation: info.generation,
+			LinkID:     linkID,
+		}
+		gatewayMetadata[info.gwKey.String()] = objInfo
 	}
-	gatewayMetadata[objKey.String()] = objInfo
+
 	frontendMetadata[kind] = gatewayMetadata
 
 	md := make(MetaData)

@@ -119,9 +119,9 @@ func NewEventHandlerImpl(
 		ControllerName: gateTreeConfig.ControllerName,
 	}
 
-	treeBuilder := NewGateTreeBuilder(controllerStore, gateTreeConfig)
+	treeBuilder := NewGateTreeBuilder(&controllerStore, gateTreeConfig)
 
-	haproxyConfMgr := haproxy.NewHaproxyConfMgr(gateTreeConfig.BaseLogger, controllerStore, initialStructuredConf,
+	haproxyConfMgr := haproxy.NewHaproxyConfMgr(gateTreeConfig.BaseLogger, &controllerStore, initialStructuredConf,
 		haproxyCfgManagerParams, haproxyClient, gateTreeConfig.K8sClient)
 
 	handler := &eventHandlerImpl{
