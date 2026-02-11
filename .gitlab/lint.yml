@@ -119,7 +119,7 @@ check-committer:
           *@haproxy.com) ;;
           *)
             BAD_EMAILS="${BAD_EMAILS}${EMAIL}\n"
-            junit-report add --status=failed --file="$EMAIL" --description="committer email not @haproxy.com" --message="$EMAIL: $MSG"
+            junit-report add --status=failed --file="$EMAIL" --message="$EMAIL: $MSG" --description="$(printf "committer email not @haproxy.com\n\n%s\n%s" "$MSG" "$EMAIL")"
             ;;
         esac
       done
