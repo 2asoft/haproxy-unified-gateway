@@ -97,3 +97,43 @@ commit-policy:
       - junit-report.xml
     reports:
       junit: junit-report.xml
+check-committer:
+  stage: lint
+  allow_failure: true
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [ "" ]
+  tags:
+    - go
+  script:
+    - |
+      git fetch origin ${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}
+      BAD_EMAILS=""
+      for COMMIT in $(git log --format='%H' origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}...HEAD); do
+        EMAIL=$(git log -1 --format='%ae' "$COMMIT")
+        MSG=$(git log -1 --format='%s' "$COMMIT")
+        case "$EMAIL" in
+          *@haproxy.com) ;;
+          *)
+            BAD_EMAILS="${BAD_EMAILS}${EMAIL}\n"
+            junit-report add --status=failed --file="$EMAIL" --description="committer email not @haproxy.com" --message="$EMAIL: $MSG"
+            ;;
+        esac
+      done
+      if [ -n "$BAD_EMAILS" ]; then
+        echo "The following committer emails are not @haproxy.com:"
+        printf "$BAD_EMAILS"
+        exit 1
+      else
+        echo "All committer emails end with @haproxy.com."
+        junit-report add --status=ok --file=committer-email --description="all emails valid" --message="All committer emails end with @haproxy.com."
+      fi
+  artifacts:
+    when: on_failure
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
