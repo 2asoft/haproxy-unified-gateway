@@ -27,7 +27,7 @@ func (s *TLSRouteSuite) Test_TLSRoute_SSL_Passthrough() {
 	s.expectAttachedRoute(s.Test().Ctx, s.Test().Namespace, "tls-gateway", "tls", 1)
 
 	// Check Maps
-	mapFilePath := "link1_" + s.Test().Namespace + "_tls-gateway_tls"
+	mapFilePath := "hug_" + s.Test().Namespace + "_tls-gateway_tls"
 
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {

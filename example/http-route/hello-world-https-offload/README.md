@@ -29,8 +29,8 @@ kubectl apply -f -n test .
 ### POD
 
 ```sh
-$ cat /usr/local/hug/maps/link1_test_hug-gateway_https/path_prefix.map
-https.haproxy.local/ link1_test_hello-world-offload_443__
+$ cat /usr/local/hug/maps/hug_test_hug-gateway_https/path_prefix.map
+https.haproxy.local/ hug_test_hello-world-offload_443__
 ```
 
 ### curl
@@ -100,7 +100,7 @@ cat /usr/local/hug/haproxy.cfg
 ```
 
 ```sh
-frontend link1_test_hug-gateway_https from haproxytech # {"hug":{"Gateway":{"test/hug-gateway":{"Generation":1,"LinkID":"link1"}}}}
+frontend hug_test_hug-gateway_https from haproxytech # {"hug":{"Gateway":{"test/hug-gateway":{"Generation":1,"LinkID":"hug"}}}}
   mode http
   bind 0.0.0.0:31443 name v4 ssl crt-list /usr/local/hug/certlists/test_hug-gateway_https.list
   bind [::]:31443 name v6 ssl crt-list /usr/local/hug/certlists/test_hug-gateway_https.list
@@ -108,13 +108,13 @@ frontend link1_test_hug-gateway_https from haproxytech # {"hug":{"Gateway":{"tes
   http-request set-var(txn.base) base
   http-request set-var(txn.path) path
   http-request set-var(txn.host) req.hdr(Host),host_only
-  http-request set-var(txn.route) base,map(/usr/local/hug/maps/link1_test_hug-gateway_https/path_exact.map) # {"hug":"exact domain + exact path"}
-  http-request set-var(txn.route,ifnotexists) path,map(/usr/local/hug/maps/link1_test_hug-gateway_https/path_exact.map) # {"hug":"any domain + exact path"}
-  http-request set-var(txn.route,ifnotexists) base,map_beg(/usr/local/hug/maps/link1_test_hug-gateway_https/path_prefix.map) # {"hug":"exact domain + path prefix"}
-  http-request set-var(txn.route,ifnotexists) path,map_beg(/usr/local/hug/maps/link1_test_hug-gateway_https/path_prefix.map) # {"hug":"exact domain + path prefix"}
-  http-request set-var(txn.route,ifnotexists) base,map_end(/usr/local/hug/maps/link1_test_hug-gateway_https/domain_wildcard_path_exact.map) # {"hug":"domain wildcard + exact path"}
-  http-request set-var(txn.route,ifnotexists) path,map_reg(/usr/local/hug/maps/link1_test_hug-gateway_https/path_regex.map) # {"hug":"any domain + path regex"}
-  http-request set-var(txn.route,ifnotexists) base,map_reg(/usr/local/hug/maps/link1_test_hug-gateway_https/path_regex.map) # {"hug":"domain wildcard + path prefix or regex, exact domain + path regex"}
+  http-request set-var(txn.route) base,map(/usr/local/hug/maps/hug_test_hug-gateway_https/path_exact.map) # {"hug":"exact domain + exact path"}
+  http-request set-var(txn.route,ifnotexists) path,map(/usr/local/hug/maps/hug_test_hug-gateway_https/path_exact.map) # {"hug":"any domain + exact path"}
+  http-request set-var(txn.route,ifnotexists) base,map_beg(/usr/local/hug/maps/hug_test_hug-gateway_https/path_prefix.map) # {"hug":"exact domain + path prefix"}
+  http-request set-var(txn.route,ifnotexists) path,map_beg(/usr/local/hug/maps/hug_test_hug-gateway_https/path_prefix.map) # {"hug":"exact domain + path prefix"}
+  http-request set-var(txn.route,ifnotexists) base,map_end(/usr/local/hug/maps/hug_test_hug-gateway_https/domain_wildcard_path_exact.map) # {"hug":"domain wildcard + exact path"}
+  http-request set-var(txn.route,ifnotexists) path,map_reg(/usr/local/hug/maps/hug_test_hug-gateway_https/path_regex.map) # {"hug":"any domain + path regex"}
+  http-request set-var(txn.route,ifnotexists) base,map_reg(/usr/local/hug/maps/hug_test_hug-gateway_https/path_regex.map) # {"hug":"domain wildcard + path prefix or regex, exact domain + path regex"}
   http-request lua.route if route_is_json # {"hug":"lua routing"}
   use_backend %[var(txn.backend)] if route_is_json
   use_backend %[var(txn.route)]
@@ -123,7 +123,7 @@ frontend link1_test_hug-gateway_https from haproxytech # {"hug":{"Gateway":{"tes
 Note the `bind` doing HTTPS termination.
 
 ```sh
-backend link1_test_hello-world-offload_80__ from haproxytech # {"hug":{"HTTPRoute":{"test/route-hello-world-offload":{"Generation":2,"LinkID":"link1"}}}}
+backend hug_test_hello-world-offload_80__ from haproxytech # {"hug":{"HTTPRoute":{"test/route-hello-world-offload":{"Generation":2,"LinkID":"hug"}}}}
   mode http
   balance roundrobin
   option forwardfor

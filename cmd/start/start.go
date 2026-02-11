@@ -60,7 +60,7 @@ func SetupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 		opt.IPV4BindAddr(hugConfig.IPV4BindAddr),
 		opt.IPV6BindAddr(hugConfig.IPV6BindAddr),
 		opt.HaproxyDirs(hugConfig.HaproxyDirs),
-		opt.LinkID("link1"),
+		opt.LinkID("hug"),
 		opt.InitialStructured(initialStructured),
 		opt.CacheReSyncPeriod(hugConfig.CacheResyncPeriod),
 		opt.DefaultsSectionName(gateconfig.DefaultsSectionName),

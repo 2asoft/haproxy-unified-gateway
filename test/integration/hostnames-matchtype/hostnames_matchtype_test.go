@@ -53,13 +53,13 @@ func (s *HostnamesMatchtypeSuite) Test_1_Exact_Route_Exact_Match_Exact() {
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
 	// For FE http
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
 	// For FE https
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -88,12 +88,12 @@ func (s *HostnamesMatchtypeSuite) Test_5_Wildcard_Route_Exact_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -122,12 +122,12 @@ func (s *HostnamesMatchtypeSuite) Test_4_Exact_Route_Empty_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -156,12 +156,12 @@ func (s *HostnamesMatchtypeSuite) Test_2_Exact_Route_Wildcard_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -190,12 +190,12 @@ func (s *HostnamesMatchtypeSuite) Test_6_Exact_Route_Exact_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -224,12 +224,12 @@ func (s *HostnamesMatchtypeSuite) Test_8_Exact_Route_Wildcard_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -258,12 +258,12 @@ func (s *HostnamesMatchtypeSuite) Test_10_Exact_Route_Empty_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -292,12 +292,12 @@ func (s *HostnamesMatchtypeSuite) Test_12_Wildcard_Route_Exact_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -326,12 +326,12 @@ func (s *HostnamesMatchtypeSuite) Test_14_Wildcard_Route_Wildcard_Match_Exact() 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -360,12 +360,12 @@ func (s *HostnamesMatchtypeSuite) Test_17_Wildcard_Route_Empty_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -394,12 +394,12 @@ func (s *HostnamesMatchtypeSuite) Test_20_Empty_Route_Exact_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -428,12 +428,12 @@ func (s *HostnamesMatchtypeSuite) Test_23_Empty_Route_Wildcard_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -462,12 +462,12 @@ func (s *HostnamesMatchtypeSuite) Test_26_Empty_Route_Empty_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -496,12 +496,12 @@ func (s *HostnamesMatchtypeSuite) Test_27_Empty_Route_Empty_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -530,12 +530,12 @@ func (s *HostnamesMatchtypeSuite) Test_13_Wildcard_Route_Exact_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -564,12 +564,12 @@ func (s *HostnamesMatchtypeSuite) Test_7_Exact_Route_Exact_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -598,12 +598,12 @@ func (s *HostnamesMatchtypeSuite) Test_9_Exact_Route_Wildcard_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -632,12 +632,12 @@ func (s *HostnamesMatchtypeSuite) Test_11_Exact_Route_Empty_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -666,12 +666,12 @@ func (s *HostnamesMatchtypeSuite) Test_16_Wildcard_Route_Wildcard_Match_Regex() 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -700,12 +700,12 @@ func (s *HostnamesMatchtypeSuite) Test_19_Wildcard_Route_Empty_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -734,12 +734,12 @@ func (s *HostnamesMatchtypeSuite) Test_25_Empty_Route_Wildcard_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -768,12 +768,12 @@ func (s *HostnamesMatchtypeSuite) Test_28_Empty_Route_Empty_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -802,12 +802,12 @@ func (s *HostnamesMatchtypeSuite) Test_22_Empty_Route_Exact_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -836,12 +836,12 @@ func (s *HostnamesMatchtypeSuite) Test_15_Wildcard_Route_Wildcard_Match_Prefix()
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -870,12 +870,12 @@ func (s *HostnamesMatchtypeSuite) Test_18_Wildcard_Route_Empty_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -904,12 +904,12 @@ func (s *HostnamesMatchtypeSuite) Test_21_Empty_Route_Exact_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
@@ -938,12 +938,12 @@ func (s *HostnamesMatchtypeSuite) Test_24_Empty_Route_Wildcard_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	mapFilePath := "link1_" + s.Test().Namespace + "_hug-gateway_http"
+	mapFilePath := "hug_" + s.Test().Namespace + "_hug-gateway_http"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
 
-	mapFilePath = "link1_" + s.Test().Namespace + "_hug-gateway_https"
+	mapFilePath = "hug_" + s.Test().Namespace + "_hug-gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFilePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))

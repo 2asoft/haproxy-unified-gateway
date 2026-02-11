@@ -26,8 +26,8 @@ kubectl apply -f .
 ### POD
 
 ```sh
-$ cat /usr/local/hug/maps/link1_default_hug-gateway_http/path_prefix.map
-blue-green.haproxy.local/ {"a":"wr","l":"link1_default_blue_8888__:90,link1_default_green_8888__:10"}
+$ cat /usr/local/hug/maps/hug_default_hug-gateway_http/path_prefix.map
+blue-green.haproxy.local/ {"a":"wr","l":"hug_default_blue_8888__:90,hug_default_green_8888__:10"}
 ```
 
 ### curl

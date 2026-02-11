@@ -55,13 +55,13 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_missingSecret() {
 	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Check Maps
-	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
-	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_https"
+	mapFileRelativePath = "hug_" + s.Test().Namespace + "_gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
@@ -86,13 +86,13 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_okSecret() {
 	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Check Maps
-	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
-	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_https"
+	mapFileRelativePath = "hug_" + s.Test().Namespace + "_gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
@@ -130,13 +130,13 @@ func (s *GatewayTLSTestSuite) Test_Gateway_TLS_Dynamic_ok_missing_ok_Secret() {
 	s.expectGwConditionsUpdated(s.Test().Ctx, s.Test().Namespace, gwName, expectedConditions, expectedListenerStatuses)
 
 	// Check Maps
-	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
 
-	mapFileRelativePath = "link1_" + s.Test().Namespace + "_gateway_https"
+	mapFileRelativePath = "hug_" + s.Test().Namespace + "_gateway_https"
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))

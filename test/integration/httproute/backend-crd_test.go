@@ -43,11 +43,11 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_basic() {
 
 	// haproxy.cfg Backends
 	backendsExpectationsPath := path.Join(expectationsPath, "backends")
-	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo_80_ef84fba452b3f62faf235c47b46c1e54"}
+	expectedBackends := []string{"hug_e2e-tests-httproute_http-echo_80_ef84fba452b3f62faf235c47b46c1e54"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
@@ -75,11 +75,11 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 
 	// haproxy.cfg Backends
 	backendsExpectationsPath := path.Join(expectationsPath, "backends")
-	expectedBackends := []string{"link1_e2e-tests-httproute_http-echo_80_870306e1a7d334a1eceb23475e6075aa"}
+	expectedBackends := []string{"hug_e2e-tests-httproute_http-echo_80_870306e1a7d334a1eceb23475e6075aa"}
 	s.ExpectBackends(s.Test().Ctx, backendsExpectationsPath, expectedBackends)
 
 	// Check Maps
-	mapFileRelativePath := "link1_" + s.Test().Namespace + "_gateway_http"
+	mapFileRelativePath := "hug_" + s.Test().Namespace + "_gateway_http"
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 	s.Eventually(func() bool {
 		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)

@@ -91,8 +91,8 @@ kubectl apply -f -n test .
 ### POD
 
 ```sh
-$ cat /usr/local/hug/maps/link1_test_hug-gateway_http/path_prefix.map
-backendcrdextended.haproxy.local/ link1_test_hello-world-backendcrd-extended-1_80_870306e1a7d334a1eceb23475e6075aa
+$ cat /usr/local/hug/maps/hug_test_hug-gateway_http/path_prefix.map
+backendcrdextended.haproxy.local/ hug_test_hello-world-backendcrd-extended-1_80_870306e1a7d334a1eceb23475e6075aa
 ```
 
 ### curl
@@ -154,7 +154,7 @@ cat /usr/local/hug/haproxy.cfg
 ```
 
 ```sh
-backend link1_test_hello-world-backendcrd-extended-1_80_870306e1a7d334a1eceb23475e6075aa from haproxytech # {"hug":{"HTTPRoute":{"test/route-backend-crd-extended":{"Generation":3,"LinkID":"link1"}}}}
+backend hug_test_hello-world-backendcrd-extended-1_80_870306e1a7d334a1eceb23475e6075aa from haproxytech # {"hug":{"HTTPRoute":{"test/route-backend-crd-extended":{"Generation":3,"LinkID":"hug"}}}}
   mode http
   balance roundrobin
   option forwardfor

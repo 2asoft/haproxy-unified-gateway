@@ -3,16 +3,16 @@
     "metadata": {
         "hug": {
             "HTTPRoute": {
-                "e2e-tests-httproute/route-echo": {
+                "e2e-tests-httproute/route-echo-1": {
                     "Generation": 1,
-                    "LinkID": "link1"
+                    "LinkID": "hug"
                 }
             }
         }
     },
     "mode": "http",
-    "name": "link1_e2e-tests-httproute_http-echo_80__",
-      "abortonclose": "disabled",
+    "name": "hug_e2e-tests-httproute_http-echo-1_80__",
+    "abortonclose": "disabled",
     "balance": {
         "algorithm": "roundrobin"
     },

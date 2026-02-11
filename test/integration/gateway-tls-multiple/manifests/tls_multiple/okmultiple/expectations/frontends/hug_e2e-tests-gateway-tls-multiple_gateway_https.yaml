@@ -4,9 +4,9 @@ metadata:
     Gateway:
       e2e-tests-gateway-tls-multiple/gateway:
         Generation: 1
-        LinkID: link1
+        LinkID: hug
 mode: http
-name: link1_e2e-tests-gateway-tls-multiple_gateway_https
+name: hug_e2e-tests-gateway-tls-multiple_gateway_https
 binds:
   v4:
     crt_list: /tmp/hug/e2e-tests-gateway-tls-multiple/certlists/e2e-tests-gateway-tls-multiple_gateway_https.list
