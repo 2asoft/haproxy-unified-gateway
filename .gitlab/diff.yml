@@ -28,6 +28,33 @@ diff:
       - junit-report.xml
     reports:
       junit: junit-report.xml
+diff-crd:
+  stage: diff
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller/community' && $CI_PIPELINE_SOURCE == 'push'"
+  image:
+    name: $CI_REGISTRY_GO/golang:$GO_VERSION
+    entrypoint: [ "" ]
+  tags:
+    - go
+  before_script:
+    - task controller-gen
+  script:
+    - test -z "$(git diff 2> /dev/null)" || git diff
+    - test -z "$(git diff 2> /dev/null)" || junit-report add --status=failed --file=git-diff --message="git diff is not clean" --description="$(git diff)"
+    - test -z "$(git diff 2> /dev/null)" || exit "CRDs are not generated, issue \`task ci\` and commit the result"
+    - test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || git ls-files --others --exclude-standard
+    - test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || junit-report add --status=failed --file=git-ls-files --message="CRDs created untracked files" --description="$(git ls-files --others --exclude-standard 2> /dev/null)"
+    - test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || exit "CRDs created untracked files, cannot proceed"
+    - junit-report add --status=ok --file=diff --message="Diff is clean" --description="Check for uncommitted changes in the repository"
+  artifacts:
+    when: on_failure
+    paths:
+      - junit-report.xml
+    reports:
+      junit: junit-report.xml
 check-large-files:
   stage: diff
   rules:
