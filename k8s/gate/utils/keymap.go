@@ -129,7 +129,7 @@ func StringToPtr[T stringer](s string) *T {
 	if s == "_" {
 		return nil
 	}
-	return Ptr(T(s))
+	return new(T(s))
 }
 
 // BackendObjectReferenceToKey converts a BackendObjectReferenceToKey to a unique string key.

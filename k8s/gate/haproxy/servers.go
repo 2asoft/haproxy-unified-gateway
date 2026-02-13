@@ -246,7 +246,7 @@ func (b *HaproxyConfMgrImpl) getServersForBackend(svcKey client.ObjectKey, be Ba
 						Maintenance: "disabled",
 					},
 					Address: address,
-					Port:    utils.Ptr(int64(serverPort)),
+					Port:    new(int64(serverPort)),
 					Name:    serverName,
 				}
 				servers[serverName] = server

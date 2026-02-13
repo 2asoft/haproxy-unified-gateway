@@ -25,7 +25,6 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/constants"
 	md "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
 type ownerMetaData interface {
@@ -169,7 +168,7 @@ func addBindPortToStatsFrontend(confClient configuration.Configuration,
 		if bindv4 == nil {
 			name := "stats"
 			bind := models.Bind{
-				Port:       utils.Ptr(hugConfig.StatsPort),
+				Port:       new(hugConfig.StatsPort),
 				Address:    "0.0.0.0",
 				BindParams: models.BindParams{Name: name},
 			}
@@ -180,7 +179,7 @@ func addBindPortToStatsFrontend(confClient configuration.Configuration,
 			statsFrontend.Binds[name] = bind
 		} else {
 			// We already have a bind for this port
-			bindv4.Port = utils.Ptr(hugConfig.StatsPort)
+			bindv4.Port = new(hugConfig.StatsPort)
 			err := confClient.EditBind(bindv4.Name, "frontend", constants.StatsFrontendName, bindv4, "", version)
 			if err != nil {
 				return err
@@ -199,7 +198,7 @@ func addBindPortToStatsFrontend(confClient configuration.Configuration,
 		if bindv6 == nil {
 			name := "v6"
 			bind := models.Bind{
-				Port:       utils.Ptr(hugConfig.StatsPort),
+				Port:       new(hugConfig.StatsPort),
 				Address:    "::",
 				BindParams: models.BindParams{Name: name},
 			}
@@ -210,7 +209,7 @@ func addBindPortToStatsFrontend(confClient configuration.Configuration,
 			statsFrontend.Binds[name] = bind
 		} else {
 			// We already have a bind for this port
-			bindv6.Port = utils.Ptr(hugConfig.StatsPort)
+			bindv6.Port = new(hugConfig.StatsPort)
 			err := confClient.EditBind(bindv6.Name, "frontend", constants.StatsFrontendName, bindv6, "", version)
 			if err != nil {
 				return err

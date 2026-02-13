@@ -84,7 +84,7 @@ func runtimeCommand(command string) (result []byte, err error) {
 	if kindURL == "" {
 		kindURL = "127.0.0.1"
 	}
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", kindURL, STATS_PORT))
+	conn, err := net.Dial("tcp", net.JoinHostPort(kindURL, fmt.Sprintf("%d", STATS_PORT)))
 	if err != nil {
 		return result, err
 	}

@@ -29,11 +29,6 @@ import (
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-// Ptr return pointer to a given value
-func Ptr[V any](v V) *V {
-	return &v
-}
-
 type ObjectWithTimestamp interface {
 	GetCreationTimestamp() metav1.Time
 	GetName() string
@@ -88,10 +83,6 @@ func NamespaceAsString(ns *gatewayv1.Namespace) string {
 		return ""
 	}
 	return string(*ns)
-}
-
-func PtrInt64(value int64) *int64 {
-	return &value
 }
 
 func ObjectKeyFromNamespacedName(s string) (client.ObjectKey, error) {

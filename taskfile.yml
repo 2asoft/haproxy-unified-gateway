@@ -104,7 +104,7 @@ tasks:
         vars:
           TOOLS: [BETTERALIGN, GOFUMPT]
     cmds:
-      #- go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...
+      - go fix ./...
       - /{{.TMP}}/betteralign/{{.BETTERALIGN_VERSION}}/betteralign -apply ./... || true
       - /{{.TMP}}/gofumpt/{{.GOFUMPT_VERSION}}/gofumpt -l -w .
       - go run cmd/crd-version-check/main.go

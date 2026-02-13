@@ -497,7 +497,7 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 	var optionForwardFor *models.Forwardfor
 	if isHTTPBackend {
 		optionForwardFor = &models.Forwardfor{
-			Enabled: utils.Ptr("enabled"),
+			Enabled: new("enabled"),
 		}
 	}
 
@@ -512,9 +512,9 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 				return "tcp"
 			}(),
 			From:          b.params.DefaultsSectionName,
-			Balance:       &models.Balance{Algorithm: utils.Ptr("roundrobin")},
+			Balance:       &models.Balance{Algorithm: new("roundrobin")},
 			Abortonclose:  "disabled",
-			ServerTimeout: utils.PtrInt64(50000),
+			ServerTimeout: new(int64(50000)),
 			Forwardfor:    optionForwardFor,
 			DefaultServer: &models.DefaultServer{
 				ServerParams: models.ServerParams{Check: "enabled"},

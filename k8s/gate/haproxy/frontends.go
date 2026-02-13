@@ -259,7 +259,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(params newFrontendParams) (*models.Fron
 			{
 				// tcp-request inspect-delay 50000
 				Type:    "inspect-delay",
-				Timeout: utils.PtrInt64(50000),
+				Timeout: new(int64(50000)),
 			},
 			{
 				// tcp-request content set-var(sess.sni) req_ssl_sni

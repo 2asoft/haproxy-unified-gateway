@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 
 	haproxyapiv3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	appsv1 "k8s.io/api/apps/v1"
@@ -60,7 +59,7 @@ func createManager(cfg config.Configuration) (manager.Manager, error) {
 		LeaderElectionID:              cfg.LeaderElectionConfig.LockName,
 		LeaderElectionReleaseOnCancel: false,
 		Controller: ctrlcfg.Controller{
-			NeedLeaderElection: utils.Ptr(false),
+			NeedLeaderElection: new(false),
 		},
 	}
 	if cfg.CacheResyncPeriod != 0 {

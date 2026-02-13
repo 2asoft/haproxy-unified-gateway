@@ -15,7 +15,6 @@ package objtypes
 
 import (
 	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
-	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 	v1 "k8s.io/api/core/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -41,9 +40,9 @@ var (
 )
 
 var (
-	RouteKindHTTP = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindHTTPRoute)}
-	RouteKindTLS  = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindTLSRoute)}
-	RouteKindGRPC = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindGRPCRoute)}
-	RouteKindTCP  = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindTCPRoute)}
-	RouteKindUDP  = gatewayv1.RouteGroupKind{Group: utils.Ptr(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindUDPRoute)}
+	RouteKindHTTP = gatewayv1.RouteGroupKind{Group: new(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindHTTPRoute)}
+	RouteKindTLS  = gatewayv1.RouteGroupKind{Group: new(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindTLSRoute)}
+	RouteKindGRPC = gatewayv1.RouteGroupKind{Group: new(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindGRPCRoute)}
+	RouteKindTCP  = gatewayv1.RouteGroupKind{Group: new(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindTCPRoute)}
+	RouteKindUDP  = gatewayv1.RouteGroupKind{Group: new(gatewayv1.Group(gatewayv1.GroupName)), Kind: gatewayv1.Kind(KindUDPRoute)}
 )
