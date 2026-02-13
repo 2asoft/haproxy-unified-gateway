@@ -347,16 +347,16 @@ func match(routeHostname, listenerHostname string) bool {
 	}
 
 	// Wildcard match for listener
-	if strings.HasPrefix(listenerHostname, "*.") {
-		domain := strings.TrimPrefix(listenerHostname, "*.")
+	if after, ok := strings.CutPrefix(listenerHostname, "*."); ok {
+		domain := after
 		if routeHostname != domain && strings.HasSuffix(routeHostname, "."+domain) {
 			return true
 		}
 	}
 
 	// Wildcard match for route
-	if strings.HasPrefix(routeHostname, "*.") {
-		domain := strings.TrimPrefix(routeHostname, "*.")
+	if after, ok := strings.CutPrefix(routeHostname, "*."); ok {
+		domain := after
 		if listenerHostname != domain && strings.HasSuffix(listenerHostname, "."+domain) {
 			return true
 		}

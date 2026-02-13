@@ -30,7 +30,7 @@ func GetIntTestNamespace(levelsUp int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for i := 0; i < levelsUp; i++ {
+	for range levelsUp {
 		dir = filepath.Dir(dir)
 	}
 	dir = filepath.Base(dir)

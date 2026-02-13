@@ -82,9 +82,7 @@ func (h *AppManagerImpl) Stop() {
 
 func (h *AppManagerImpl) Run() {
 	// Goroutine to listen on haproxyCfgCh and perform the haproxy configuration update
-	h.wg.Add(1)
-	go func() {
-		defer h.wg.Done()
+	h.wg.Go(func() {
 		for {
 			select {
 			case <-h.ctx.Done():
@@ -101,7 +99,7 @@ func (h *AppManagerImpl) Run() {
 				}
 			}
 		}
-	}()
+	})
 }
 
 func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs) error {

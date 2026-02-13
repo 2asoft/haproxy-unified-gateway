@@ -42,10 +42,7 @@ func (b *HaproxyConfMgrImpl) RuntimeSetServerAddrAndState(servers []RuntimeServe
 
 	backendNameSize := len(servers[0].BackendName)
 	oneServerCommandSize := 75 + 2*backendNameSize
-	size := oneServerCommandSize * len(servers)
-	if size > BufferSize {
-		size = BufferSize
-	}
+	size := min(oneServerCommandSize*len(servers), BufferSize)
 
 	var sb strings.Builder
 	sb.Grow(size)

@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -367,12 +368,7 @@ func (b *BaseSuite) CheckEntryInMapFile(mapFileRelativePath, key, value string) 
 	if err != nil {
 		return false
 	}
-	for _, line := range mapFile {
-		if line == key+" "+value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(mapFile, key+" "+value)
 }
 
 var StandardMaps = []string{
