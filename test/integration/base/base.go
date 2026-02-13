@@ -21,7 +21,6 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -216,7 +215,7 @@ func (b *BaseSuite) ExpectCrtLists(ctx context.Context, expectedCrtLists map[fut
 			}
 			gotContent, err := crtListFilePath.ReadLines()
 			b.Require().NoError(err)
-			sort.Strings(gotContent)
+			slices.Sort(gotContent)
 			// Runtime command to actually get the CrtList content
 			areEqual := b.areCrtListContentEqual(expectedCrtListContent, gotContent)
 			if !areEqual {

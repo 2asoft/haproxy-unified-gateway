@@ -19,7 +19,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
@@ -56,7 +56,7 @@ func (c *CertificateStorageDefault) NewCrtListData(listenerKey client.ObjectKey,
 	for secretKey := range secretKeys {
 		certFullPaths = append(certFullPaths, c.CertPath(secretKey).FullPath())
 	}
-	sort.Strings(certFullPaths)
+	slices.Sort(certFullPaths)
 	crtListPath := c.CertListPath(listenerKey)
 	return certificate.NewCrtListData(crtListPath, certFullPaths)
 }
@@ -65,7 +65,7 @@ func (c *CertificateStorageDefault) WriteCrtListOnDisk(crtList certificate.CrtLi
 	crtListFullPath := crtList.Path.FullPath()
 
 	// SORT them
-	sort.Strings(crtList.Content)
+	slices.Sort(crtList.Content)
 	// Now write sorted paths
 	var builder strings.Builder
 	for _, crtFullPath := range crtList.Content {

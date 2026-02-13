@@ -16,7 +16,6 @@ package status
 import (
 	"fmt"
 	"slices"
-	"sort"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
@@ -219,30 +218,26 @@ func (sp *httpRouteStatusPatcher) SetStatus(obj client.Object) error {
 // sortRouteParentStatusByParentRef sorts a slice of RouteParentStatus by a
 // deterministic order based on their ParentReference fields.
 func sortRouteParentStatusByParentRef(parents []gatewayv1.RouteParentStatus) {
-	sort.Slice(parents, func(i, j int) bool {
-		a := parents[i].ParentRef
-		b := parents[j].ParentRef
-
-		if c := utils.ComparePointers(a.Group, b.Group); c != 0 {
-			return c < 0
+	slices.SortFunc(parents, func(a, b gatewayv1.RouteParentStatus) int {
+		if c := utils.ComparePointers(a.ParentRef.Group, b.ParentRef.Group); c != 0 {
+			return c
 		}
-		if c := utils.ComparePointers(a.Kind, b.Kind); c != 0 {
-			return c < 0
+		if c := utils.ComparePointers(a.ParentRef.Kind, b.ParentRef.Kind); c != 0 {
+			return c
 		}
-		if c := utils.ComparePointers(a.Namespace, b.Namespace); c != 0 {
-			return c < 0
+		if c := utils.ComparePointers(a.ParentRef.Namespace, b.ParentRef.Namespace); c != 0 {
+			return c
 		}
-		if a.Name != b.Name {
-			return a.Name < b.Name
+		if a.ParentRef.Name != b.ParentRef.Name {
+			if a.ParentRef.Name < b.ParentRef.Name {
+				return -1
+			}
+			return 1
 		}
-		if c := utils.ComparePointers(a.SectionName, b.SectionName); c != 0 {
-			return c < 0
+		if c := utils.ComparePointers(a.ParentRef.SectionName, b.ParentRef.SectionName); c != 0 {
+			return c
 		}
-		if c := utils.ComparePointers(a.Port, b.Port); c != 0 {
-			return c < 0
-		}
-
-		return false // The parent references are considered equal for sorting
+		return utils.ComparePointers(a.ParentRef.Port, b.ParentRef.Port)
 	})
 }
 

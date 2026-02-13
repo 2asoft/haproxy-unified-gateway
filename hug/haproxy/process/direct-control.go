@@ -61,7 +61,6 @@ func (d *directControl) Service(action string) (string, error) {
 
 	masterSocketArg := d.Params.MasterSocket + ",level,admin"
 
-	//nolint:gosec //checks on HAProxyBinary should be done in configuration module.
 	switch action {
 	case "start":
 		if processErr == nil {

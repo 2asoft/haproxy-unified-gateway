@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions"
@@ -268,7 +267,7 @@ func (l *Listener) checkConflict(treeGw *Gateway, multipleListenersPerPort map[g
 		for _, gl := range gls {
 			conflictingKeys = append(conflictingKeys, gl.listenerKey.String())
 		}
-		sort.Strings(conflictingKeys)
+		slices.Sort(conflictingKeys)
 		msg := fmt.Sprintf("Conflicting listeners: %s", strings.Join(conflictingKeys, ", "))
 		cond := conditions.NewListenerConflicted(msg)
 		l.CheckConflict = CheckResult{

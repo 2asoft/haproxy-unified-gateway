@@ -40,7 +40,7 @@ import (
 
 var scheme = runtime.NewScheme()
 
-func init() { //nolint:gochecknoinits
+func init() {
 	utilruntime.Must(gatewayv1.Install(scheme))
 	utilruntime.Must(v1.AddToScheme(scheme))
 	utilruntime.Must(discoveryV1.AddToScheme(scheme))

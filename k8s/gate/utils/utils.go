@@ -19,7 +19,6 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,13 +34,13 @@ type ObjectWithTimestamp interface {
 }
 
 func SortByCreationTimestamp[T ObjectWithTimestamp](objects []T) {
-	sort.Slice(objects, func(i, j int) bool {
-		a := objects[i]
-		b := objects[j]
+	slices.SortFunc(objects, func(a, b T) int {
 		aTime := a.GetCreationTimestamp()
 		bTime := b.GetCreationTimestamp()
-		return aTime.Time.Before(bTime.Time) ||
-			(aTime.Time.Equal(bTime.Time) && a.GetName() < b.GetName())
+		if c := aTime.Time.Compare(bTime.Time); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.GetName(), b.GetName())
 	})
 }
 

@@ -20,7 +20,7 @@ type Process interface {
 	SetAPI(api hapi.HAProxyClient)
 }
 
-func New(param params.Params, api hapi.HAProxyClient, logger *slog.Logger) (p Process) { //nolint:ireturn
+func New(param params.Params, api hapi.HAProxyClient, logger *slog.Logger) (p Process) {
 	switch {
 	case param.UseWithPebble:
 		p = newpebbleControl(api, param, logger)

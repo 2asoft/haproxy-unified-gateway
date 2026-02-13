@@ -37,7 +37,7 @@ vars:
   GOFUMPT_URL: mvdan.cc/gofumpt
 
   REVIVE_NAME: revive
-  REVIVE_VERSION: v1.13.0
+  REVIVE_VERSION: v1.14.0
   REVIVE_URL: github.com/mgechev/revive
 
   GOTESTSUM_NAME: gotestsum
