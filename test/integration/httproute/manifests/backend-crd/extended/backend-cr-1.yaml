@@ -17,4 +17,3 @@ spec:
     hdr_format: '%[ssl_fc]'
     hdr_name: X_Is_Secure
     type: add-header
-  name: backend-cr-1

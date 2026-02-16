@@ -7,4 +7,3 @@ spec:
   - hdr_format: 'Staging'
     hdr_name: X-Environment
     type: add-header
-  name: backend-cr-2
