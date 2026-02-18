@@ -372,7 +372,7 @@ func registerControllers(ctx context.Context, extractGVK utilsk8s.ExtractGVK, cf
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
-						k8spredicate.GenerationChangedPredicate{},
+						k8spredicate.ResourceVersionChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.Namespaces),
 					),
 				),
