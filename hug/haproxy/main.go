@@ -97,6 +97,9 @@ func (h *AppManagerImpl) Run() {
 						logging.LogAttrError(err),
 					)
 				}
+				if haproxyCfg.Done != nil {
+					close(haproxyCfg.Done)
+				}
 			}
 		}
 	})

@@ -20,9 +20,18 @@ import (
 )
 
 type HaproxyConfDiffs struct {
-	Created    structured.Structured
-	Updated    structured.Structured
-	Deleted    structured.Structured
+	Created structured.Structured
+	Updated structured.Structured
+	Deleted structured.Structured
+	// If not nil, it has to be closed
+	// If the gate controller is setup to use runtime commands, it has to be closed after applying the diffs.
+	// If the gate controller is setup to not use runtime commands, it can be closed immediately after having received the diffs.
+	//
+	// h.applyCfgUpdates(haproxyCfg)
+	// if haproxyCfg.Done != nil {
+	//  close(haproxyCfg.Done)
+	// }
+	Done       chan struct{}
 	ReloadNeed bool
 }
 
