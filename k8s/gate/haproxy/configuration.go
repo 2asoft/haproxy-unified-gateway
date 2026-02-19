@@ -165,15 +165,20 @@ func (c *Configuration) upsertBackend(logger *slog.Logger, be *models.Backend) e
 	return nil
 }
 
-func (c *Configuration) upsertBackendWithServers(logger *slog.Logger, beName string, servers map[string]models.Server) ([]RuntimeServerStateData, error) {
+type ServerDiff struct {
+	deleted map[string]struct{}
+	added   map[string]struct{}
+}
+
+func (c *Configuration) upsertBackendWithServers(logger *slog.Logger, beName string, servers map[string]models.Server) (ServerDiff, error) {
 	be, ok := c.structured.Backends[beName]
 	if !ok {
-		return nil, fmt.Errorf("could not find backend %s", beName)
+		return ServerDiff{}, fmt.Errorf("could not find backend %s", beName)
 	}
 
 	beBackup, err := DeepCopyBackend(be)
 	if err != nil {
-		return nil, err
+		return ServerDiff{}, err
 	}
 	be.Servers = servers
 	// 1- Same servers
@@ -183,7 +188,7 @@ func (c *Configuration) upsertBackendWithServers(logger *slog.Logger, beName str
 		logger.LogAttrs(context.Background(), slog.LevelDebug, "Backend [servers][same]",
 			logging.LogAttrBackendName(be.Name),
 		)
-		return nil, nil
+		return ServerDiff{}, nil
 	}
 
 	// 2- Servers differ
@@ -193,26 +198,17 @@ func (c *Configuration) upsertBackendWithServers(logger *slog.Logger, beName str
 	)
 
 	// Compute list of delete servers to update them through runtime = to set to MAINT
-	deletedServerNames := utils.SetDifference(beBackup.Servers, be.Servers)
+	// Compute list of added servers to create them through runtime
+	serverDiffs := ServerDiff{
+		deleted: utils.SetDifference(beBackup.Servers, be.Servers),
+		added:   utils.SetDifference(be.Servers, beBackup.Servers),
+	}
 
 	// 2.1- Update the new Servers in Backend, so it will be written in the configuration
 	c.diffs.Updated.Backends[be.Name] = be
 	c.structured.Backends[be.Name] = be
 
-	// 2.2- If some servers were deleted, set the server to Maintenance through runtime
-	// TODO: we also need to check in HUG when we update the configuration that if BE differ only by deleted servers...
-	runtimeServerStateData := make([]RuntimeServerStateData, 0)
-	for serverName := range deletedServerNames {
-		runtimeServerStateData = append(runtimeServerStateData, RuntimeServerStateData{
-			BackendName: be.Name,
-			ServerName:  serverName,
-			IP:          "127.0.0.1",
-			Port:        1,
-			State:       "maint",
-		})
-	}
-
-	return runtimeServerStateData, nil
+	return serverDiffs, nil
 }
 
 func (c *Configuration) upsertBackendMetadata(logger *slog.Logger, beName string, md metadata.MetaData) error {

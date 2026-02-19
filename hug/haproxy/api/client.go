@@ -38,6 +38,7 @@ type HAProxyClient interface { //nolint:interfacebloat
 	Frontend
 	Bind
 	Backend
+	Defaults
 	RuntimeClient() runtime.Runtime
 }
 
@@ -63,6 +64,10 @@ type Backend interface {
 	BackendsGet() (models.Backends, error)
 	BackendGet(backendName string) (models.Backend, error)
 	BackendEdit(backend models.Backend) error
+}
+
+type Defaults interface {
+	DefaultsSectionGet(name string) (*models.Defaults, error)
 }
 
 type Server interface {

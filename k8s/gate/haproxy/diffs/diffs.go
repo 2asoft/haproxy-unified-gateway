@@ -26,7 +26,6 @@ type HaproxyConfDiffs struct {
 	// If not nil, it has to be closed
 	// If the gate controller is setup to use runtime commands, it has to be closed after applying the diffs.
 	// If the gate controller is setup to not use runtime commands, it can be closed immediately after having received the diffs.
-	//
 	// h.applyCfgUpdates(haproxyCfg)
 	// if haproxyCfg.Done != nil {
 	//  close(haproxyCfg.Done)

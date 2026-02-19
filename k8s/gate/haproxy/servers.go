@@ -24,7 +24,6 @@ import (
 
 	"github.com/haproxytech/client-native/v6/misc"
 	"github.com/haproxytech/client-native/v6/models"
-	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/templates"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/index"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
@@ -124,35 +123,17 @@ func (b *HaproxyConfMgrImpl) processEndpointSlices(ctx context.Context) error {
 				errors.Add(err)
 				continue
 			}
-			runtimeServerStateData, err := b.configuration.upsertBackendWithServers(b.logger, backendPort.backendName, servers)
+			serverDiffs, err := b.configuration.upsertBackendWithServers(b.logger, backendPort.backendName, servers)
 			if err != nil {
 				errors.Add(err)
 				continue
 			}
-			// try to run the runtime state update (to MAINT)
-			if len(runtimeServerStateData) != 0 {
-				reload.Instance().AttemptDynamicServerStateUpdate("backend %s", backendPort.backendName)
-				err = b.RuntimeSetServerAddrAndState(runtimeServerStateData)
-				if err != nil {
-					reload.Instance().SetDynamicServerStateUpdateFailure("backend %s", backendPort.backendName)
-					b.logger.LogAttrs(context.Background(), slog.LevelError, "Runtime update of server state failed",
-						logging.LogAttrError(err))
-					errors.Add(err)
-					continue
-				}
+
+			if err = b.runtimeDeleteServers(backendPort.backendName, serverDiffs); err != nil {
+				errors.Add(err)
 			}
-			// try to delete the server through runtime
-			for _, runtimeServerData := range runtimeServerStateData {
-				err = b.RuntimeDeleteServer(runtimeServerData.BackendName, runtimeServerData.ServerName)
-				if err != nil {
-					b.logger.LogAttrs(context.Background(), slog.LevelError, "Runtime delete of server failed",
-						logging.LogAttrError(err), logging.LogAttrBackendName(runtimeServerData.BackendName),
-						logging.LogAttrServerName(runtimeServerData.ServerName))
-				} else {
-					b.logger.LogAttrs(context.Background(), slog.LevelDebug, "Runtime delete of server success",
-						logging.LogAttrBackendName(runtimeServerData.BackendName),
-						logging.LogAttrServerName(runtimeServerData.ServerName))
-				}
+			if err = b.runtimeCreateServers(backendPort.backendName, serverDiffs, servers); err != nil {
+				errors.Add(err)
 			}
 		}
 	}

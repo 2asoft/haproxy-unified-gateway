@@ -17,6 +17,7 @@ import (
 	hugconfig "github.com/haproxytech/haproxy-unified-gateway/hug/configuration"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/startup"
 	gateconfig "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/constants"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
@@ -63,7 +64,7 @@ func SetupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions
 		opt.LinkID("hug"),
 		opt.InitialStructured(initialStructured),
 		opt.CacheReSyncPeriod(hugConfig.CacheResyncPeriod),
-		opt.DefaultsSectionName(gateconfig.DefaultsSectionName),
+		opt.DefaultsSectionName(constants.DefaultsSectionName),
 		opt.RuntimeUpdate(gateconfig.DefaultWaitForRuntimeTimeout),   // Send commands through runtime in Gate library
 		opt.StoreCertificateOnDisk(storage.StructureTypeCertDefault), // Store the certificates on disk
 		opt.StoreMapsOnDisk(storage.StructureTypeMapsDefault),        // Store the maps on disk

@@ -122,6 +122,10 @@ func LogAttrServerName(name string) slog.Attr {
 	return slog.String("serverName", name)
 }
 
+func LogAttrCommand(command string) slog.Attr {
+	return slog.String("command", command)
+}
+
 func LogAttrVirtualListenerName(name string) slog.Attr {
 	return slog.String("virtualListenerName", name)
 }
