@@ -212,14 +212,14 @@ func (b *HaproxyConfMgrImpl) getServersForBackend(svcKey client.ObjectKey, be Ba
 				targetPortInt := targetPort.IntVal
 				if epPort.Port != nil && targetPortInt == *epPort.Port {
 					foundPort = true
-					serverPort = *epPort.Port //lint:ignore SA4006 false positive until we update staticcheck
+					serverPort = *epPort.Port
 				}
 			case intstr.String:
 				targetPortStr := targetPort.String()
 				if epPort.Name != nil && targetPortStr == *epPort.Name {
 					foundPort = true
 					if epPort.Port != nil {
-						serverPort = *epPort.Port //lint:ignore SA4006 false positive until we update staticcheck
+						serverPort = *epPort.Port
 					}
 				}
 			}
@@ -235,7 +235,7 @@ func (b *HaproxyConfMgrImpl) getServersForBackend(svcKey client.ObjectKey, be Ba
 		for _, eps := range endpointsForAddressType.endpoints {
 			for _, address := range eps.Addresses {
 				// Compute the server Name
-				serverName, err := b.getServerName(address, bePort)
+				serverName, err := b.getServerName(address, serverPort)
 				if err != nil {
 					errors.Add(err)
 					continue
