@@ -159,8 +159,8 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	mapFileRelativePath := "hug_http_8080"
 	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"})
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, 
-		[]string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"}, 
+	defer s.CleanupFixturesCheckMapFiles(fixturePath,
+		[]string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"},
 		mapFileRelativePath)
 
 	// Expected Conditions
@@ -207,7 +207,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "ko_resolvedRef")
 	s.CreateFixtures(fixturePath, nil)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil,mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")

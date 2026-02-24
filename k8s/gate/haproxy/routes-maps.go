@@ -163,18 +163,22 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 	}
 }
 
-func (b *RouteMgrImpl) writeMaps() {
+func (b *RouteMgrImpl) writeMaps() error {
 	if !b.topManager.params.StoreMapsOnDisk {
-		return
+		return nil
 	}
 
+	var errs utils.Errors
 	mapsStorage := b.topManager.params.mapsStorageEx
-	 for _, mapData := range mapsStorage.GetMaps() {
-		if mapData == nil {
+	for _, mapDir := range mapsStorage.GetMaps() {
+		if mapDir == nil {
 			continue
 		}
-		mapData.WriteOnDiskIfChanged()
-	 }
+		for _, mapFile := range mapDir {
+			errs.Add(mapFile.WriteOnDiskIfChanged())
+		}
+	}
+	return errs.Result()
 }
 
 // runtimeMapSync updates the runtime maps through runtime API
@@ -182,42 +186,43 @@ func (b *RouteMgrImpl) runtimeMapSync() (mapSyncError error) {
 	mapsStorage := b.topManager.params.mapsStorageEx
 	runtimeClient := b.topManager.haproxyClient.RuntimeClient()
 
-	for _, mapData := range mapsStorage.GetMaps() {
-		mapID := b.getMapID(mapData.FileName)
-		// b.topManager.logger.LogAttrs(context.Background(), 
-		// slog.LevelInfo, "Runtime Sync", slog.String("map", mapData.FileName), slog.String("mapID", mapID))
-		for entryKey, entryValue:= range mapData.Entries  {
-			key:=entryKey.Hostname
-			if entryKey.Path != "" {
-				key += entryKey.Path
-			}
-			routeValue:=maps.BuildRouteValue(entryValue.DesiredValue)
-			// if routeValue is empty, delete the entry
-			if routeValue == "" {
-				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Deleting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
-				err := runtimeClient.DeleteMapEntry(mapID, key )
+	for _, mapFiles := range mapsStorage.GetMaps() {
+		for _, mapData := range mapFiles {
+			mapID := b.getMapID(mapData.FileName)
+			// b.topManager.logger.LogAttrs(context.Background(),
+			// slog.LevelInfo, "Runtime Sync", slog.String("map", mapData.FileName), slog.String("mapID", mapID))
+			for entryKey, entryValue := range mapData.Entries {
+				key := entryKey.Hostname
+				if entryKey.Path != "" {
+					key += entryKey.Path
+				}
+				routeValue := maps.BuildRouteValue(entryValue.DesiredValue)
+				// if routeValue is empty, delete the entry
+				if routeValue == "" {
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Deleting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
+					err := runtimeClient.DeleteMapEntry(mapID, key)
+					if err != nil {
+						return err
+					}
+					continue
+				}
+				// else update the entry
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Upserting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
+				err := runtimeClient.SetMapEntry(mapID, key, routeValue)
 				if err != nil {
 					return err
 				}
-				continue
-			}
-			// else update the entry
-			b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Upserting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
-			err := runtimeClient.SetMapEntry(mapID, key, routeValue )
-			if err != nil {
-				return err
 			}
 		}
 	}
-	
 	return nil
 }
 
 func (b *RouteMgrImpl) getMapID(fullPath string) string {
 	runtimeClient := b.topManager.haproxyClient.RuntimeClient()
 	// find the id of a map entry
-	maps, _ := runtimeClient.ShowMaps()
-	for _, m := range maps {
+	shownMaps, _ := runtimeClient.ShowMaps()
+	for _, m := range shownMaps {
 		if m.File == fullPath {
 			return "#" + m.ID
 		}

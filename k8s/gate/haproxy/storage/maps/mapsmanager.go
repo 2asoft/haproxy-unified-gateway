@@ -20,7 +20,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
@@ -29,13 +29,13 @@ import (
 
 // NewMapFileState creates a new instance of MapFileState with the given filename and logger.
 // It returns a pointer to the new instance.
-func NewMapFileState(fileName string,logger *slog.Logger) *MapFileState {
+func NewMapFileState(fileName string, logger *slog.Logger) *MapFileState {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogMapsStorage))
 	return &MapFileState{
-		FileName: fileName,
-		Entries: map[EntryKey]*EntryValue{},
+		FileName:          fileName,
+		Entries:           map[EntryKey]*EntryValue{},
 		EntriesByResource: map[ResourceOrigin]map[EntryKey]struct{}{},
-		logger: mylogger,
+		logger:            mylogger,
 	}
 }
 
@@ -43,106 +43,107 @@ func NewMapFileState(fileName string,logger *slog.Logger) *MapFileState {
 // It iterates over each entry/intent for the filename and collects the operations for each backend name.
 // It then fills the desired values with the current values and updates the diff values with the desired operations.
 // Finally, it prints the map file state after processing.
+//
+//revive:disable:function-length
 func (m *MapFileState) ProcessMapFiles() {
-			m.logger.LogAttrs(
-			context.Background(),
-			slog.LevelInfo,
-			"Processing map file",
-			slog.String("map file", m.FileName))
-    // Iteration over each entry/intent for the filename
-    for _, entryValue := range m.Entries {
-        // We collect the operations for each backend, backend name -> weights + operations (create, update, delete, empty)
-        // Operations are collected by backend name and gather all intent operations (orders) from all resource origins addressing the same backend
-        backendsOp := map[string]*CollectedBackendIntents{}
-        // We iterate over each intent from a resource origin in the two imbricated loops
-        // Each intent concerns a backend name associated with an operation (create, update, delete, empty)
-        for _, intentValueFromResourceOrigin := range entryValue.IntentsByBackendByResouceOrigin {
-            for intentBackendName,intentValueForBackendName := range intentValueFromResourceOrigin {
-                // If no previous intent for the same backend name, we create it    
-                if backendsOp[intentBackendName] == nil {
-                backendsOp[intentBackendName] = &CollectedBackendIntents{}
-                }
-                backendsOpValue := backendsOp[intentBackendName]
-                // We collect the operations
-                switch intentValueForBackendName.Operation {
-                    case Create:
-                        backendsOpValue.Create = true
-                    case Update:
-                        backendsOpValue.Update= true
-                    case Delete:
-                        backendsOpValue.Delete= true
-                    case Empty:
-                        backendsOpValue.Empty= true
-                }
-                // We recalculate the weight from all intents for the same backend name if the operation is not delete
-                weight := utils.PointerDefaultValueIfNil(backendsOpValue.Weight)
-                if intentValueForBackendName.Operation!= Delete  {
-                        weight += utils.PointerDefaultValueIfNil(intentValueForBackendName.Weight)
-                }
-                backendsOpValue.Weight =  &weight
-        }
-    }
-        // fill desired values with current values
-        entryValue.DesiredValue =map[string]*WeightedBackend {}
-        for backendName,weightedBackend := range entryValue.CurrentValue {
-            entryValue.DesiredValue[backendName] = weightedBackend.Copy()
-        }
+	m.logger.LogAttrs(
+		context.Background(),
+		slog.LevelInfo,
+		"Processing map file",
+		slog.String("map file", m.FileName))
+	// Iteration over each entry/intent for the filename
+	for _, entryValue := range m.Entries {
+		// We collect the operations for each backend, backend name -> weights + operations (create, update, delete, empty)
+		// Operations are collected by backend name and gather all intent operations (orders) from all resource origins addressing the same backend
+		backendsOp := map[string]*CollectedBackendIntents{}
+		// We iterate over each intent from a resource origin in the two imbricated loops
+		// Each intent concerns a backend name associated with an operation (create, update, delete, empty)
+		for _, intentValueFromResourceOrigin := range entryValue.IntentsByBackendByResouceOrigin {
+			for intentBackendName, intentValueForBackendName := range intentValueFromResourceOrigin {
+				// If no previous intent for the same backend name, we create it
+				if backendsOp[intentBackendName] == nil {
+					backendsOp[intentBackendName] = &CollectedBackendIntents{}
+				}
+				backendsOpValue := backendsOp[intentBackendName]
+				// We collect the operations
+				switch intentValueForBackendName.Operation {
+				case Create:
+					backendsOpValue.Create = true
+				case Update:
+					backendsOpValue.Update = true
+				case Delete:
+					backendsOpValue.Delete = true
+				case Empty:
+					backendsOpValue.Empty = true
+				}
+				// We recalculate the weight from all intents for the same backend name if the operation is not delete
+				weight := utils.PointerDefaultValueIfNil(backendsOpValue.Weight)
+				if intentValueForBackendName.Operation != Delete {
+					weight += utils.PointerDefaultValueIfNil(intentValueForBackendName.Weight)
+				}
+				backendsOpValue.Weight = &weight
+			}
+		}
+		// fill desired values with current values
+		entryValue.DesiredValue = map[string]*WeightedBackend{}
+		for backendName, weightedBackend := range entryValue.CurrentValue {
+			entryValue.DesiredValue[backendName] = weightedBackend.Copy()
+		}
 
-        for backendName,collectedIntents := range backendsOp {
-            //DiffValue
-            diffValue := &IntentValue{
-                WeightedBackend: WeightedBackend{
-                    BackendName: backendName,
-                    Weight: func() *int32 {
-                        if collectedIntents.Weight != nil {
-                            weight := *collectedIntents.Weight
-                            return &weight
-                        }
-                        return nil
-                    }(),
-                },
-                Operation: func()Operation{
-                    // Deduced operation in ordered precedence
-                    // Ex: an update is prior to a delete
-                    switch  {    
-                    case collectedIntents.Update:
-                        return Update
-                    // Particular case: an empty intent is prior to a create but not a delete
-                    case collectedIntents.Empty && !collectedIntents.Delete:
-                        return Empty
-                    case collectedIntents.Create:
-                        return Create
-                    case collectedIntents.Delete:
-                        return Delete
-                    default:
-                        return ""
-                    }
-                }(),
-            }
-            if diffValue.Operation == Empty {
-                delete(entryValue.DiffValue, backendName)
-                continue
-            }
-            entryValue.DiffValue[backendName] = diffValue
-            // DesiredValue
-            if entryValue.DiffValue[backendName].Operation == Create ||
-            entryValue.DiffValue[backendName].Operation == Update {
-                entryValue.DesiredValue[backendName] = &WeightedBackend{
-                    BackendName: backendName,
-                    Weight: func() *int32 {
-                        if diffValue.Weight != nil {
-                            weight := *diffValue.Weight
-                            return &weight
-                        }
-                        return nil
-                    }(),
-                }
-                
-            } else if entryValue.DiffValue[backendName].Operation == Delete{
-                delete(entryValue.DesiredValue, backendName)
-            }
-        }
-    }
+		for backendName, collectedIntents := range backendsOp {
+			// DiffValue
+			diffValue := &IntentValue{
+				WeightedBackend: WeightedBackend{
+					BackendName: backendName,
+					Weight: func() *int32 {
+						if collectedIntents.Weight != nil {
+							weight := *collectedIntents.Weight
+							return &weight
+						}
+						return nil
+					}(),
+				},
+				Operation: func() Operation {
+					// Deduced operation in ordered precedence
+					// Ex: an update is prior to a delete
+					switch {
+					case collectedIntents.Update:
+						return Update
+					// Particular case: an empty intent is prior to a create but not a delete
+					case collectedIntents.Empty && !collectedIntents.Delete:
+						return Empty
+					case collectedIntents.Create:
+						return Create
+					case collectedIntents.Delete:
+						return Delete
+					default:
+						return ""
+					}
+				}(),
+			}
+			if diffValue.Operation == Empty {
+				delete(entryValue.DiffValue, backendName)
+				continue
+			}
+			entryValue.DiffValue[backendName] = diffValue
+			// DesiredValue
+			if entryValue.DiffValue[backendName].Operation == Create ||
+				entryValue.DiffValue[backendName].Operation == Update {
+				entryValue.DesiredValue[backendName] = &WeightedBackend{
+					BackendName: backendName,
+					Weight: func() *int32 {
+						if diffValue.Weight != nil {
+							weight := *diffValue.Weight
+							return &weight
+						}
+						return nil
+					}(),
+				}
+			} else if entryValue.DiffValue[backendName].Operation == Delete {
+				delete(entryValue.DesiredValue, backendName)
+			}
+		}
+	}
 	if m.logger.Enabled(context.Background(), slog.LevelDebug) {
 		m.logger.LogAttrs(
 			context.Background(),
@@ -154,7 +155,6 @@ func (m *MapFileState) ProcessMapFiles() {
 	}
 }
 
-
 // Reset resets the MapFileState to its initial state.
 // It deletes all the entries with their corresponding functions and resources.
 // It also resets the DesiredValue and diffValue of each entry to their initial state.
@@ -165,45 +165,46 @@ func (m *MapFileState) Reset() {
 		slog.LevelInfo,
 		"Resetting map file",
 		slog.String("map file", m.FileName))
-    for entryKey, entryValue := range m.Entries {
+	for entryKey, entryValue := range m.Entries {
 		if entryValue == nil {
 			delete(m.Entries, entryKey)
 			continue
 		}
-        for resourceOrigin, intentByBackendByResouceOrigin := range entryValue.IntentsByBackendByResouceOrigin {
-            for backendName,intent := range intentByBackendByResouceOrigin {
+		for resourceOrigin, intentByBackendByResouceOrigin := range entryValue.IntentsByBackendByResouceOrigin {
+			for backendName, intent := range intentByBackendByResouceOrigin {
 				if intent.Operation == Delete {
 					delete(intentByBackendByResouceOrigin, backendName)
 				} else {
 					intent.Operation = ""
 				}
-        	}
+			}
 			if len(intentByBackendByResouceOrigin) == 0 {
 				delete(entryValue.IntentsByBackendByResouceOrigin, resourceOrigin)
 			}
-        }
-        entryValue.CurrentValue = map[string]*WeightedBackend{}
-        for backendName, weightedBackend := range entryValue.DesiredValue {
-            entryValue.CurrentValue[backendName] = weightedBackend.Copy()
-        }
+		}
+		entryValue.CurrentValue = map[string]*WeightedBackend{}
+		for backendName, weightedBackend := range entryValue.DesiredValue {
+			entryValue.CurrentValue[backendName] = weightedBackend.Copy()
+		}
 		entryValue.DiffValue = map[string]*IntentValue{}
 		if len(entryValue.IntentsByBackendByResouceOrigin) == 0 && len(entryValue.CurrentValue) == 0 {
 			delete(m.Entries, entryKey)
 		}
-    }
+	}
 }
 
 type EntryKey struct {
-    Hostname string
-    Path string
+	Hostname string
+	Path     string
 }
 
 func (ek EntryKey) String() string {
 	return fmt.Sprintf("EntryKey {Hostname: %s, Path: %s}", ek.Hostname, ek.Path)
 }
+
 type ResourceOrigin struct {
-    Namespace string
-    Name string
+	Namespace string
+	Name      string
 }
 
 func (ro ResourceOrigin) String() string {
@@ -211,8 +212,8 @@ func (ro ResourceOrigin) String() string {
 }
 
 type IntentValue struct {
-    WeightedBackend
-    Operation
+	WeightedBackend
+	Operation
 }
 
 func (i IntentValue) String() string {
@@ -220,81 +221,80 @@ func (i IntentValue) String() string {
 }
 
 func (i IntentValue) Copy() *IntentValue {
-    weight:=utils.PointerDefaultValueIfNil(i.WeightedBackend.Weight)
-    return &IntentValue{
-        WeightedBackend: WeightedBackend{
-            BackendName: i.WeightedBackend.BackendName,
-            Weight: &weight,
-        },
-        Operation: i.Operation,
-    }
+	weight := utils.PointerDefaultValueIfNil(i.WeightedBackend.Weight)
+	return &IntentValue{
+		WeightedBackend: WeightedBackend{
+			BackendName: i.WeightedBackend.BackendName,
+			Weight:      &weight,
+		},
+		Operation: i.Operation,
+	}
 }
 
 type Operation string
 
 const (
-    Create Operation = "create"
-    Update Operation = "update"
-    Delete Operation = "delete"
-    Empty Operation = ""
+	Create Operation = "create"
+	Update Operation = "update"
+	Delete Operation = "delete"
+	Empty  Operation = ""
 )
 
 // EntryValue represents all the information necessary to compute the desired state for a given key in the map file
 type EntryValue struct {
-    //IntentsByBackendByResouceOrigin map[ResourceOrigin]*IntentValue
-    IntentsByBackendByResouceOrigin map[ResourceOrigin]map[string]*IntentValue // resource origin -> backend name -> backend + weight
-    CurrentValue map[string]*WeightedBackend // backend name -> backend + weight
-    DiffValue map[string]*IntentValue // backend name -> backend + weight + operation (useful for sockets orders)
-    DesiredValue map[string]*WeightedBackend // backend name -> backend + weight
+	// IntentsByBackendByResouceOrigin map[ResourceOrigin]*IntentValue
+	IntentsByBackendByResouceOrigin map[ResourceOrigin]map[string]*IntentValue // resource origin -> backend name -> backend + weight
+	CurrentValue                    map[string]*WeightedBackend                // backend name -> backend + weight
+	DiffValue                       map[string]*IntentValue                    // backend name -> backend + weight + operation (useful for sockets orders)
+	DesiredValue                    map[string]*WeightedBackend                // backend name -> backend + weight
 }
 
 type WeightedBackend struct {
-    BackendName string
-    Weight *int32
+	Weight      *int32
+	BackendName string
 }
 
 func (wb WeightedBackend) String() string {
 	return fmt.Sprintf("BackendName: %s, Weight: %d", wb.BackendName, utils.PointerDefaultValueIfNil(wb.Weight))
 }
 
-func (wb WeightedBackend) Copy() *WeightedBackend{
-    weight := utils.PointerDefaultValueIfNil(wb.Weight)
-    return &WeightedBackend{
-        BackendName: wb.BackendName,
-        Weight: &weight,
-    }
+func (wb WeightedBackend) Copy() *WeightedBackend {
+	weight := utils.PointerDefaultValueIfNil(wb.Weight)
+	return &WeightedBackend{
+		BackendName: wb.BackendName,
+		Weight:      &weight,
+	}
 }
 
-
 func (ev EntryValue) CopyDesiredValue() map[string]*WeightedBackend {
-    result := map[string]*WeightedBackend{}
-    for backendName, weightedBackend := range ev.DesiredValue {
-        result[backendName] = weightedBackend.Copy()
-    }
-    return result
+	result := map[string]*WeightedBackend{}
+	for backendName, weightedBackend := range ev.DesiredValue {
+		result[backendName] = weightedBackend.Copy()
+	}
+	return result
 }
 
 type MapFileState struct {
-    FileName    string
-    // The contents of the map file.
-    // Could be in the format: hostname+path ou sni-> backend
-    Entries map[EntryKey]*EntryValue
-    EntriesByResource map[ResourceOrigin]map[EntryKey]struct{}
-	logger       *slog.Logger
+	// The contents of the map file.
+	// Could be in the format: hostname+path ou sni-> backend
+	Entries           map[EntryKey]*EntryValue
+	EntriesByResource map[ResourceOrigin]map[EntryKey]struct{}
+	logger            *slog.Logger
+	FileName          string
 }
 
 // Collect all intentions for each backend
 // Each order has a precedence order Create & Update > Delete
 type PresentOperations struct {
-    Create bool
-    Update bool
-    Delete bool
-    Empty bool
+	Create bool
+	Update bool
+	Delete bool
+	Empty  bool
 }
 
 type CollectedBackendIntents struct {
-    PresentOperations
-    Weight *int32
+	Weight *int32
+	PresentOperations
 }
 
 // ApplyRoute applies a set of new entries to the MapFileState and updates the EntriesByResource accordingly.
@@ -322,7 +322,6 @@ func (m *MapFileState) ApplyRoute(
 	// 2 Handle removed entries (previous but not in new)
 	for ek := range previous {
 		if _, stillPresent := current[ek]; !stillPresent {
-
 			// force deletion of all backends for this resource on this entry
 			m.ApplyDesiredBackends(ek, ro, map[string]*WeightedBackend{})
 		}
@@ -347,7 +346,6 @@ func (m *MapFileState) ApplyDesiredBackends(
 	resourceOrigin ResourceOrigin,
 	desired map[string]*WeightedBackend,
 ) {
-
 	m.logger.LogAttrs(
 		context.Background(),
 		slog.LevelDebug,
@@ -378,21 +376,21 @@ func (m *MapFileState) ApplyDesiredBackends(
 	if entry == nil {
 		entry = &EntryValue{
 			IntentsByBackendByResouceOrigin: map[ResourceOrigin]map[string]*IntentValue{},
-			CurrentValue:                   map[string]*WeightedBackend{},
-			DiffValue:                      map[string]*IntentValue{},
-			DesiredValue:                   map[string]*WeightedBackend{},
+			CurrentValue:                    map[string]*WeightedBackend{},
+			DiffValue:                       map[string]*IntentValue{},
+			DesiredValue:                    map[string]*WeightedBackend{},
 		}
 		m.Entries[entryKey] = entry
 	}
 
-    // 2. Get the intents for all backends from this resource origin
+	// 2. Get the intents for all backends from this resource origin
 	currentByBackend := entry.IntentsByBackendByResouceOrigin[resourceOrigin]
 	if currentByBackend == nil {
 		currentByBackend = map[string]*IntentValue{}
 		entry.IntentsByBackendByResouceOrigin[resourceOrigin] = currentByBackend
 	}
 
-    // 3. DELETE : present before, absent now
+	// 3. DELETE : present before, absent now
 	for backendName, currentIntent := range currentByBackend {
 		if _, stillDesired := desired[backendName]; !stillDesired {
 			currentByBackend[backendName] = &IntentValue{
@@ -456,7 +454,7 @@ func (m *MapFileState) WriteOnDiskIfChanged() error {
 	}
 	var f *os.File
 	var err error
-	dir:= filepath.Dir(m.FileName)
+	dir := filepath.Dir(m.FileName)
 	if _, err = os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0o755)
 		if err != nil {
@@ -473,7 +471,7 @@ func (m *MapFileState) WriteOnDiskIfChanged() error {
 
 	var hasDiff bool
 	for _, entryValue := range m.Entries {
-		hasDiff = hasDiff || (len(entryValue.DiffValue) >0)
+		hasDiff = hasDiff || (len(entryValue.DiffValue) > 0)
 		if hasDiff {
 			break
 		}
@@ -492,22 +490,19 @@ func (m *MapFileState) WriteOnDiskIfChanged() error {
 	for entryKey := range m.Entries {
 		orderedEntries = append(orderedEntries, entryKey)
 	}
-	sort.Slice(orderedEntries, func(i, j int) bool {
-		if orderedEntries[i].Hostname != orderedEntries[j].Hostname {
-			return orderedEntries[i].Hostname < orderedEntries[j].Hostname
-		}
-		return orderedEntries[i].Path < orderedEntries[j].Path
-	})
+	slices.SortFunc(orderedEntries, compareEntryKeys)
 
 	for _, entryKey := range orderedEntries {
 		entryValue := m.Entries[entryKey]
-
-		key:=entryKey.Hostname
+		if entryValue == nil {
+			continue
+		}
+		key := entryKey.Hostname
 		if entryKey.Path != "" {
 			key += entryKey.Path
 		}
 		value := BuildRouteValue(entryValue.DesiredValue)
-		if entryValue == nil|| value == "" {
+		if value == "" {
 			continue
 		}
 		m.logger.LogAttrs(
@@ -526,8 +521,6 @@ func (m *MapFileState) WriteOnDiskIfChanged() error {
 	return nil
 }
 
-
-
 func BuildRouteValue(desired map[string]*WeightedBackend) string {
 	if len(desired) == 0 {
 		return ""
@@ -543,7 +536,7 @@ func BuildRouteValue(desired map[string]*WeightedBackend) string {
 	for name := range desired {
 		backendNames = append(backendNames, name)
 	}
-	sort.Strings(backendNames)
+	slices.Sort(backendNames)
 
 	var b strings.Builder
 	b.WriteString(`{"a":"wr","l":"`)
@@ -557,13 +550,12 @@ func BuildRouteValue(desired map[string]*WeightedBackend) string {
 		if w != nil {
 			weight = *w
 		}
-		fmt.Fprintf(&b, "%s:%d", name, weight)
+		_, _ = fmt.Fprintf(&b, "%s:%d", name, weight)
 	}
 
 	b.WriteString(`"}`)
 	return b.String()
 }
-
 
 func copyWeight(w *int32) *int32 {
 	if w == nil {
@@ -583,10 +575,9 @@ func weightsEqual(a, b *int32) bool {
 	return *a == *b
 }
 
-
 func (cbi CollectedBackendIntents) String() string {
-	return fmt.Sprintf("CollectedBackendIntents {PresentOperations: %+v, Weight: %d}", 
-	cbi.PresentOperations, utils.PointerDefaultValueIfNil(cbi.Weight))
+	return fmt.Sprintf("CollectedBackendIntents {PresentOperations: %+v, Weight: %d}",
+		cbi.PresentOperations, utils.PointerDefaultValueIfNil(cbi.Weight))
 }
 
 func sortedEntryKeys(m map[EntryKey]*EntryValue) []EntryKey {
@@ -594,12 +585,7 @@ func sortedEntryKeys(m map[EntryKey]*EntryValue) []EntryKey {
 	for k := range m {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].Hostname != keys[j].Hostname {
-			return keys[i].Hostname < keys[j].Hostname
-		}
-			return keys[i].Path < keys[j].Path
-	})
+	slices.SortFunc(keys, compareEntryKeys)
 	return keys
 }
 
@@ -608,17 +594,17 @@ func sortedStringKeys[T any](m map[string]T) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	return keys
 }
 
 func (m *MapFileState) PrettyString() string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "MapFileState: %s\n", m.FileName)
+	_, _ = fmt.Fprintf(&b, "MapFileState: %s\n", m.FileName)
 
 	for _, key := range sortedEntryKeys(m.Entries) {
-		fmt.Fprintf(&b, "└─ %s\n", key.String())
+		_, _ = fmt.Fprintf(&b, "└─ %s\n", key.String())
 		b.WriteString(m.Entries[key].PrettyString("   "))
 	}
 
@@ -629,12 +615,12 @@ func (ev *EntryValue) PrettyString(indent string) string {
 	var b strings.Builder
 
 	// -------- Intents --------
-	fmt.Fprintf(&b, "%s├─ Intents\n", indent)
+	_, _ = fmt.Fprintf(&b, "%s├─ Intents\n", indent)
 	for ro, backends := range ev.IntentsByBackendByResouceOrigin {
-		fmt.Fprintf(&b, "%s│  ├─ %s\n", indent, ro.String())
+		_, _ = fmt.Fprintf(&b, "%s│  ├─ %s\n", indent, ro.String())
 		for _, backend := range sortedStringKeys(backends) {
 			intent := backends[backend]
-			fmt.Fprintf(
+			_, _ = fmt.Fprintf(
 				&b,
 				"%s│  │  └─ %s weight=%d op=%s\n",
 				indent,
@@ -646,10 +632,10 @@ func (ev *EntryValue) PrettyString(indent string) string {
 	}
 
 	// -------- Current --------
-	fmt.Fprintf(&b, "%s├─ CurrentValue\n", indent)
+	_, _ = fmt.Fprintf(&b, "%s├─ CurrentValue\n", indent)
 	for _, backend := range sortedStringKeys(ev.CurrentValue) {
 		wb := ev.CurrentValue[backend]
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			&b,
 			"%s│  └─ %s weight=%d\n",
 			indent,
@@ -659,10 +645,10 @@ func (ev *EntryValue) PrettyString(indent string) string {
 	}
 
 	// -------- Diff --------
-	fmt.Fprintf(&b, "%s├─ DiffValue\n", indent)
+	_, _ = fmt.Fprintf(&b, "%s├─ DiffValue\n", indent)
 	for _, backend := range sortedStringKeys(ev.DiffValue) {
 		diff := ev.DiffValue[backend]
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			&b,
 			"%s│  └─ %s weight=%d op=%s\n",
 			indent,
@@ -673,10 +659,10 @@ func (ev *EntryValue) PrettyString(indent string) string {
 	}
 
 	// -------- Desired --------
-	fmt.Fprintf(&b, "%s└─ DesiredValue\n", indent)
+	_, _ = fmt.Fprintf(&b, "%s└─ DesiredValue\n", indent)
 	for _, backend := range sortedStringKeys(ev.DesiredValue) {
 		wb := ev.DesiredValue[backend]
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			&b,
 			"%s   └─ %s weight=%d\n",
 			indent,
@@ -686,4 +672,20 @@ func (ev *EntryValue) PrettyString(indent string) string {
 	}
 
 	return b.String()
+}
+
+func compareEntryKeys(a, b EntryKey) int {
+	switch {
+	case a.Hostname < b.Hostname:
+		return -1
+	case a.Hostname > b.Hostname:
+		return 1
+	}
+	switch {
+	case a.Path < b.Path:
+		return -1
+	case a.Path > b.Path:
+		return 1
+	}
+	return 0
 }

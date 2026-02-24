@@ -83,7 +83,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	
+
 	s.Eventually(func() bool {
 		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 		if !correctMapContents {

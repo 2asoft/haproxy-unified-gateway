@@ -24,7 +24,6 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 
@@ -716,7 +715,7 @@ func readRuntimeMap(socketPath, mapPath string) (string, error) {
 	output := buf.String()
 
 	if strings.Contains(output, "No such map") {
-		return "", fmt.Errorf("map not found")
+		return "", fmt.Errorf("map %s not found", mapPath)
 	}
 
 	return output, nil
@@ -742,7 +741,7 @@ func normalizeMapContent(content string) string {
 		cleaned = append(cleaned, strings.Join(fields, " "))
 	}
 
-	sort.Strings(cleaned)
+	slices.Sort(cleaned)
 
 	return strings.Join(cleaned, "\n")
 }

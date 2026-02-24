@@ -31,26 +31,31 @@ func (b *RouteMgrImpl) processRoutes() error {
 	// var err error
 
 	b.fillMaps()
-	b.writeMaps()
+	var errs utils.Errors
+	errs.Add(b.writeMaps())
 
 	if !b.topManager.params.RuntimeUpdateHaproxy {
 		return nil
 	}
 	err := b.runtimeMapSync()
 	if err != nil && strings.Contains(err.Error(), "maps dir doesn't exist or not specified") {
-		return err
+		errs.Add(err)
+		return errs.Result()
 	}
+	// If runtime update failed, maps should not be reset so that in next run we can reapply.
 	b.ResetMapFiles()
 	return nil
 }
 
-func (b *RouteMgrImpl) ResetMapFiles () {
+func (b *RouteMgrImpl) ResetMapFiles() {
 	mapsStorage := b.topManager.params.mapsStorageEx
-	for _, mapData := range mapsStorage.GetMaps() {
-		if mapData == nil {
+	for _, mapDir := range mapsStorage.GetMaps() {
+		if mapDir == nil {
 			continue
 		}
-		mapData.Reset()
+		for _, mapFile := range mapDir {
+			mapFile.Reset()
+		}
 	}
 }
 
@@ -79,7 +84,7 @@ func (b *RouteMgrImpl) onUpsertedTLSRoute(routeKey k8stypes.NamespacedName, rout
 func (b *RouteMgrImpl) onValidTLSRouteUpserted(namespacedName k8stypes.NamespacedName,
 	tlsRoute *tree.TLSRoute, mapSNI, mapSNIDomainWildcardMap *maps.MapFileState, acceptedHostnamesForRoute []string,
 ) error {
-	desiredBackendsBySNI:= map[maps.EntryKey]map[string]*maps.WeightedBackend{}
+	desiredBackendsBySNI := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
 	desiredBackendsBySNIWildcard := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
 
 	for _, tlsRouteRule := range tlsRoute.Rules {
@@ -126,95 +131,96 @@ func (b *RouteMgrImpl) onValidTLSRouteUpserted(namespacedName k8stypes.Namespace
 					Hostname: hostname,
 				}
 				desiredBackendsByPath := mapDesiredBackends[entryKey]
-							if desiredBackendsByPath == nil {
-								desiredBackendsByPath = map[string]*maps.WeightedBackend{}
-								mapDesiredBackends[entryKey] = desiredBackendsByPath
-							}
-							// ... and we set the weighted backend
-							desiredBackendsByPath[backendName] = &maps.WeightedBackend{
-								BackendName: backendName,
-								Weight:      backend.Weight,
-							}
+				if desiredBackendsByPath == nil {
+					desiredBackendsByPath = map[string]*maps.WeightedBackend{}
+					mapDesiredBackends[entryKey] = desiredBackendsByPath
+				}
+				// ... and we set the weighted backend
+				desiredBackendsByPath[backendName] = &maps.WeightedBackend{
+					BackendName: backendName,
+					Weight:      backend.Weight,
+				}
 			}
 		}
 	}
 
-		mapSNI.ApplyRoute(
-				maps.ResourceOrigin{
-					Namespace: namespacedName.Namespace,
-					Name:      namespacedName.Name},
-					desiredBackendsBySNI)
-		mapSNIDomainWildcardMap.ApplyRoute(
-				maps.ResourceOrigin{
-					Namespace: namespacedName.Namespace,
-					Name:      namespacedName.Name},
-					desiredBackendsBySNIWildcard)		
+	mapSNI.ApplyRoute(
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		desiredBackendsBySNI)
+	mapSNIDomainWildcardMap.ApplyRoute(
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		desiredBackendsBySNIWildcard)
 	return nil
 }
 
 func (RouteMgrImpl) onInvalidTLSRouteUpserted(namespacedName k8stypes.NamespacedName, _ *tree.TLSRoute, mapSNI, mapSNIDomainWildcardMap *maps.MapFileState) error {
 	mapSNI.ApplyRoute(
-								maps.ResourceOrigin{
-									Namespace: namespacedName.Namespace,
-									Name:      namespacedName.Name},
-									map[maps.EntryKey]map[string]*maps.WeightedBackend{})
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		map[maps.EntryKey]map[string]*maps.WeightedBackend{})
 	mapSNIDomainWildcardMap.ApplyRoute(
-								maps.ResourceOrigin{
-									Namespace: namespacedName.Namespace,
-									Name:      namespacedName.Name},
-									map[maps.EntryKey]map[string]*maps.WeightedBackend{})
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		map[maps.EntryKey]map[string]*maps.WeightedBackend{})
 	return nil
 }
 
-func (b* RouteMgrImpl) onDeletedTLSRoute(namespacedName k8stypes.NamespacedName, route *tree.TLSRoute,
+func (b *RouteMgrImpl) onDeletedTLSRoute(namespacedName k8stypes.NamespacedName, route *tree.TLSRoute,
 	mapSNI *maps.MapFileState, mapSNIDomainWildcard *maps.MapFileState,
 ) error {
-	
 	return b.onInvalidTLSRouteUpserted(namespacedName, route, mapSNI, mapSNIDomainWildcard)
 }
 
-func (b* RouteMgrImpl) onDeletedHTTPRoute(namespacedName k8stypes.NamespacedName, route *tree.HTTPRoute,
+func (b *RouteMgrImpl) onDeletedHTTPRoute(namespacedName k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex, mapDomainWPathExact *maps.MapFileState,
 ) error {
-
 	return b.onInvalidHTTPRouteUpserted(namespacedName, route, mapExact, mapPrefix, mapRegex, mapDomainWPathExact)
 }
 
 func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route *tree.HTTPRoute,
 	mapExact, mapPrefix, mapRegex, mapDomainWildcardPathExact *maps.MapFileState, acceptedHostnamesForRoute []string,
 ) error { //revive:disable:function-length,cognitive-complexity
-
-		// Hostname + Path -> backend name -> weighted backend
-		desiredBackendsPathExactByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{} 
-		desiredBackendsPathPrefixByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
-		desiredBackendsRegexByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
-		desiredBackendsDomainWildcardByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
-		associatedMapFilesAndDesiredBackends := []struct {
-			mapFile *maps.MapFileState
-			desiredBackends map[maps.EntryKey]map[string]*maps.WeightedBackend
-		}{
+	// Hostname + Path -> backend name -> weighted backend
+	desiredBackendsPathExactByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
+	desiredBackendsPathPrefixByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
+	desiredBackendsRegexByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
+	desiredBackendsDomainWildcardByHostnameAndPath := map[maps.EntryKey]map[string]*maps.WeightedBackend{}
+	associatedMapFilesAndDesiredBackends := []struct {
+		mapFile         *maps.MapFileState
+		desiredBackends map[maps.EntryKey]map[string]*maps.WeightedBackend
+	}{
 		{
-			mapFile: mapExact,
+			mapFile:         mapExact,
 			desiredBackends: desiredBackendsPathExactByHostnameAndPath,
 		},
 		{
-			mapFile: mapPrefix,
+			mapFile:         mapPrefix,
 			desiredBackends: desiredBackendsPathPrefixByHostnameAndPath,
 		},
 		{
-			mapFile: mapRegex,
+			mapFile:         mapRegex,
 			desiredBackends: desiredBackendsRegexByHostnameAndPath,
 		},
 		{
-			mapFile: mapDomainWildcardPathExact,
+			mapFile:         mapDomainWildcardPathExact,
 			desiredBackends: desiredBackendsDomainWildcardByHostnameAndPath,
 		},
-		}
+	}
 
 	for _, rule := range route.Rules {
 		if !rule.Valid {
-        	continue
-    	}
+			continue
+		}
 		for _, backend := range rule.K8sResource.BackendRefs {
 			checkResult, ok := rule.CheckBackendRef.Get(backend.BackendObjectReference)
 			if !ok || !checkResult.Valid {
@@ -246,107 +252,110 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(_ k8stypes.NamespacedName, route
 			}
 			// For each accepted hostname ...
 			for _, hostname := range acceptedHostnamesForRoute {
-						for _, match := range rule.K8sResource.Matches {
-							// ... we collect each path ...
-							path := "/"
-							if match.Path.Value != nil {
-								path = *match.Path.Value
-							}
-							var pathType gatewayv1.PathMatchType
-							// ... and their path type ...
-							if match.Path.Type == nil {
-								pathType = gatewayv1.PathMatchPathPrefix
-							} else {
-								pathType = *match.Path.Type
-							}
-							mapDesiredBackends := desiredBackendsPathExactByHostnameAndPath
-							originalHostname := hostname
-							hostname = sanitizeHostname(hostname, pathType)
-							switch pathType {
-								case gatewayv1.PathMatchExact :
-									if isDomainWildcard(string(originalHostname)) {
-										mapDesiredBackends = desiredBackendsDomainWildcardByHostnameAndPath
-									}
-								case gatewayv1.PathMatchPathPrefix:
-									if isDomainWildcard(originalHostname) {
-										mapDesiredBackends = desiredBackendsRegexByHostnameAndPath
-										path+=".*"
-										path = sanitizeRegexp(path)
-										hostname= sanitizeRegexp(hostname)
-
-									} else {
-										mapDesiredBackends = desiredBackendsPathPrefixByHostnameAndPath
-									}
-								case gatewayv1.PathMatchRegularExpression:
-									mapDesiredBackends = desiredBackendsRegexByHostnameAndPath
-									path = strings.TrimPrefix(path, "^")
-									path = sanitizeRegexp(path)
-									hostname= sanitizeRegexp(hostname)
-							}
-
-							entryKey := maps.EntryKey{
-								Hostname: hostname,
-								Path: path,
-							}
-							desiredBackendsByPath := mapDesiredBackends[entryKey]
-							if desiredBackendsByPath == nil {
-								desiredBackendsByPath = map[string]*maps.WeightedBackend{}
-								mapDesiredBackends[entryKey] = desiredBackendsByPath
-							}
-							// ... and we set the weighted backend
-							existing := desiredBackendsByPath[backendName]
-							if existing == nil {
-								existing = &maps.WeightedBackend{
-									BackendName: backendName,
-									Weight:      backend.Weight,
-								}
-								desiredBackendsByPath[backendName] = existing
-								continue
-							}
-							newWeight := utils.PointerDefaultValueIfNil(existing.Weight)+
-							utils.PointerDefaultValueIfNil(backend.Weight)
-							existing.Weight = &newWeight
+				for _, match := range rule.K8sResource.Matches {
+					// ... we collect each path ...
+					path := "/"
+					if match.Path.Value != nil {
+						path = *match.Path.Value
+					}
+					var pathType gatewayv1.PathMatchType
+					// ... and their path type ...
+					if match.Path.Type == nil {
+						pathType = gatewayv1.PathMatchPathPrefix
+					} else {
+						pathType = *match.Path.Type
+					}
+					mapDesiredBackends := desiredBackendsPathExactByHostnameAndPath
+					originalHostname := hostname
+					hostname = sanitizeHostname(hostname, pathType)
+					switch pathType {
+					case gatewayv1.PathMatchExact:
+						if isDomainWildcard(string(originalHostname)) {
+							mapDesiredBackends = desiredBackendsDomainWildcardByHostnameAndPath
 						}
+					case gatewayv1.PathMatchPathPrefix:
+						if isDomainWildcard(originalHostname) {
+							mapDesiredBackends = desiredBackendsRegexByHostnameAndPath
+							path += ".*"
+							path = sanitizeRegexp(path)
+							hostname = sanitizeRegexp(hostname)
+						} else {
+							mapDesiredBackends = desiredBackendsPathPrefixByHostnameAndPath
+						}
+					case gatewayv1.PathMatchRegularExpression:
+						mapDesiredBackends = desiredBackendsRegexByHostnameAndPath
+						path = strings.TrimPrefix(path, "^")
+						path = sanitizeRegexp(path)
+						hostname = sanitizeRegexp(hostname)
+					}
 
+					entryKey := maps.EntryKey{
+						Hostname: hostname,
+						Path:     path,
+					}
+					desiredBackendsByPath := mapDesiredBackends[entryKey]
+					if desiredBackendsByPath == nil {
+						desiredBackendsByPath = map[string]*maps.WeightedBackend{}
+						mapDesiredBackends[entryKey] = desiredBackendsByPath
+					}
+					// ... and we set the weighted backend
+					existing := desiredBackendsByPath[backendName]
+					if existing == nil {
+						existing = &maps.WeightedBackend{
+							BackendName: backendName,
+							Weight:      backend.Weight,
+						}
+						desiredBackendsByPath[backendName] = existing
+						continue
+					}
+					newWeight := utils.PointerDefaultValueIfNil(existing.Weight) +
+						utils.PointerDefaultValueIfNil(backend.Weight)
+					existing.Weight = &newWeight
+				}
 			}
 		}
-	
 	}
 
 	for _, associatedMapFileAndDesiredBackends := range associatedMapFilesAndDesiredBackends {
-			associatedMapFileAndDesiredBackends.mapFile.ApplyRoute(
-				maps.ResourceOrigin{
-					Namespace: route.K8sResource.Namespace,
-					Name:      route.K8sResource.Name},
-					associatedMapFileAndDesiredBackends.desiredBackends)
+		associatedMapFileAndDesiredBackends.mapFile.ApplyRoute(
+			maps.ResourceOrigin{
+				Namespace: route.K8sResource.Namespace,
+				Name:      route.K8sResource.Name,
+			},
+			associatedMapFileAndDesiredBackends.desiredBackends)
 	}
 	return nil
 }
 
 func (RouteMgrImpl) onInvalidHTTPRouteUpserted(namespacedName k8stypes.NamespacedName, _ *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex, mapDomainWildcardPathExact *maps.MapFileState) error {
+	mapExact, mapPrefix, mapRegex, mapDomainWildcardPathExact *maps.MapFileState,
+) error {
 	mapExact.ApplyRoute(
-								maps.ResourceOrigin{
-									Namespace: namespacedName.Namespace,
-									Name:      namespacedName.Name},
-									map[maps.EntryKey]map[string]*maps.WeightedBackend{})
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		map[maps.EntryKey]map[string]*maps.WeightedBackend{})
 	mapPrefix.ApplyRoute(
-								maps.ResourceOrigin{
-									Namespace: namespacedName.Namespace,
-									Name:      namespacedName.Name},
-									map[maps.EntryKey]map[string]*maps.WeightedBackend{})
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		map[maps.EntryKey]map[string]*maps.WeightedBackend{})
 	mapRegex.ApplyRoute(
-								maps.ResourceOrigin{
-									Namespace: namespacedName.Namespace,
-									Name:      namespacedName.Name},
-									map[maps.EntryKey]map[string]*maps.WeightedBackend{})
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		map[maps.EntryKey]map[string]*maps.WeightedBackend{})
 	mapDomainWildcardPathExact.ApplyRoute(
-								maps.ResourceOrigin{
-									Namespace: namespacedName.Namespace,
-									Name:      namespacedName.Name},
-									map[maps.EntryKey]map[string]*maps.WeightedBackend{})
+		maps.ResourceOrigin{
+			Namespace: namespacedName.Namespace,
+			Name:      namespacedName.Name,
+		},
+		map[maps.EntryKey]map[string]*maps.WeightedBackend{})
 
-return nil
+	return nil
 }
 
 func sanitizeHostname(hostname string, pathType gatewayv1.PathMatchType) string {

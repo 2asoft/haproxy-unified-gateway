@@ -32,7 +32,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route() {
 	manifests := []string{"gateway.yaml", "gatewayclass.yaml", "http-echo-1.yaml", "http-echo-2.yaml", "http-echo-3.yaml", "route-1.yaml"}
 	mapFileRelativePath := "hug_http_8080"
 	s.CreateFixtures(fixturePath, manifests)
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, manifests,mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, manifests, mapFileRelativePath)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -67,7 +67,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_filter() {
 	mapFileRelativePath := "hug_http_8080"
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "1_route_filter")
 	s.CreateFixtures(fixturePath, nil)
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil,mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -93,12 +93,13 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_filter() {
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
 	s.Eventually(func() bool {
-	correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
+		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
 		if !correctMapContents {
 			return false
 		}
 		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))}
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+}
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_backend() {
 	fixtureDirPath := utils.GetCRDFixturePath()
@@ -107,7 +108,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_dynamic_delete_1_bac
 	manifests := []string{"gateway.yaml", "gatewayclass.yaml", "http-echo-1.yaml", "http-echo-2.yaml", "http-echo-3.yaml", "route-1.yaml"}
 	s.CreateFixtures(fixturePath, manifests)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, manifests,mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, manifests, mapFileRelativePath)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -164,8 +165,8 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_Backend_1_route_1_backend_dynamic_de
 	manifests := []string{"gateway.yaml", "gatewayclass.yaml", "http-echo-1.yaml", "route-1.yaml"}
 	mapFileRelativePath := "hug_http_8080"
 	s.CreateFixtures(fixturePath, manifests)
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, manifests,mapFileRelativePath)
-	
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, manifests, mapFileRelativePath)
+
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")

@@ -62,6 +62,8 @@ tasks:
           TOOL: GOTESTSUM
     vars:
       TOOL: envtest
+      PKG: '{{default "./..." .PKG}}'
+      FORMAT: '{{default "testdox" .FORMAT}}'
       POD_IP: "1.2.3.4"
       POD_NAME: "hug-7469984948-qgnfw"
       POD_NAMESPACE: "hug"
@@ -76,8 +78,14 @@ tasks:
         POD_NAMESPACE={{.POD_NAMESPACE}} \
         HAPROXY_BIN={{.HAPROXY_BIN}} \
         POD_IP=$POD_IP POD_NAME=$POD_NAME POD_NAMESPACE=$POD_NAMESPACE ENVTEST_VERSION=$ENVTEST_VERSION KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS HAPROXY_BIN=$HAPROXY_BIN \
-        /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum --format-icons=hivis --format=testdox --format-hide-empty-pkg -- -count=1 -tags="{{.TEST_TAGS}}" -v ./...
-
+        /{{.TMP}}/gotestsum/{{.GOTESTSUM_VERSION}}/gotestsum \
+          --format-icons=hivis \
+          --format={{.FORMAT}} \
+          --format-hide-empty-pkg \
+          -- -count=1 \
+            -tags="{{.TEST_TAGS}}" \
+            -v \
+            {{.PKG}}
   tidy:
     desc: "run Go mod tidy"
     cmds:

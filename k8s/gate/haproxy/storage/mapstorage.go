@@ -16,6 +16,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -36,22 +37,21 @@ const (
 var _ MapsStorageEx = &MapsStorageExDefault{}
 
 type MapsStorageEx interface {
-	DeleteFromDisk(mapFilePath string) error
+	DeleteMapsDirectoryForFrontend(frontendName string) error
 	GetPathExactMapFile(frontendName string) *maps.MapFileState
 	GetPathPrefixMapFile(frontendName string) *maps.MapFileState
 	GetPathRegexMapFile(frontendName string) *maps.MapFileState
 	GetSniMapFile(frontendName string) *maps.MapFileState
 	GetSniDomainWildcardMapFile(frontendName string) *maps.MapFileState
 	GetPathExactDomainWildcardMapFile(frontendName string) *maps.MapFileState
-	GetMaps() map[string]*maps.MapFileState
+	GetMaps() map[string]map[string]*maps.MapFileState
 	ProcessMapFiles()
 }
-
-
 type MapsStorageExDefault struct {
-	logger     *slog.Logger
+	logger   *slog.Logger
+	mapFiles map[string]map[string]*maps.MapFileState // map file dir -> map file name -> map contents
+
 	MapsBaseDir string
-	mapFiles map[string]*maps.MapFileState // map file path -> map file
 }
 
 // NewMapsStorageEx creates a new instance of MapsStorageEx with the given logger and maps base directory.
@@ -60,34 +60,33 @@ type MapsStorageExDefault struct {
 // The maps base directory is the directory where the maps storage will store the maps files.
 func NewMapsStorageEx(logger *slog.Logger, mapsBaseDir string) MapsStorageEx {
 	return &MapsStorageExDefault{
-		logger:     logger,
+		logger:      logger,
 		MapsBaseDir: mapsBaseDir,
-		mapFiles: map[string]*maps.MapFileState{},
+		mapFiles:    map[string]map[string]*maps.MapFileState{},
 	}
 }
 
-
-func (m* MapsStorageExDefault) GetPathExactMapFile(frontendName string) *maps.MapFileState {
+func (m *MapsStorageExDefault) GetPathExactMapFile(frontendName string) *maps.MapFileState {
 	return m.getMapFile(frontendName, PATH_EXACT_MAP)
 }
 
-func (m* MapsStorageExDefault) GetPathPrefixMapFile(frontendName string) *maps.MapFileState {
+func (m *MapsStorageExDefault) GetPathPrefixMapFile(frontendName string) *maps.MapFileState {
 	return m.getMapFile(frontendName, PATH_PREFIX_MAP)
 }
 
-func (m* MapsStorageExDefault) GetPathRegexMapFile(frontendName string) *maps.MapFileState {
+func (m *MapsStorageExDefault) GetPathRegexMapFile(frontendName string) *maps.MapFileState {
 	return m.getMapFile(frontendName, PATH_REGEX_MAP)
 }
 
-func (m* MapsStorageExDefault) GetSniMapFile(frontendName string) *maps.MapFileState {
+func (m *MapsStorageExDefault) GetSniMapFile(frontendName string) *maps.MapFileState {
 	return m.getMapFile(frontendName, SNI_MAP)
 }
 
-func (m* MapsStorageExDefault) GetSniDomainWildcardMapFile(frontendName string) *maps.MapFileState {
+func (m *MapsStorageExDefault) GetSniDomainWildcardMapFile(frontendName string) *maps.MapFileState {
 	return m.getMapFile(frontendName, SNI_DOMAIN_WILDCARD_MAP)
 }
 
-func (m* MapsStorageExDefault) GetPathExactDomainWildcardMapFile(frontendName string) *maps.MapFileState {
+func (m *MapsStorageExDefault) GetPathExactDomainWildcardMapFile(frontendName string) *maps.MapFileState {
 	return m.getMapFile(frontendName, PATH_EXACT_DOMAIN_WILDCARD_MAP)
 }
 
@@ -96,12 +95,20 @@ func (m* MapsStorageExDefault) GetPathExactDomainWildcardMapFile(frontendName st
 // reads the map file from disk, and stores the map file in the mapFiles map.
 // If there is an error reading the map file from disk, it logs an error message.
 // It returns a pointer to the MapFileState.
-func (m* MapsStorageExDefault) getMapFile(frontendName string, mapName string) *maps.MapFileState {
-	mapFilePath := filepath.Join(m.MapsBaseDir, frontendName, mapName+".map")
-	mapFile := m.mapFiles[mapFilePath]
+func (m *MapsStorageExDefault) getMapFile(frontendName string, mapName string) *maps.MapFileState {
+	mapBaseDir := filepath.Join(m.MapsBaseDir, frontendName)
+	mapFileName := mapName + ".map"
+	mapFilePath := filepath.Join(mapBaseDir, mapFileName)
+
+	mapFilesInDir := m.mapFiles[mapBaseDir]
+	if mapFilesInDir == nil {
+		mapFilesInDir = map[string]*maps.MapFileState{}
+		m.mapFiles[mapBaseDir] = mapFilesInDir
+	}
+	mapFile := mapFilesInDir[mapFileName]
 	if mapFile == nil {
 		mapFile = maps.NewMapFileState(mapFilePath, m.logger)
-		m.mapFiles[mapFilePath] = mapFile
+		m.mapFiles[mapBaseDir][mapFileName] = mapFile
 		err := m.readFromDisk(mapFilePath)
 		if err != nil {
 			m.logger.LogAttrs(
@@ -112,17 +119,16 @@ func (m* MapsStorageExDefault) getMapFile(frontendName string, mapName string) *
 				slog.String("error", err.Error()))
 		}
 	}
-
 	return mapFile
 }
 
-func (m *MapsStorageExDefault) readFromDisk(mapFilePath string) error {
+func (*MapsStorageExDefault) readFromDisk(_ string) error {
 	// TODO Implement the function
 	return nil
 }
 
 func (m *MapsStorageExDefault) DeleteFromDisk(mapFilePath string) error {
-	err:= os.Remove(mapFilePath)
+	err := os.Remove(mapFilePath)
 	if err != nil {
 		return err
 	}
@@ -136,7 +142,7 @@ func (m *MapsStorageExDefault) DeleteFromDisk(mapFilePath string) error {
 // The MapFileState objects contain the current state of the map file including the entries,
 // desired values, and diff values.
 // The map is read-only and should not be modified directly.
-func (m *MapsStorageExDefault) GetMaps() map[string]*maps.MapFileState {
+func (m *MapsStorageExDefault) GetMaps() map[string]map[string]*maps.MapFileState {
 	return m.mapFiles
 }
 
@@ -144,10 +150,22 @@ func (m *MapsStorageExDefault) GetMaps() map[string]*maps.MapFileState {
 // It iterates over each map file and calls ProcessMapFiles on each map file.
 // ProcessMapFiles is a blocking call and should be called in a goroutine to avoid blocking the application.
 func (m *MapsStorageExDefault) ProcessMapFiles() {
-	for _, mapFile := range m.mapFiles {
-		if mapFile == nil {
+	for _, mapDir := range m.mapFiles {
+		if mapDir == nil {
 			continue
 		}
-		mapFile.ProcessMapFiles()
+		for _, mapFile := range mapDir {
+			mapFile.ProcessMapFiles()
+		}
 	}
+}
+
+func (m *MapsStorageExDefault) DeleteMapsDirectoryForFrontend(frontendName string) error {
+	mapBaseDir := filepath.Join(m.MapsBaseDir, frontendName)
+	_, exists := m.mapFiles[mapBaseDir]
+	if !exists {
+		return errors.New("Maps directory for frontend " + frontendName + "does not exist. Can't be removed.")
+	}
+	delete(m.mapFiles, mapBaseDir)
+	return os.RemoveAll(mapBaseDir)
 }
