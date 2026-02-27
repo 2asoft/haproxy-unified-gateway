@@ -344,7 +344,7 @@ func (b *HaproxyConfMgrImpl) newFrontend(vListenerName string, vListener *tree.V
 
 func (b *HaproxyConfMgrImpl) deleteFrontendForVirtualListener(virtualListenerName string) error {
 	// Frontend for each listener
-	feName := virtualListenerName
+	feName := b.getFrontendName(virtualListenerName)
 	if err := b.deleteFrontend(feName); err != nil {
 		b.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to delete frontend",
 			logging.LogAttrFrontendName(feName),
