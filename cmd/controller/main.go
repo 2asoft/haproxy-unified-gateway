@@ -30,6 +30,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/hug/jobs"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/version"
 	controller "github.com/haproxytech/haproxy-unified-gateway/k8s/gate"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 
 	"github.com/joho/godotenv"
@@ -92,7 +93,8 @@ func main() {
 	}
 	p := process.New(params, haproxyClient, gateconfig.Logger)
 	p.SetAPI(haproxyClient)
-
+	mapsStorage := storage.NewMapsStorageEx(cntlr.Configuration.Logger,
+		cntlr.Configuration.HaproxyParams.MapsDir)
 	// ----------------
 	// Start Haproxy App manager
 	haproxyAppManager, err := haproxymgr.NewAppManager(ctx, &wg,
@@ -100,7 +102,8 @@ func main() {
 		// runtimeClientCh,
 		haproxyClient, p,
 		params,
-		gateconfig.Logger)
+		gateconfig.Logger,
+		mapsStorage)
 	if err != nil {
 		panic(err)
 	}
@@ -110,7 +113,7 @@ func main() {
 	// ----------------
 	// Start the controller
 	go func() {
-		err := cntlr.Run(ctx, &wg)
+		err := cntlr.Run(ctx, &wg, mapsStorage)
 		if err != nil {
 			panic(err)
 		}

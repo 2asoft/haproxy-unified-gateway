@@ -116,7 +116,7 @@ func New(options config.GateConfigOptions) (Controller, error) {
 	return ctrl, nil
 }
 
-func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
+func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup, mapsStorage storage.MapsStorageEx) error {
 	wg.Add(1)
 	defer wg.Done()
 
@@ -125,7 +125,7 @@ func (c *Controller) Run(ctx context.Context, wg *sync.WaitGroup) error {
 		return fmt.Errorf("cannot build runtime manager: %w", err)
 	}
 
-	if err := Add(ctx, c.Configuration, c.HaproxyClient, mgr); err != nil {
+	if err := Add(ctx, c.Configuration, c.HaproxyClient, mgr, mapsStorage); err != nil {
 		return err
 	}
 
@@ -141,6 +141,7 @@ func Add(
 	cfg config.Configuration,
 	haproxyClient hapi.HAProxyClient,
 	mgr manager.Manager,
+	mapsStorage storage.MapsStorageEx,
 ) error {
 	// Check if the controller configuration is valid
 	if err := cfg.Check(); err != nil {
@@ -179,8 +180,6 @@ func Add(
 	if err != nil {
 		return err
 	}
-
-	mapsStorage := storage.NewMapsStorageEx(cfg.Logger, cfg.HaproxyParams.MapsDir)
 
 	gateTreeConfig := handler.GateTreeConfig{
 		BaseLogger:                 cfg.Logger,

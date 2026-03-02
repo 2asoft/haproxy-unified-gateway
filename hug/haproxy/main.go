@@ -26,6 +26,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
 	gatehaproxy "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/diffs"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
@@ -41,6 +42,7 @@ type AppManagerImpl struct {
 	client       api.HAProxyClient
 	process      process.Process
 	ctx          context.Context
+	mapsStorage  storage.MapsStorageEx
 	wg           *sync.WaitGroup
 	logger       *slog.Logger
 	haproxyCfgCh chan diffs.HaproxyConfDiffs
@@ -56,6 +58,7 @@ func NewAppManager(ctx context.Context, wg *sync.WaitGroup,
 	p process.Process,
 	param params.Params,
 	logger *slog.Logger,
+	mapsStorage storage.MapsStorageEx,
 ) (AppManager, error) {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogCategoryApp))
 
@@ -69,6 +72,7 @@ func NewAppManager(ctx context.Context, wg *sync.WaitGroup,
 		logger:       mylogger,
 		params:       param,
 		haproxyCfgCh: cfgCh,
+		mapsStorage:  mapsStorage,
 	}, nil
 }
 
@@ -226,6 +230,7 @@ func (h *AppManagerImpl) processDelete(deleted structured.Structured) error {
 			errors.Add(err)
 			continue
 		}
+		h.mapsStorage.DeleteMapsDirectoryForFrontend(feName)
 	}
 
 	// Backends

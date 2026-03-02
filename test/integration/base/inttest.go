@@ -36,6 +36,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/hug/jobs/gwapi"
 	gate "github.com/haproxytech/haproxy-unified-gateway/k8s/gate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 
 	"github.com/go-logr/logr"
@@ -248,7 +249,8 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	}
 	p := process.New(params, haproxyClient, gateconfig.Logger)
 	p.SetAPI(haproxyClient)
-
+	mapsStorage := storage.NewMapsStorageEx(gateconfig.Logger,
+		gateconfig.HaproxyParams.MapsDir)
 	// // ----------------
 	// // Start Haproxy App manager
 	haproxyAppManager, err := haproxymgr.NewAppManager(test.Ctx, &wg,
@@ -256,7 +258,8 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 		// runtimeClientCh,
 		haproxyClient, p,
 		params,
-		gateconfig.Logger)
+		gateconfig.Logger,
+		mapsStorage)
 	if err != nil {
 		panic(err)
 	}
@@ -267,7 +270,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	haproxyAppManager.Run()
 	test.HaproxyClient = haproxyAppManager.HaproxyClient()
 
-	err = gate.Add(test.Ctx, gateconfig, haproxyClient, mgr)
+	err = gate.Add(test.Ctx, gateconfig, haproxyClient, mgr, mapsStorage)
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {

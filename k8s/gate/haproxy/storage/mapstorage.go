@@ -48,9 +48,8 @@ type MapsStorageEx interface {
 	ProcessMapFiles()
 }
 type MapsStorageExDefault struct {
-	logger   *slog.Logger
-	mapFiles map[string]map[string]*maps.MapFileState // map file dir -> map file name -> map contents
-
+	logger      *slog.Logger
+	mapFiles    map[string]map[string]*maps.MapFileState // map file dir -> map file name -> map contents
 	MapsBaseDir string
 }
 
