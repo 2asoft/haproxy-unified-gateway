@@ -17,6 +17,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/protocols"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -33,8 +34,9 @@ type listenerRefs struct {
 // - Overlapping hostnames for listeners with compatible protocols.
 // The conflict resolution strategy favors the oldest Gateway (by CreationTimestamp).
 func (b *GatewayBuilderImpl) computeListenerConflicts() {
-	// 1- Sort all Gateways by creation timestamp
-	sortedGws := utils.MapToSortedListByCreationTimestamp(b.GateTree.Gateways)
+	// 0- Compute conflicts only between non-deleted Gateways and their listeners. Deleted Gateways and their listeners are ignored in the conflict detection.
+	// 1- Sort all non-deleted Gateways by creation timestamp
+	sortedGws := utils.MapToSortedListByCreationTimestamp(b.nonDeletedGateways())
 
 	portListeners := b.listenersPerPort(sortedGws)
 
@@ -90,6 +92,22 @@ func (b *GatewayBuilderImpl) computeListenerConflicts() {
 			}
 		}
 	}
+}
+
+// nonDeletedGateways returns a filtered copy of b.GateTree.Gateways containing
+// only Gateways that have not been marked for deletion.
+func (b *GatewayBuilderImpl) nonDeletedGateways() map[types.NamespacedName]*Gateway {
+	result := make(map[types.NamespacedName]*Gateway, len(b.GateTree.Gateways))
+	for k, gw := range b.GateTree.Gateways {
+		if gw == nil || gw.K8sResource == nil {
+			continue
+		}
+		if gw.TreeStatus.Status == store.StatusDeleted {
+			continue
+		}
+		result[k] = gw
+	}
+	return result
 }
 
 // listenersPerPort groups listeners by port.

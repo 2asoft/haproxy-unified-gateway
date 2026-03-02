@@ -73,8 +73,13 @@ func (g *Gateway) GetCreationTimestamp() metav1.Time {
 	return metav1.Time{}
 }
 
+// GetName returns the name of the Gateway Kubernetes resource.
+// If the K8sResource is nil (for example a DELETED Gateway), it returns an empty string.
 func (g *Gateway) GetName() string {
-	return g.K8sResource.GetName()
+	if g.K8sResource != nil {
+		return g.K8sResource.GetName()
+	}
+	return ""
 }
 
 func (g *Gateway) GetK8sResource() *gatewayv1.Gateway {

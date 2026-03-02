@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/protocols"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -318,4 +319,200 @@ func TestComputeListenerConflicts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNonDeletedGateways(t *testing.T) {
+	t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	mkGateway := func(name string, status store.Status) *Gateway {
+		gw := &gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              name,
+				Namespace:         "default",
+				CreationTimestamp: metav1.NewTime(t1),
+			},
+		}
+		return &Gateway{
+			K8sResource: gw,
+			TreeStatus:  TreeUpdate[Gateway]{Status: status},
+		}
+	}
+
+	newBuilder := func(gateways map[client.ObjectKey]*Gateway) *GatewayBuilderImpl {
+		return &GatewayBuilderImpl{
+			ControllerStore: &ControllerStore{
+				GateTree: &GateTree{Gateways: gateways},
+			},
+		}
+	}
+
+	t.Run("empty map returns empty result", func(t *testing.T) {
+		b := newBuilder(make(map[client.ObjectKey]*Gateway))
+		assert.Empty(t, b.nonDeletedGateways())
+	})
+
+	t.Run("upserted gateway is included", func(t *testing.T) {
+		gw := mkGateway("gw1", store.StatusUpserted)
+		key := client.ObjectKeyFromObject(gw.K8sResource)
+		b := newBuilder(map[client.ObjectKey]*Gateway{key: gw})
+		result := b.nonDeletedGateways()
+		assert.Len(t, result, 1)
+		assert.Equal(t, gw, result[key])
+	})
+
+	t.Run("deleted gateway is excluded", func(t *testing.T) {
+		gw := mkGateway("gw1", store.StatusDeleted)
+		key := client.ObjectKeyFromObject(gw.K8sResource)
+		b := newBuilder(map[client.ObjectKey]*Gateway{key: gw})
+		assert.Empty(t, b.nonDeletedGateways())
+	})
+
+	t.Run("nil gateway value is excluded", func(t *testing.T) {
+		key := client.ObjectKey{Namespace: "default", Name: "gw1"}
+		b := newBuilder(map[client.ObjectKey]*Gateway{key: nil})
+		assert.Empty(t, b.nonDeletedGateways())
+	})
+
+	t.Run("gateway with nil K8sResource is excluded", func(t *testing.T) {
+		gw := &Gateway{TreeStatus: TreeUpdate[Gateway]{Status: store.StatusUpserted}}
+		key := client.ObjectKey{Namespace: "default", Name: "gw1"}
+		b := newBuilder(map[client.ObjectKey]*Gateway{key: gw})
+		assert.Empty(t, b.nonDeletedGateways())
+	})
+
+	t.Run("mix of deleted and non-deleted", func(t *testing.T) {
+		gwAlive := mkGateway("alive", store.StatusUpserted)
+		gwDead := mkGateway("dead", store.StatusDeleted)
+		aliveKey := client.ObjectKeyFromObject(gwAlive.K8sResource)
+		deadKey := client.ObjectKeyFromObject(gwDead.K8sResource)
+		b := newBuilder(map[client.ObjectKey]*Gateway{aliveKey: gwAlive, deadKey: gwDead})
+		result := b.nonDeletedGateways()
+		assert.Len(t, result, 1)
+		assert.Equal(t, gwAlive, result[aliveKey])
+		assert.NotContains(t, result, deadKey)
+	})
+}
+
+func TestListenersPerPort(t *testing.T) {
+	t1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	t2 := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+
+	mkGateway := func(name string, creationTime time.Time, listeners ...gatewayv1.Listener) *Gateway {
+		gw := &gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              name,
+				Namespace:         "default",
+				CreationTimestamp: metav1.NewTime(creationTime),
+			},
+			Spec: gatewayv1.GatewaySpec{Listeners: listeners},
+		}
+		return &Gateway{K8sResource: gw}
+	}
+
+	mkListener := func(name string, port int, protocol gatewayv1.ProtocolType) gatewayv1.Listener {
+		return gatewayv1.Listener{
+			Name:     gatewayv1.SectionName(name),
+			Port:     gatewayv1.PortNumber(port),
+			Protocol: protocol,
+		}
+	}
+
+	newBuilder := func() *GatewayBuilderImpl {
+		b := &GatewayBuilderImpl{
+			ControllerStore: &ControllerStore{
+				GateTree: &GateTree{Gateways: make(map[client.ObjectKey]*Gateway)},
+			},
+		}
+		b.resetListenerConflicts()
+		return b
+	}
+
+	t.Run("single listener goes to portListeners with no conflict", func(t *testing.T) {
+		gw := mkGateway("gw1", t1, mkListener("l1", 80, gatewayv1.HTTPProtocolType))
+		b := newBuilder()
+		result := b.listenersPerPort([]*Gateway{gw})
+		assert.Len(t, result[80], 1)
+		assert.Equal(t, "l1", string(result[80][0].listenerRef.Name))
+		assert.Empty(t, b.ControllerStore.mapPort2Listeners)
+	})
+
+	t.Run("different ports, no conflicts", func(t *testing.T) {
+		gw := mkGateway("gw1", t1,
+			mkListener("http", 80, gatewayv1.HTTPProtocolType),
+			mkListener("https", 443, gatewayv1.HTTPSProtocolType),
+		)
+		b := newBuilder()
+		result := b.listenersPerPort([]*Gateway{gw})
+		assert.Len(t, result, 2)
+		assert.Len(t, result[80], 1)
+		assert.Len(t, result[443], 1)
+		assert.Empty(t, b.ControllerStore.mapPort2Listeners)
+	})
+
+	t.Run("same port, same protocol category -> both in portListeners, no conflict", func(t *testing.T) {
+		gw := mkGateway("gw1", t1,
+			mkListener("l1", 80, gatewayv1.HTTPProtocolType),
+			mkListener("l2", 80, gatewayv1.HTTPProtocolType),
+		)
+		b := newBuilder()
+		result := b.listenersPerPort([]*Gateway{gw})
+		assert.Len(t, result[80], 2)
+		assert.Empty(t, b.ControllerStore.mapPort2Listeners)
+	})
+
+	t.Run("same port, different protocol categories -> first in portListeners, second is ProtocolConflict", func(t *testing.T) {
+		gw := mkGateway("gw1", t1,
+			mkListener("http", 80, gatewayv1.HTTPProtocolType),
+			mkListener("https", 80, gatewayv1.HTTPSProtocolType),
+		)
+		b := newBuilder()
+		result := b.listenersPerPort([]*Gateway{gw})
+
+		assert.Len(t, result[80], 1)
+		assert.Equal(t, "http", string(result[80][0].listenerRef.Name))
+
+		conflictsOnPort80 := b.ControllerStore.mapPort2Listeners[80]
+		assert.Len(t, conflictsOnPort80, 1)
+		httpsKey := NewListenerKey(gw.K8sResource, gw.K8sResource.Spec.Listeners[1])
+		lcc := conflictsOnPort80[httpsKey]
+		assert.True(t, lcc.hasConflict)
+		assert.Equal(t, string(gatewayv1.ListenerReasonProtocolConflict), lcc.reason)
+		assert.Equal(t, protocols.ProtocolCategorySecure, lcc.protocol)
+	})
+
+	t.Run("multiple gateways, same port, same protocol -> all in portListeners", func(t *testing.T) {
+		gw1 := mkGateway("gw1", t1, mkListener("l1", 80, gatewayv1.HTTPProtocolType))
+		gw2 := mkGateway("gw2", t2, mkListener("l2", 80, gatewayv1.HTTPProtocolType))
+		b := newBuilder()
+		result := b.listenersPerPort([]*Gateway{gw1, gw2})
+		assert.Len(t, result[80], 2)
+		assert.Empty(t, b.ControllerStore.mapPort2Listeners)
+	})
+
+	t.Run("multiple gateways, same port, different protocols -> first wins, second is ProtocolConflict", func(t *testing.T) {
+		gw1 := mkGateway("gw1", t1, mkListener("http", 80, gatewayv1.HTTPProtocolType))
+		gw2 := mkGateway("gw2", t2, mkListener("https", 80, gatewayv1.HTTPSProtocolType))
+		b := newBuilder()
+		result := b.listenersPerPort([]*Gateway{gw1, gw2})
+
+		assert.Len(t, result[80], 1)
+		assert.Equal(t, "http", string(result[80][0].listenerRef.Name))
+
+		conflictsOnPort80 := b.ControllerStore.mapPort2Listeners[80]
+		assert.Len(t, conflictsOnPort80, 1)
+		httpsKey := NewListenerKey(gw2.K8sResource, gw2.K8sResource.Spec.Listeners[0])
+		lcc := conflictsOnPort80[httpsKey]
+		assert.True(t, lcc.hasConflict)
+		assert.Equal(t, string(gatewayv1.ListenerReasonProtocolConflict), lcc.reason)
+	})
+
+	t.Run("nil and deleted gateways are skipped", func(t *testing.T) {
+		alive := mkGateway("alive", t1, mkListener("l1", 80, gatewayv1.HTTPProtocolType))
+		deleted := mkGateway("deleted", t2, mkListener("l2", 80, gatewayv1.HTTPProtocolType))
+		deleted.TreeStatus.Status = store.StatusDeleted
+		b := newBuilder()
+		result := b.listenersPerPort([]*Gateway{nil, deleted, alive})
+		assert.Len(t, result[80], 1)
+		assert.Equal(t, "l1", string(result[80][0].listenerRef.Name))
+	})
 }
