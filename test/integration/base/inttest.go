@@ -78,14 +78,15 @@ var hugConfNsName = types.NamespacedName{
 }
 
 type IntTest struct {
-	Ctx           context.Context
-	Client        ctrlruntimeclient.Client
-	RuntimeClient runtime.Runtime
-	HaproxyClient hapapi.HAProxyClient
-	TestEnv       *envtest.Environment
-	cancel        context.CancelFunc
-	Namespace     string
-	HaproxyCfgDir string
+	Ctx               context.Context
+	Client            ctrlruntimeclient.Client
+	RuntimeClient     runtime.Runtime
+	HaproxyClient     hapapi.HAProxyClient
+	TestEnv           *envtest.Environment
+	cancel            context.CancelFunc
+	Namespace         string
+	HaproxyCfgDir     string
+	RuntimeSocketPath string
 }
 
 func NewIntTest(t *testing.T, crdRelativePath string, levelsUp int) (test IntTest, err error) {
@@ -219,6 +220,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	// // Start Haproxy App manager
 	var wg sync.WaitGroup
 	test.HaproxyCfgDir = gateconfig.HaproxyParams.CfgDir
+	test.RuntimeSocketPath = gateconfig.HaproxyParams.RuntimeSocket
 	haproxyClient, err := hapapi.New(gateconfig.Logger, gateconfig.HaproxyParams.CfgDir,
 		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket)
 	if err != nil {

@@ -17,9 +17,7 @@ package truntime
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"net"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,15 +30,25 @@ const (
 
 //revive:enable:var-naming
 
+type Runtime struct {
+	SocketPath string
+}
+
+func NewRuntime(socketPath string) Runtime {
+	return Runtime{
+		SocketPath: socketPath,
+	}
+}
+
 type GlobalHAProxyInfo struct {
 	Pid     string
 	Maxconn string
 	Uptime  string
 }
 
-func GetHAProxyMapCount(mapName string) (count int, err error) {
+func (*Runtime) GetHAProxyMapCount(socketPath string, mapName string) (count int, err error) {
 	var result []byte
-	result, err = runtimeCommand("show map")
+	result, err = runtimeCommand(socketPath, "show map")
 	if err != nil {
 		return count, err
 	}
@@ -58,9 +66,9 @@ func GetHAProxyMapCount(mapName string) (count int, err error) {
 	return count, err
 }
 
-func GetGlobalHAProxyInfo() (info GlobalHAProxyInfo, err error) {
+func GetGlobalHAProxyInfo(socketPath string) (info GlobalHAProxyInfo, err error) {
 	var result []byte
-	result, err = runtimeCommand("show info")
+	result, err = runtimeCommand(socketPath, "show info")
 	if err != nil {
 		return info, err
 	}
@@ -79,24 +87,46 @@ func GetGlobalHAProxyInfo() (info GlobalHAProxyInfo, err error) {
 	return info, err
 }
 
-func runtimeCommand(command string) (result []byte, err error) {
-	kindURL := os.Getenv("KIND_URL")
-	if kindURL == "" {
-		kindURL = "127.0.0.1"
-	}
-	conn, err := net.Dial("tcp", net.JoinHostPort(kindURL, fmt.Sprintf("%d", STATS_PORT)))
+func runtimeCommand(socketPath string, command string) (result []byte, err error) {
+	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
-		return result, err
+		return nil, err
 	}
+	defer conn.Close()
 	_, err = conn.Write([]byte(command + "\n"))
 	if err != nil {
 		return result, err
 	}
-	result = make([]byte, 2048)
+	result = make([]byte, 16384)
 	_, err = conn.Read(result)
 	if err != nil {
 		return []byte{}, err
 	}
 	err = conn.Close()
 	return result, err
+}
+
+func GetServers(socketPath string, backend string) ([]string, error) {
+	var result []byte
+	command := "show stat " + backend + " 4 -1"
+	result, err := runtimeCommand(socketPath, command)
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(bytes.NewReader(result))
+	servers := make([]string, 0)
+	i := 0
+	for scanner.Scan() {
+		line := scanner.Text()
+		if i == 0 {
+			// Skip the first line which contains column headers
+			i++
+			continue
+		}
+		parts := strings.Split(line, ",")
+		if len(parts) >= 2 {
+			servers = append(servers, parts[1])
+		}
+	}
+	return servers, nil
 }

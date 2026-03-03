@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/haproxytech/client-native/v6/models"
+	truntime "github.com/haproxytech/haproxy-unified-gateway/test/integration/runtime"
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -379,6 +380,17 @@ var StandardMaps = []string{
 	"sni.map",
 }
 
+func (b *BaseSuite) ExpectMapContents(mapFilePath, expectedMapPath string) {
+	res := b.Eventually(func() bool {
+		check := b.CheckMapContents(mapFilePath, expectedMapPath)
+		return check
+	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	if !res {
+		msg := fmt.Sprintf("maps in %s did not match expected contents", mapFilePath)
+		b.T().Fatal(msg)
+	}
+}
+
 func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string) bool {
 	for _, mapName := range StandardMaps {
 		expectedFilePath := path.Join(expectedMapPath, mapName)
@@ -451,6 +463,139 @@ func (b *BaseSuite) ExpectAttachedRoute(ctx context.Context, namespace, gwName, 
 		return false
 	}) {
 		b.T().Fatal("AttachedRoutes not correct")
+	}
+}
+
+func (b *BaseSuite) ExpectServers(backend string, expectedServers []string) {
+	var servers []string
+	res := b.Eventually(func() bool {
+		var err error
+		servers, err = truntime.GetServers(b.test.RuntimeSocketPath, backend)
+		if err != nil {
+			return false
+		}
+		slices.Sort(servers)
+		slices.Sort(expectedServers)
+		return slices.Equal(servers, expectedServers)
+	}, timeout, interval, fmt.Sprintf("servers in backend %s did not match expected", backend))
+	if !res {
+		msg := fmt.Sprintf("servers in backend %s did not match expected. Got %v, expected %v", backend, servers, expectedServers)
+		b.T().Fatal(msg)
+	}
+}
+
+// WaitForNoReloadsAnyMore checks during an overall overAllDuration
+// That we reach a stable state without reloads for at least consistentlyDurationWithoutReloads
+// We set a timer stabilityTimer and if at any point during the stability window a reload occurs, we reset this timer.
+// If we reach the overAllDuration without a stable window without reload we issue a t.Fatalf()
+func (b *BaseSuite) WaitForNoReloadsAnyMore(
+	overAllDuration time.Duration,
+	consistentlyDurationWithoutReloads time.Duration,
+) string {
+	fmt.Printf("\n...wait for a stability window without reloads: %v\n", consistentlyDurationWithoutReloads)
+
+	info, err := truntime.GetGlobalHAProxyInfo(b.test.RuntimeSocketPath)
+	pid := info.Pid
+	if err != nil {
+		b.T().Fatalf("error getting HAProxy info: %v", err)
+	}
+	overallTimeout := time.After(overAllDuration)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	// stabilityTimer is reset each time there is a reload
+	// It's a sliding window
+	// We want to have a stable state without reloads for a least consistentlyDurationWithoutReloads
+	var stabilityTimer *time.Timer
+	inStabilityWindow := false
+
+	shouldContinue := true
+	for shouldContinue {
+		select {
+		case <-overallTimeout:
+			b.T().Fatalf("Timed out after %v without reaching stable state without reloads", overAllDuration)
+		case <-ticker.C:
+			reloaded, newPid, err := b.haproxyReloadHappened(pid)
+			if err != nil {
+				b.T().Log(err)
+				continue
+			}
+			pid = newPid
+			if reloaded {
+				// reload happened; if we were counting stability, reset.
+				if inStabilityWindow {
+					stabilityTimer.Stop()
+					inStabilityWindow = false
+					fmt.Print("reload happened; stopping stability timer...\n")
+				}
+				continue
+			}
+			// no reload
+			if !inStabilityWindow {
+				// start the stability countdown
+				inStabilityWindow = true
+				stabilityTimer = time.NewTimer(consistentlyDurationWithoutReloads)
+				fmt.Print("no reload; starting stability timer...\n")
+				continue
+			}
+			// already in stability window, check if time is up
+			select {
+			case <-stabilityTimer.C:
+				// SUCCESS: stable for the full duration
+				shouldContinue = false
+				fmt.Printf("no reload in %v... stable state reached...\n", consistentlyDurationWithoutReloads)
+			default:
+				// still waiting for stability
+			}
+		}
+	}
+	return pid
+	// Exit the loop means that we were stable without reload for consistentlyDurationWithoutReloads duration
+}
+
+// haproxyReloadHappened returns:
+// - a bool true if a reload did happen
+// - the new pid
+// - an error if we could get the worker pid
+// The detection of reload is based on the check that the worker pid did change or not
+func (b *BaseSuite) haproxyReloadHappened(oldPid string) (bool, string, error) {
+	newPid, err := truntime.GetGlobalHAProxyInfo(b.test.RuntimeSocketPath)
+	if err != nil {
+		b.T().Log(err)
+		return false, "", err
+	}
+	fmt.Printf("oldPid/newPid: %s/%s\n", oldPid, newPid.Pid)
+	return newPid.Pid != oldPid, newPid.Pid, nil
+}
+
+// ConsistentlyNoReload executes a check repeatedly for a duration.
+// It t.Fatalf() if the condition ever returns false.
+func (b *BaseSuite) ConsistentlyNoReload(oldPid string, duration time.Duration) {
+	fmt.Printf("\n...check consistent no reload during a window: %v\n", duration)
+	t := b.T()
+	t.Helper()
+
+	deadline := time.After(duration)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-deadline:
+			// The entire duration passed without the condition failing
+			return
+		case <-ticker.C:
+			// Check the condition
+			reloadHappened, _, err := b.haproxyReloadHappened(oldPid)
+			if err == nil {
+				if reloadHappened {
+					t.Fatal("FAIL: some reload happened")
+					return
+				}
+			} else {
+				t.Error("FAILED to get pid")
+			}
+		}
 	}
 }
 
