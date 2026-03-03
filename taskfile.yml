@@ -32,9 +32,6 @@ includes:
   controller-gen:
     taskfile: taskfile/controller-gen.yml
     flatten: true
-  envtest:
-    taskfile: taskfile/envtest.yml
-    flatten: true
 
 vars:
 
@@ -70,7 +67,7 @@ tasks:
       POD_NAMESPACE: "hug"
       HAPROXY_BIN: '{{or (env "HAPROXY_BIN") "/usr/local/sbin/haproxy"}}'
     cmds:
-      #- task: download-gateway-crds
+      - task: generate
       - |
         KUBEBUILDER_ASSETS=/{{.TMP}}/{{.TOOL}} \
         ENVTEST_VERSION={{.ENVTEST_VERSION}} \
@@ -93,6 +90,7 @@ tasks:
         vars:
           TOOLS: [BETTERALIGN, REVIVE, STATICCHECK]
     cmds:
+      - task: generate
       - /{{.TMP}}/revive/{{.REVIVE_VERSION}}/revive -config revive.toml -formatter friendly -set_exit_status ./...
       - /{{.TMP}}/staticcheck/{{.STATICCHECK_VERSION}}/staticcheck ./...
       - /{{.TMP}}/betteralign/{{.BETTERALIGN_VERSION}}/betteralign ./...
@@ -104,6 +102,7 @@ tasks:
         vars:
           TOOLS: [BETTERALIGN, GOFUMPT]
     cmds:
+      - task: generate
       - go fix ./...
       - /{{.TMP}}/betteralign/{{.BETTERALIGN_VERSION}}/betteralign -apply ./... || true
       - /{{.TMP}}/gofumpt/{{.GOFUMPT_VERSION}}/gofumpt -l -w .

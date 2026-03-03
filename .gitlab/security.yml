@@ -9,8 +9,6 @@ license:
     entrypoint: [ "" ]
   tags:
     - go
-  before_script:
-    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
   script:
     - task licenses
   after_script:
@@ -37,8 +35,6 @@ govulncheck:
     entrypoint: [ "" ]
   tags:
     - go
-  before_script:
-    - "sed -i 's/internal: true/internal: false/g' taskfile.yml"
   script:
     - task govulncheck
   after_script:

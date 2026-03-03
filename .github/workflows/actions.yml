@@ -20,7 +20,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: commit-policy
         run: task check-commit
-  generate-doc:
+  generate-files:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -35,16 +35,12 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: prepare taskfile
-        run: "sed -i 's/internal: true/internal: false/g' taskfile/generate.yml"
-      - name: generating documentation
+      - name: generating files
         run: task generate
-      - name: reset taskfile
-        run: "sed -i 's/internal: false/internal: true/g' taskfile/generate.yml"
       - name: changes
-        run: test -z "$(git diff 2> /dev/null)" || exit "Documentation is not generated, issue \`task ci\` and commit the result"
+        run: test -z "$(git diff 2> /dev/null)" || exit "Files are not generated, issue \`task generate\` and commit the result"
       - name: untracked files
-        run: test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || exit "Documentation created untracked files, cannot proceed"
+        run: test -z "$(git ls-files --others --exclude-standard 2> /dev/null)" || exit "File generation created untracked files, cannot proceed"
   generate-code:
     runs-on: ubuntu-latest
     steps:
@@ -60,12 +56,8 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: prepare taskfile
-        run: "sed -i 's/internal: true/internal: false/g' taskfile/generate.yml"
       - name: generating code
         run: task controller-gen
-      - name: reset taskfile
-        run: "sed -i 's/internal: false/internal: true/g' taskfile/generate.yml"
       - name: changes
         run: test -z "$(git diff 2> /dev/null)" || exit "code generation is not run, issue \`task ci\` and commit the result"
       - name: untracked files
@@ -101,12 +93,8 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: prepare taskfile
-        run: "sed -i 's/internal: true/internal: false/g' taskfile/generate.yml"
       - name: tidy
         run: task format
-      - name: reset taskfile
-        run: "sed -i 's/internal: false/internal: true/g' taskfile/generate.yml"
       - name: changes
         run: test -z "$(git diff 2> /dev/null)" || exit "Go code not formatted, issue \`make gofumpt\` and commit the result"
   lint:
@@ -126,13 +114,8 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: reset taskfile
-        run: "sed -i 's/internal: false/internal: true/g' taskfile/generate.yml"
       - name: Lint
-        run: |
-          task lint
-      - name: reset taskfile
-        run: "sed -i 's/internal: false/internal: true/g' taskfile/generate.yml"
+        run: task lint
   build:
     name: build
     runs-on: ubuntu-latest
@@ -145,6 +128,13 @@ jobs:
         with:
           go-version-file: 'go.mod'
         id: go
+      - name: Install Task
+        uses: go-task/setup-task@v1
+        with:
+          version: 3.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: generating files
+        run: task generate
       - name: Get dependencies
         run: |
           go mod tidy

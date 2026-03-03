@@ -21,13 +21,13 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/haproxytech/haproxy-unified-gateway/api/definition"
 	"github.com/haproxytech/haproxy-unified-gateway/cmd/start"
 	hugconfig "github.com/haproxytech/haproxy-unified-gateway/hug/configuration"
 	haproxymgr "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/api"
 	haproxyparams "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/params"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/process"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/jobs"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/version"
 	controller "github.com/haproxytech/haproxy-unified-gateway/k8s/gate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
@@ -47,11 +47,18 @@ func main() {
 	}
 
 	if hugConfig.JobCheckCRD {
-		err := definition.CRDRefresh(hugConfig.External.External)
-		if err != nil {
+		if err := jobs.CRDInstall(hugConfig.External.External); err != nil {
 			panic(err)
 		}
 		fmt.Println("CRD refresh job completed successfully")
+		return
+	}
+
+	if hugConfig.JobGWAPI != "" {
+		if err := jobs.GWAPIInstall(hugConfig.External.External, hugConfig.JobGWAPI); err != nil {
+			panic(err)
+		}
+		fmt.Println("Gateway API CRD installation completed successfully")
 		return
 	}
 

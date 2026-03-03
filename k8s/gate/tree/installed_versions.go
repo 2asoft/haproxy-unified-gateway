@@ -31,7 +31,7 @@ import (
 type SupportedVersions []string
 
 var (
-	SupportedGatewayAPIBundleVersion = SupportedVersions{"v1.2", "v1.3"}
+	SupportedGatewayAPIBundleVersion = SupportedVersions{"v1.3", "v1.4", "v1.5"}
 	SupportedParametersRefKind       = gatewayv1.Kind("HugGate")
 	SupportedParametersRefGroup      = gatewayv1.Group("gate.v3.haproxy.org")
 )

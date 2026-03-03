@@ -30,8 +30,20 @@ func TestValidateOneInstalledGwApiVersion(t *testing.T) {
 	}{
 		{
 			name:              "Matching version 1",
-			supportedVersions: []string{"v1.2", "v1.3"},
+			supportedVersions: []string{"v1.2", "v1.3", "v1.4", "v1.5"},
 			installedVersion:  "v1.2.5",
+			expectedResult:    true,
+		},
+		{
+			name:              "Matching version 1",
+			supportedVersions: []string{"v1.2", "v1.3", "v1.4", "v1.5"},
+			installedVersion:  "v1.4.5",
+			expectedResult:    true,
+		},
+		{
+			name:              "Matching version 1",
+			supportedVersions: []string{"v1.2", "v1.3", "v1.4", "v1.5"},
+			installedVersion:  "v1.5.5",
 			expectedResult:    true,
 		},
 		{

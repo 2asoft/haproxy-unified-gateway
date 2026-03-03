@@ -3,6 +3,7 @@ version: '3'
 
 tasks:
   controller-gen-cn-version:
+    internal: true
     desc: 'Get the client-native controller-gen version'
     dir: api/gate/v3
     cmds:
@@ -17,6 +18,7 @@ tasks:
         done
 
   controller-gen-deep-copy:
+    internal: true
     desc: 'Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.'
     deps:
       - task: check-go-tool
@@ -26,6 +28,7 @@ tasks:
       - /{{.TMP}}/controller-gen/{{.CONTROLLER_GEN_VERSION}}/controller-gen object:headerFile="assets/license-header.txt" paths="./..." output:artifacts:config=./api
 
   controller-gen-manifest:
+    internal: true
     desc: "Generate CustomResourceDefinition objects."
     deps:
       - task: check-go-tool

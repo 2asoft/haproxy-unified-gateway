@@ -10,9 +10,14 @@ tasks:
     cmds:
       - go run .
 
+  generate-gwapi:
+    desc: 'regenerate Gateway API version-dependent files from GWAPI_VERSIONS'
+    cmds:
+      - go run ./cmd/generate-gwapi
+
   generate:
-    internal: true
     desc: 'run generation'
     cmds:
       - go generate -x ./...
       - task : generate-doc-options
+      - task : generate-gwapi

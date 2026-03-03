@@ -33,6 +33,7 @@ import (
 	hapapi "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/api"
 	haproxyparams "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/params"
 	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/process"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/jobs/gwapi"
 	gate "github.com/haproxytech/haproxy-unified-gateway/k8s/gate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
@@ -100,7 +101,18 @@ func NewIntTest(t *testing.T, crdRelativePath string, levelsUp int) (test IntTes
 	testEnvVersion := os.Getenv("ENVTEST_VERSION")
 	installPath := os.Getenv("KUBEBUILDER_ASSETS")
 
-	gatewayCRDsPath := filepath.Join(crdRelativePath, "../api")
+	// Gateway API CRDs: use embedded version, controlled by GWAPI_VERSION env var.
+	// Defaults to v1.3.0.
+	gwapiVersion := os.Getenv("GWAPI_VERSION")
+	if gwapiVersion == "" {
+		gwapiVersion = "1.3.0"
+	}
+	gatewayCRDsPath, errTmp := os.MkdirTemp("", "gwapi-crds-*")
+	g.Expect(errTmp).ToNot(gomega.HaveOccurred())
+	t.Cleanup(func() { _ = os.RemoveAll(gatewayCRDsPath) })
+	errWrite := gwapi.WriteCRDsToDir(gwapiVersion, gatewayCRDsPath)
+	g.Expect(errWrite).ToNot(gomega.HaveOccurred())
+	t.Logf("using embedded Gateway API CRDs v%s", gwapiVersion)
 	hugCRDsPath := filepath.Join(crdRelativePath, "../../../api/definition")
 
 	testEnv := &envtest.Environment{
