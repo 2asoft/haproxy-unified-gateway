@@ -20,4 +20,5 @@ include:
   - local: .gitlab/diff.yml
   - local: .gitlab/lint.yml
   - local: .gitlab/security.yml
+  - local: .gitlab/build.yaml
   - local: .gitlab/unit-tests.yml

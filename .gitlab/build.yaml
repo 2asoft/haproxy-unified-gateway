@@ -1,0 +1,64 @@
+docker-build-dockerfile:
+  stage: build
+  retry: 2
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+  image: $CI_REGISTRY_GO/docker:$DOCKER_VERSION-go$GO_VERSION
+  services:
+    - name: $CI_REGISTRY_GO/docker:$DOCKER_VERSION-dind
+      alias: docker
+  tags:
+    - go
+  before_script:
+    - go version
+    - docker login -u='$app' -p "$CI_REGISTRY_TOKEN" registry.haproxy.com
+    - docker pull -q $CI_REGISTRY_GO/alpine:3
+    - docker image tag $CI_REGISTRY_GO/alpine:3 alpine:3
+    - docker pull -q $CI_REGISTRY_GO/golang:$GO_VERSION-alpine
+    - docker image tag $CI_REGISTRY_GO/golang:$GO_VERSION-alpine golang:$GO_VERSION-alpine
+    - sed -i "s~FROM golang~FROM $CI_REGISTRY_GO/golang~g" "build/Dockerfile"
+    - sed -i "s~FROM haproxytech/haproxy-alpine~FROM $CI_REGISTRY_GO/haproxy-alpine~g" "build/Dockerfile"
+  script:
+    - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - docker buildx create --use
+    - docker buildx build --platform $DOCKER_PLATFORM -f build/Dockerfile .
+  parallel:
+    matrix:
+      - DOCKER_PLATFORM: [linux/amd64, linux/arm/v6, linux/arm/v7, linux/arm64]
+
+docker-build:
+  stage: build
+  retry: 2
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller' && $CI_PIPELINE_SOURCE == 'push'"
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+  image: $CI_REGISTRY_GO/docker:$DOCKER_VERSION-go$GO_VERSION
+  services:
+    - name: $CI_REGISTRY_GO/docker:$DOCKER_VERSION-dind
+      alias: docker
+  tags:
+    - go
+  before_script:
+    - go version
+    - docker login -u='$app' -p "$CI_REGISTRY_TOKEN" registry.haproxy.com
+    - docker pull -q $CI_REGISTRY_GO/alpine:3
+    - docker image tag $CI_REGISTRY_GO/alpine:3 alpine:3
+    - docker pull -q $CI_REGISTRY_GO/golang:$GO_VERSION-alpine
+    - docker image tag $CI_REGISTRY_GO/golang:$GO_VERSION-alpine golang:$GO_VERSION-alpine
+    - sed -i "s~FROM golang~FROM $CI_REGISTRY_GO/golang~g" "build/Dockerfile"
+    - sed -i "s~FROM haproxytech/haproxy-alpine~FROM $CI_REGISTRY_GO/haproxy-alpine~g" "build/Dockerfile"
+  script:
+    - task ${PLATFORM}-build-controller-image-build-in-docker
+  artifacts:
+    when: on_success
+    paths:
+      - tar
+    expire_in: 60 minutes
+  parallel:
+    matrix:
+      - PLATFORM: [kind, k0s]
