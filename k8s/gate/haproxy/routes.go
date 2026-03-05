@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
@@ -38,13 +39,12 @@ func (b *RouteMgrImpl) processRoutes() error {
 		return nil
 	}
 	err := b.runtimeMapSync()
-	if err != nil && strings.Contains(err.Error(), "maps dir doesn't exist or not specified") {
+	if err != nil {
+		reload.Instance().SetReload("runtime map update failed")
 		errs.Add(err)
-		return errs.Result()
 	}
-	// If runtime update failed, maps should not be reset so that in next run we can reapply.
 	b.ResetMapFiles()
-	return nil
+	return errs.Result()
 }
 
 func (b *RouteMgrImpl) ResetMapFiles() {

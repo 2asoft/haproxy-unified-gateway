@@ -15,6 +15,8 @@
 
 package utils // revive:disable:var-naming
 
+import "strings"
+
 import "errors"
 
 type Errors []error
@@ -28,14 +30,14 @@ func (e *Errors) Add(errs ...error) {
 }
 
 func (e *Errors) Result() error {
-	var result string
+	var result strings.Builder
 	for _, err := range *e {
-		result += err.Error() + "\n"
+		result.WriteString(err.Error() + "\n")
 	}
-	if result == "" {
+	if result.String() == "" {
 		return nil
 	}
-	return errors.New(result)
+	return errors.New(result.String())
 }
 
 func (e *Errors) AddErrors(errs Errors) {

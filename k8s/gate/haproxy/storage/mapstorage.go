@@ -34,6 +34,7 @@ const (
 	SNI_DOMAIN_WILDCARD_MAP        = "domain_wildcard_sni"
 )
 
+//revive:enable:var-naming
 var _ MapsStorageEx = &MapsStorageExDefault{}
 
 type MapsStorageEx interface {
