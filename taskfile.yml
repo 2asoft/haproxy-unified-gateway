@@ -54,6 +54,13 @@ tasks:
         vars:
           TEST_TAGS: "test_todo"
 
+  test-todo_nowait:
+    desc: "run Go tests"
+    cmds:
+      - task: test
+        vars:
+          TEST_TAGS: "test_todo_nowait"
+
   test:
     desc: "run Go tests"
     deps:
