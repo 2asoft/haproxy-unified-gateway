@@ -66,6 +66,7 @@ tasks:
     internal: true
     dir: cmd/controller
     cmds:
+      - task generate-gwapi
       - CGO_ENABLED=0 go build -buildvcs=true -o ../../build/kubernetes-controller .
 
   k0s-build-controller-image-dev:

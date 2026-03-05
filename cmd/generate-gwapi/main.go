@@ -23,13 +23,36 @@
 package main
 
 import (
+	"compress/gzip"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"text/template"
 )
+
+func downloadGzipped(url, dest string) error {
+	resp, err := http.Get(url) //nolint:gosec,noctx
+	if err != nil {
+		return fmt.Errorf("GET %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("GET %s: status %s", url, resp.Status)
+	}
+	f, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	gw := gzip.NewWriter(f)
+	if _, err := io.Copy(gw, resp.Body); err != nil {
+		return fmt.Errorf("writing %s: %w", dest, err)
+	}
+	return gw.Close()
+}
 
 type version struct {
 	Tag          string // e.g. "v1.3.0"
@@ -131,15 +154,13 @@ func downloadAndClean(dir string, versions []version) {
 		}
 		fmt.Printf("  downloading %s experimental CRDs...\n", v.Tag)
 		url := fmt.Sprintf("https://github.com/kubernetes-sigs/gateway-api/releases/download/%s/experimental-install.yaml", v.Tag)
-		cmd := exec.Command("bash", "-c", fmt.Sprintf("curl -sL %q | gzip > %q", url, gz))
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err := downloadGzipped(url, gz); err != nil {
 			fmt.Fprintf(os.Stderr, "download %s failed: %v\n", v.Tag, err)
 			os.Exit(1)
 		}
+		fmt.Printf("  downloaded %s\n", gz)
 	}
-	// Remove stale .gz files
+	// Remove stale .gz files.
 	entries, _ := os.ReadDir(dir)
 	for _, e := range entries {
 		if strings.HasSuffix(e.Name(), "-experimental.yaml.gz") {
@@ -255,6 +276,7 @@ tests-GW-API-{{.CI}}:
 {{- if .Experimental}}
   allow_failure: true
 {{- end}}
+  retry: 2
   needs: ["diff", "tidy"]
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'

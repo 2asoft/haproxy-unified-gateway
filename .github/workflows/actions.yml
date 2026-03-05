@@ -134,7 +134,7 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: generating files
-        run: task generate
+        run: task generate-gwapi
       - name: Get dependencies
         run: |
           go mod tidy
