@@ -17,6 +17,7 @@ spec:
     protocol: HTTPS
     port: 31443
     tls:
+      mode: Terminate
       certificateRefs:
       - kind: Secret
         group: ""
