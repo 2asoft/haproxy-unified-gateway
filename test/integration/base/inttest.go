@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/haproxytech/client-native/v6/runtime"
 	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
@@ -86,13 +87,14 @@ type IntTest struct {
 	HaproxyClient     hapapi.HAProxyClient
 	TestEnv           *envtest.Environment
 	cancel            context.CancelFunc
+	mgrStopped        chan struct{}
 	Namespace         string
 	HaproxyCfgDir     string
 	RuntimeSocketPath string
 }
 
 func NewIntTest(t *testing.T, crdRelativePath string, levelsUp int) (test IntTest, err error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	g := gomega.NewWithT(t)
 
 	// Namespace
@@ -125,6 +127,7 @@ func NewIntTest(t *testing.T, crdRelativePath string, levelsUp int) (test IntTes
 		DownloadBinaryAssets:        true,
 		DownloadBinaryAssetsVersion: testEnvVersion,
 		BinaryAssetsDirectory:       installPath,
+		ControlPlaneStartTimeout:    30 * time.Second,
 	}
 
 	test = IntTest{
@@ -138,11 +141,13 @@ func NewIntTest(t *testing.T, crdRelativePath string, levelsUp int) (test IntTes
 }
 
 func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-length
+	test.mgrStopped = make(chan struct{})
 	// Bootstrapping test environment.
+	ctrlruntime.SetLogger(logr.Discard())
 	cfg, err := test.TestEnv.Start()
 	g := gomega.NewWithT(t)
 
-	g.Expect(err).ToNot(gomega.HaveOccurred())
+	g.Expect(err).ToNot(gomega.HaveOccurred(), "failed to start test envtest")
 	g.Expect(cfg).ToNot(gomega.BeNil())
 	// metricsConfig := config.MetricsConfig{
 	// 	Port:    6062,
@@ -274,6 +279,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	g.Expect(err).ToNot(gomega.HaveOccurred())
 
 	go func() {
+		defer close(test.mgrStopped) // Signal when manager exits
 		if err := mgr.Start(test.Ctx); err != nil {
 			t.Errorf("failed to start manager: %s", err)
 			return
@@ -295,7 +301,15 @@ func (test *IntTest) StopTestEnv(t *testing.T) {
 	// Clean up and stop controller.
 	test.cancel()
 
-	// Tearing down the test environment.
+	// Wait for the manager to shut down gracefully
+	select {
+	case <-test.mgrStopped:
+		t.Log("Controller manager stopped gracefully")
+	case <-time.After(30 * time.Second): // Match or exceed envtest timeout
+		t.Log("Timeout waiting for controller manager to stop")
+	}
+
+	// Now it is safer to stop the environment
 	if err := test.TestEnv.Stop(); err != nil {
 		t.Fatalf("failed to stop testEnv: %s", err)
 	}
