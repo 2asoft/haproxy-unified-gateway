@@ -92,7 +92,7 @@ func (b *BaseSuite) CreateFixtures(fixturePath string, manifestNames []string) {
 // Note that CleanupFixturesCheckMapFiles will wait until the map file is empty before
 // returning. This is to ensure that the test does not finish before the cleanup
 // has finished.
-func (b *BaseSuite) CleanupFixturesCheckMapFiles(fixturePath string, manifestNames []string, mapFileRelativePath string) {
+func (b *BaseSuite) CleanupFixturesCheckMapFiles(fixturePath string, manifestNames []string, mapFileRelativePaths []string) {
 	b.T().Logf("Cleaning up fixtures in %s", fixturePath)
 	defer b.T().Logf("End of cleaning up fixtures in %s", fixturePath)
 	params := utils.RuntimeYamlParams{
@@ -105,13 +105,9 @@ func (b *BaseSuite) CleanupFixturesCheckMapFiles(fixturePath string, manifestNam
 	}
 	err := utils.DeleteRuntimeObjectsFromYAMLFiles(params)
 	b.Require().NoError(err)
-	b.Eventually(func() bool {
-		emptyMapFile := b.CheckMapContents(mapFileRelativePath, "")
-		if !emptyMapFile {
-			return false
-		}
-		return b.CheckRuntimeMapContents(mapFileRelativePath, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFileRelativePath))
+	for _, mapFileRelativePath := range mapFileRelativePaths {
+		b.ExpectMapContents(mapFileRelativePath, "")
+	}
 }
 
 func (b *BaseSuite) CreateFixturesInNamespace(fixturePath, namespace string, manifestNames []string) {
@@ -414,19 +410,25 @@ var StandardMaps = []string{
 }
 
 func (b *BaseSuite) ExpectMapContents(mapFilePath, expectedMapPath string) {
-	res := b.Eventually(func() bool {
+	b.Require().Eventually(func() bool {
 		check := b.CheckMapContents(mapFilePath, expectedMapPath)
 		return check
 	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
-	if !res {
-		msg := fmt.Sprintf("maps in %s did not match expected contents", mapFilePath)
-		b.T().Fatal(msg)
-	}
 }
 
 func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string) bool {
-	b.T().Logf("Checking map contents in %s", mapFileRelativePath)
-	b.T().Logf("with expected map path %s", expectedMapPath)
+	checkFile := b.CheckMapFileContents(mapFileRelativePath, expectedMapPath)
+	if !checkFile {
+		return false
+	}
+	if TestMapThroughRuntime {
+		return b.CheckRuntimeMapContents(mapFileRelativePath, expectedMapPath)
+	}
+	return true
+}
+
+func (b *BaseSuite) CheckMapFileContents(mapFileRelativePath, expectedMapPath string) bool {
+	b.T().Logf("Checking map [file] in %s with expected map path %s", mapFileRelativePath, expectedMapPath)
 	for _, mapName := range StandardMaps {
 		expectedFilePath := path.Join(expectedMapPath, mapName)
 
@@ -446,18 +448,18 @@ func (b *BaseSuite) CheckMapContents(mapFileRelativePath, expectedMapPath string
 		if expectationExists {
 			// Check if content matches
 			if string(expectedContent) != actualString {
-				b.T().Logf("Map mismatch for %s: \nexpected %q, \ngot      %q", mapName, string(expectedContent), actualString)
+				b.T().Logf("  map [file] mismatch for %s: \nexpected %q, \ngot      %q", mapName, string(expectedContent), actualString)
 				return false
 			}
 		} else {
 			// Check if actual is empty
 			if strings.TrimSpace(actualString) != "" {
-				b.T().Logf("Map %s should be empty but has content: %q", mapName, actualString)
+				b.T().Logf("   map [file] %s should be empty but has content: %q", mapName, actualString)
 				return false
 			}
 		}
 	}
-	b.T().Logf("Map contents correct for %s", mapFileRelativePath)
+	b.T().Logf("  map [file] correct for %s", mapFileRelativePath)
 	return true
 }
 
@@ -636,8 +638,7 @@ func (b *BaseSuite) ConsistentlyNoReload(oldPid string, duration time.Duration) 
 }
 
 func (b *BaseSuite) CheckRuntimeMapContents(mapFileRelativePath, expectedMapPath string) bool {
-	b.T().Logf("Checking runtime map contents for %s with expected map path %s", mapFileRelativePath, expectedMapPath)
-	defer b.T().Logf("End of checking runtime map contents for %s with expected map path %s", mapFileRelativePath, expectedMapPath)
+	b.T().Logf("Checking map [runtime] for %s with expected map path %s", mapFileRelativePath, expectedMapPath)
 	socketPath := filepath.Join(b.test.HaproxyCfgDir, "haproxy-runtime-api.sock")
 
 	for _, mapName := range StandardMaps {
@@ -669,11 +670,11 @@ func (b *BaseSuite) CheckRuntimeMapContents(mapFileRelativePath, expectedMapPath
 		}
 
 		if expectationExists {
-			b.T().Logf("Runtime map contents: %s", actualNormalized)
-			b.T().Logf("Expected runtime map contents: %s", expectedNormalized)
+			b.T().Logf("map [runtime] contents: %s", actualNormalized)
+			b.T().Logf("Expected map [runtime] contents: %s", expectedNormalized)
 			if expectedNormalized != actualNormalized {
 				b.T().Logf(
-					"Runtime map mismatch for %s:\nexpected:\n%q\ngot:\n%q",
+					"  map [runtime] mismatch for %s:\nexpected:\n%q\ngot:\n%q",
 					mapName,
 					expectedNormalized,
 					actualNormalized,
@@ -683,7 +684,7 @@ func (b *BaseSuite) CheckRuntimeMapContents(mapFileRelativePath, expectedMapPath
 		} else {
 			if strings.TrimSpace(actualNormalized) != "" {
 				b.T().Logf(
-					"Runtime map %s should be empty but has content: %q",
+					"   map [runtime] %s should be empty but has content: %q",
 					mapName,
 					actualNormalized,
 				)
@@ -691,6 +692,7 @@ func (b *BaseSuite) CheckRuntimeMapContents(mapFileRelativePath, expectedMapPath
 			}
 		}
 	}
+	b.T().Logf("  map [runtime] correct for %s", mapFileRelativePath)
 
 	return true
 }

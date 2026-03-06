@@ -16,16 +16,10 @@ package hostnames_matchtype11
 
 import (
 	"testing"
-	"time"
 
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/base"
 
 	"github.com/stretchr/testify/suite"
-)
-
-const (
-	timeout  = time.Second * 30
-	interval = time.Second * 1
 )
 
 type HostnamesMatchtypeSuite11 struct {

@@ -54,7 +54,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 		return s.CheckRuntimeMapContents(mapFileRelativePath2, "")
 	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFileRelativePath2))
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -97,7 +97,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "1_parent_not_allowed")
 	s.CreateFixtures(fixturePath, nil)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -128,7 +128,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "no_matching_parent")
 	s.CreateFixtures(fixturePath, nil)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -161,7 +161,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"})
 	defer s.CleanupFixturesCheckMapFiles(fixturePath,
 		[]string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"},
-		mapFileRelativePath)
+		[]string{mapFileRelativePath})
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -207,7 +207,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "ko_resolvedRef")
 	s.CreateFixtures(fixturePath, nil)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -246,7 +246,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() 
 		return s.CheckRuntimeMapContents(mapFileRelativePath2, "")
 	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFileRelativePath2))
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")

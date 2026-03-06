@@ -1,5 +1,3 @@
-//go:build test_todo
-
 // Copyright 2025 HAProxy Technologies LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,25 +15,18 @@
 package hostnames_matchtype
 
 import (
-	"fmt"
 	"path"
-	"time"
 
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
-)
-
-const (
-	timeout  = time.Second * 15
-	interval = time.Second * 1
 )
 
 func (s *HostnamesMatchtypeSuite) Test_1_Exact_Route_Exact_Match_Exact() {
 	fixtureDirPath := utils.GetCRDFixturePath()
 	fixtureDir := "1-gw-exact-route-exact-match-exact"
-	mapFilePath := "hug_http_31081"
+
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -53,16 +44,12 @@ func (s *HostnamesMatchtypeSuite) Test_1_Exact_Route_Exact_Match_Exact() {
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
 	// For FE http
-
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
 	// For FE https
 	mapFilePath = "hug_https_31444"
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_5_Wildcard_Route_Exact_Match_Exact() {
@@ -71,17 +58,8 @@ func (s *HostnamesMatchtypeSuite) Test_5_Wildcard_Route_Exact_Match_Exact() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -97,13 +75,11 @@ func (s *HostnamesMatchtypeSuite) Test_5_Wildcard_Route_Exact_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_4_Exact_Route_Empty_Match_Exact() {
@@ -112,17 +88,7 @@ func (s *HostnamesMatchtypeSuite) Test_4_Exact_Route_Empty_Match_Exact() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -139,13 +105,11 @@ func (s *HostnamesMatchtypeSuite) Test_4_Exact_Route_Empty_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_2_Exact_Route_Wildcard_Match_Exact() {
@@ -154,17 +118,8 @@ func (s *HostnamesMatchtypeSuite) Test_2_Exact_Route_Wildcard_Match_Exact() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -180,13 +135,11 @@ func (s *HostnamesMatchtypeSuite) Test_2_Exact_Route_Wildcard_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_6_Exact_Route_Exact_Match_Prefix() {
@@ -195,17 +148,7 @@ func (s *HostnamesMatchtypeSuite) Test_6_Exact_Route_Exact_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -222,13 +165,11 @@ func (s *HostnamesMatchtypeSuite) Test_6_Exact_Route_Exact_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_8_Exact_Route_Wildcard_Match_Prefix() {
@@ -237,17 +178,8 @@ func (s *HostnamesMatchtypeSuite) Test_8_Exact_Route_Wildcard_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -263,13 +195,11 @@ func (s *HostnamesMatchtypeSuite) Test_8_Exact_Route_Wildcard_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_10_Exact_Route_Empty_Match_Prefix() {
@@ -278,17 +208,8 @@ func (s *HostnamesMatchtypeSuite) Test_10_Exact_Route_Empty_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -304,13 +225,11 @@ func (s *HostnamesMatchtypeSuite) Test_10_Exact_Route_Empty_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_12_Wildcard_Route_Exact_Match_Prefix() {
@@ -319,17 +238,7 @@ func (s *HostnamesMatchtypeSuite) Test_12_Wildcard_Route_Exact_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -346,13 +255,11 @@ func (s *HostnamesMatchtypeSuite) Test_12_Wildcard_Route_Exact_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_14_Wildcard_Route_Wildcard_Match_Exact() {
@@ -361,17 +268,8 @@ func (s *HostnamesMatchtypeSuite) Test_14_Wildcard_Route_Wildcard_Match_Exact() 
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -387,13 +285,11 @@ func (s *HostnamesMatchtypeSuite) Test_14_Wildcard_Route_Wildcard_Match_Exact() 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_17_Wildcard_Route_Empty_Match_Exact() {
@@ -402,17 +298,7 @@ func (s *HostnamesMatchtypeSuite) Test_17_Wildcard_Route_Empty_Match_Exact() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -429,13 +315,11 @@ func (s *HostnamesMatchtypeSuite) Test_17_Wildcard_Route_Empty_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_20_Empty_Route_Exact_Match_Exact() {
@@ -444,17 +328,8 @@ func (s *HostnamesMatchtypeSuite) Test_20_Empty_Route_Exact_Match_Exact() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -470,13 +345,11 @@ func (s *HostnamesMatchtypeSuite) Test_20_Empty_Route_Exact_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_23_Empty_Route_Wildcard_Match_Exact() {
@@ -485,17 +358,8 @@ func (s *HostnamesMatchtypeSuite) Test_23_Empty_Route_Wildcard_Match_Exact() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -511,13 +375,11 @@ func (s *HostnamesMatchtypeSuite) Test_23_Empty_Route_Wildcard_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_26_Empty_Route_Empty_Match_Exact() {
@@ -526,17 +388,8 @@ func (s *HostnamesMatchtypeSuite) Test_26_Empty_Route_Empty_Match_Exact() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
+	defer s.CleanupFixtures(fixturePath, nil)
 
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -552,13 +405,11 @@ func (s *HostnamesMatchtypeSuite) Test_26_Empty_Route_Empty_Match_Exact() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_27_Empty_Route_Empty_Match_Prefix() {
@@ -567,17 +418,7 @@ func (s *HostnamesMatchtypeSuite) Test_27_Empty_Route_Empty_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -594,13 +435,11 @@ func (s *HostnamesMatchtypeSuite) Test_27_Empty_Route_Empty_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_13_Wildcard_Route_Exact_Match_Regex() {
@@ -609,17 +448,7 @@ func (s *HostnamesMatchtypeSuite) Test_13_Wildcard_Route_Exact_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -636,13 +465,11 @@ func (s *HostnamesMatchtypeSuite) Test_13_Wildcard_Route_Exact_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_7_Exact_Route_Exact_Match_Regex() {
@@ -651,17 +478,7 @@ func (s *HostnamesMatchtypeSuite) Test_7_Exact_Route_Exact_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -678,13 +495,11 @@ func (s *HostnamesMatchtypeSuite) Test_7_Exact_Route_Exact_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_9_Exact_Route_Wildcard_Match_Regex() {
@@ -693,17 +508,7 @@ func (s *HostnamesMatchtypeSuite) Test_9_Exact_Route_Wildcard_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -720,13 +525,11 @@ func (s *HostnamesMatchtypeSuite) Test_9_Exact_Route_Wildcard_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_11_Exact_Route_Empty_Match_Regex() {
@@ -735,17 +538,7 @@ func (s *HostnamesMatchtypeSuite) Test_11_Exact_Route_Empty_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -762,13 +555,11 @@ func (s *HostnamesMatchtypeSuite) Test_11_Exact_Route_Empty_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_16_Wildcard_Route_Wildcard_Match_Regex() {
@@ -777,17 +568,7 @@ func (s *HostnamesMatchtypeSuite) Test_16_Wildcard_Route_Wildcard_Match_Regex() 
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -804,13 +585,11 @@ func (s *HostnamesMatchtypeSuite) Test_16_Wildcard_Route_Wildcard_Match_Regex() 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_19_Wildcard_Route_Empty_Match_Regex() {
@@ -819,17 +598,7 @@ func (s *HostnamesMatchtypeSuite) Test_19_Wildcard_Route_Empty_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -846,13 +615,11 @@ func (s *HostnamesMatchtypeSuite) Test_19_Wildcard_Route_Empty_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_25_Empty_Route_Wildcard_Match_Regex() {
@@ -861,17 +628,7 @@ func (s *HostnamesMatchtypeSuite) Test_25_Empty_Route_Wildcard_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -888,13 +645,11 @@ func (s *HostnamesMatchtypeSuite) Test_25_Empty_Route_Wildcard_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_28_Empty_Route_Empty_Match_Regex() {
@@ -903,17 +658,7 @@ func (s *HostnamesMatchtypeSuite) Test_28_Empty_Route_Empty_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -930,13 +675,11 @@ func (s *HostnamesMatchtypeSuite) Test_28_Empty_Route_Empty_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_22_Empty_Route_Exact_Match_Regex() {
@@ -945,17 +688,7 @@ func (s *HostnamesMatchtypeSuite) Test_22_Empty_Route_Exact_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -972,13 +705,11 @@ func (s *HostnamesMatchtypeSuite) Test_22_Empty_Route_Exact_Match_Regex() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_15_Wildcard_Route_Wildcard_Match_Prefix() {
@@ -987,17 +718,7 @@ func (s *HostnamesMatchtypeSuite) Test_15_Wildcard_Route_Wildcard_Match_Prefix()
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -1014,13 +735,11 @@ func (s *HostnamesMatchtypeSuite) Test_15_Wildcard_Route_Wildcard_Match_Prefix()
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_18_Wildcard_Route_Empty_Match_Prefix() {
@@ -1029,17 +748,7 @@ func (s *HostnamesMatchtypeSuite) Test_18_Wildcard_Route_Empty_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -1056,13 +765,11 @@ func (s *HostnamesMatchtypeSuite) Test_18_Wildcard_Route_Empty_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_21_Empty_Route_Exact_Match_Prefix() {
@@ -1071,17 +778,7 @@ func (s *HostnamesMatchtypeSuite) Test_21_Empty_Route_Exact_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -1098,13 +795,11 @@ func (s *HostnamesMatchtypeSuite) Test_21_Empty_Route_Exact_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }
 
 func (s *HostnamesMatchtypeSuite) Test_24_Empty_Route_Wildcard_Match_Prefix() {
@@ -1113,17 +808,7 @@ func (s *HostnamesMatchtypeSuite) Test_24_Empty_Route_Wildcard_Match_Prefix() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	mapFilePath2 := "hug_https_31444"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFilePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFilePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFilePath2))
-
-	mapFilePath := "hug_http_31081"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFilePath)
+	defer s.CleanupFixtures(fixturePath, nil)
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -1140,11 +825,9 @@ func (s *HostnamesMatchtypeSuite) Test_24_Empty_Route_Wildcard_Match_Prefix() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	mapFilePath := "hug_http_31081"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath2))
+	mapFilePath = "hug_https_31444"
+	s.ExpectMapContents(mapFilePath, expectedMapsPath)
 }

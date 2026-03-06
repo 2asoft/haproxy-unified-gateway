@@ -15,7 +15,6 @@
 package hostnames_matchtype19
 
 import (
-	"fmt"
 	"path"
 
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
@@ -27,7 +26,9 @@ func (s *HostnamesMatchtypeSuite19) Test_19_Wildcard_Route_Empty_Match_Regex() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	s.CreateFixtures(fixturePath, nil)
-	defer s.CleanupFixtures(fixturePath, nil)
+	mapFilePath1 := "hug_http_31081"
+	mapFilePath2 := "hug_https_31444"
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFilePath1, mapFilePath2})
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -45,14 +46,8 @@ func (s *HostnamesMatchtypeSuite19) Test_19_Wildcard_Route_Empty_Match_Regex() {
 	expectedMapsPath := path.Join("expectations", "maps")
 
 	// For FE http
-	mapFilePath := "hug_http_31081"
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	s.ExpectMapContents(mapFilePath1, expectedMapsPath)
 
 	// For FE https
-	mapFilePath = "hug_https_31444"
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFilePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFilePath))
+	s.ExpectMapContents(mapFilePath2, expectedMapsPath)
 }

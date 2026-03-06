@@ -1,4 +1,6 @@
-// Copyright 2025 HAProxy Technologies LLC
+//go:build test_todo
+
+// Copyright 2019 HAProxy Technologies LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hostnames_matchtype25
+package base
 
-import (
-	"testing"
-
-	"github.com/haproxytech/haproxy-unified-gateway/test/integration/base"
-
-	"github.com/stretchr/testify/suite"
+const (
+	TestMapThroughRuntime = true
 )
-
-type HostnamesMatchtypeSuite25 struct {
-	base.BaseSuite
-}
-
-func TestHostnamesMatchtypeSuite25(t *testing.T) {
-	suite.Run(t, new(HostnamesMatchtypeSuite25))
-}
-
-func (s *HostnamesMatchtypeSuite25) SetupSuite() {
-	s.BaseSuite.SetupSuite("../", 0)
-}
-
-func (s *HostnamesMatchtypeSuite25) TearDownSuite() {
-	s.BaseSuite.TearDownSuite()
-}

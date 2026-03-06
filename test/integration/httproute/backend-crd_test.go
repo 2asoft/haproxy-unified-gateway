@@ -16,7 +16,6 @@
 package httproute
 
 import (
-	"fmt"
 	"path"
 
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
@@ -29,7 +28,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_basic() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "basic")
 	s.CreateFixtures(fixturePath, nil)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -48,13 +47,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_basic() {
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
@@ -64,7 +57,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "extended")
 	s.CreateFixtures(fixturePath, nil)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, mapFileRelativePath)
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -84,11 +77,5 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_BackendCRD_extended() {
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
 
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
 }

@@ -73,6 +73,7 @@ allowed:
   - tcp
   - tls
   - tlsv
+  - todo
   - ubuntu
   - unix
   - usr
