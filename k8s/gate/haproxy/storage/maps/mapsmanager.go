@@ -48,7 +48,7 @@ func NewMapFileState(fileName string, logger *slog.Logger) *MapFileState {
 func (m *MapFileState) ProcessMapFiles() {
 	m.logger.LogAttrs(
 		context.Background(),
-		slog.LevelInfo,
+		slog.LevelDebug,
 		"Processing map file",
 		slog.String("map file", m.FileName))
 	// Iteration over each entry/intent for the filename
@@ -162,7 +162,7 @@ func (m *MapFileState) ProcessMapFiles() {
 func (m *MapFileState) Reset() {
 	m.logger.LogAttrs(
 		context.Background(),
-		slog.LevelInfo,
+		slog.LevelDebug,
 		"Resetting map file",
 		slog.String("map file", m.FileName))
 	for entryKey, entryValue := range m.Entries {
