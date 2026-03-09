@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"strings"
 
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
@@ -45,6 +46,7 @@ type BackendOwnerType string
 const (
 	BackendOwnerTypeHTTPRoute BackendOwnerType = "HTTPRoute"
 	BackendOwnerTypeTLSRoute  BackendOwnerType = "TLSRoute"
+	cookieKey                                  = "ohph7OoGhong"
 )
 
 type BackendReferencedBy struct {
@@ -52,9 +54,10 @@ type BackendReferencedBy struct {
 }
 
 type BackendImpactedInCycle struct {
-	Name         string
-	HTTPRouteKey client.ObjectKey
-	BackendRef   gatewayv1.HTTPBackendRef
+	HTTPRouteKey       client.ObjectKey
+	Name               string
+	BackendRef         gatewayv1.HTTPBackendRef
+	SessionPersistence *gatewayv1.SessionPersistence
 }
 
 type BackendsImpactedInCycle struct {
@@ -210,15 +213,18 @@ func (b *HaproxyConfMgrImpl) upsertHTTPRouteBackends(routeKey k8stypes.Namespace
 					continue
 				}
 				// If the specific backendCheck result is ok, add the BE
-				if checkResult.Valid {
-					err := b.backendOwners.addHTTPRoute(beName, routeKey, route.K8sResource)
-					if err != nil {
-						errs.Add(err)
-						continue
-					}
-					b.addImpactedHTTPBackendUpserted(beName, routeKey, backendRef)
-					upsertedBackendsReferencedByRoute[beName] = struct{}{}
+				if !checkResult.Valid {
+					continue
 				}
+				err = b.backendOwners.addHTTPRoute(beName, routeKey, route.K8sResource)
+				if err != nil {
+					errs.Add(err)
+					continue
+				}
+
+				b.addImpactedHTTPBackendUpserted(beName, routeKey, backendRef, rule.K8sResource.SessionPersistence)
+				upsertedBackendsReferencedByRoute[beName] = struct{}{}
+
 			}
 		}
 	}
@@ -362,12 +368,13 @@ func (b *HaproxyConfMgrImpl) onInvalidTLSRouteUpserted(routeKey k8stypes.Namespa
 }
 
 func (b *HaproxyConfMgrImpl) addImpactedHTTPBackendUpserted(backendName string, routeKey client.ObjectKey,
-	httpBackendRef gatewayv1.HTTPBackendRef,
+	httpBackendRef gatewayv1.HTTPBackendRef, sessionPersistence *gatewayv1.SessionPersistence,
 ) {
 	impactedBe := BackendImpactedInCycle{
-		Name:         backendName,
-		HTTPRouteKey: routeKey,
-		BackendRef:   httpBackendRef,
+		Name:               backendName,
+		HTTPRouteKey:       routeKey,
+		BackendRef:         httpBackendRef,
+		SessionPersistence: sessionPersistence,
 	}
 
 	if _, ok := b.backendsImpactedInCycle.Upserted[backendName]; !ok {
@@ -489,7 +496,8 @@ func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType 
 
 //revive:disable:flag-parameter
 func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData,
-	backendRef gatewayv1.HTTPBackendRef, namespace string, isHTTPBackend bool,
+	backendRef gatewayv1.HTTPBackendRef, sessionPersistence *gatewayv1.SessionPersistence,
+	namespace string, isHTTPBackend bool,
 ) (*models.Backend, error) {
 	// First, we merge the Backend CRDs from filters, if there are some
 	// Backend CRDs are defined in the Filters of type: ExtensionRef
@@ -524,6 +532,29 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 
 	// Now Merge with the Backend CRs
 	errs := b.mergeWithBackendCRs(backendRef, newBackend, namespace)
+	// Handling session persistence with cookie
+	if sessionPersistence != nil &&
+		utils.PointerDefaultValueIfNil(sessionPersistence.Type) == gatewayv1.CookieBasedSessionPersistence {
+		sessionName := utils.PointerDefaultValueIfNil(sessionPersistence.SessionName)
+		if sessionName == "" {
+			sessionName = fmt.Sprintf("gwapi-%s", strings.ToLower(backendName))
+		}
+
+		var cookie *models.Cookie
+		// We need to create a cookie for the backend
+		cookie = &models.Cookie{
+			Name:     &sessionName,
+			Type:     "insert",
+			Nocache:  true,
+			Indirect: true,
+			Dynamic:  true,
+			Domains:  []*models.Domain{},
+		}
+
+		newBackend.Cookie = cookie
+		newBackend.BackendBase.DynamicCookieKey = cookieKey
+
+	}
 
 	return newBackend, errs.Result()
 }
@@ -670,10 +701,13 @@ func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
 		beMd := b.metadataManager.BackendMetaData(routesInfo)
 
 		var backendRef gatewayv1.HTTPBackendRef
+		var sessionPersistence *gatewayv1.SessionPersistence
 		for _, impactedBE := range mapImpactedBEs {
 			// They should all have the same filters as the backend name is computed from the Backend + Filters hash
 			backendRef = impactedBE.BackendRef
+			sessionPersistence = impactedBE.SessionPersistence
 		}
+
 		// Same for Namespace, it should be the same for all
 		var namespace string
 		for owner := range ownersForRoute {
@@ -681,7 +715,7 @@ func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
 			break
 		}
 
-		be, err := b.newBackend(backendName, beMd, backendRef, namespace, isHTTPBackend)
+		be, err := b.newBackend(backendName, beMd, backendRef, sessionPersistence, namespace, isHTTPBackend)
 		if err != nil {
 			errs.Add(err)
 			continue
