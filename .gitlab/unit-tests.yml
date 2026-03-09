@@ -47,7 +47,6 @@ tests-GW-API-1_4_0:
       junit: junit-report.xml
 
 tests-GW-API-1_5_0:
-  allow_failure: true
   retry: 2
   needs: ["diff", "tidy"]
   rules:
