@@ -153,7 +153,6 @@ func (m *MapFileState) ProcessMapFiles() {
 			slog.String("map file contents", m.PrettyString()),
 		)
 	}
-	fmt.Println(m.PrettyString())
 }
 
 // Reset resets the MapFileState to its initial state.
