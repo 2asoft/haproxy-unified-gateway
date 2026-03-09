@@ -17,5 +17,5 @@
 package base
 
 const (
-	TestMapThroughRuntime = false
+	TestMapThroughRuntime = true
 )
