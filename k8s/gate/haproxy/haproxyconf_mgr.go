@@ -140,14 +140,14 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 			logging.LogAttrError(err))
 	}
 
-	b.configuration.diffs.ReloadNeed = reload.Instance().NeedReload()
-
 	// -----------
 	// Routes (All types)
 	if err := b.firstSync.routeManager.processRoutes(); err != nil {
 		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing routes",
 			logging.LogAttrError(err))
 	}
+
+	b.configuration.diffs.ReloadNeed = reload.Instance().NeedReload()
 
 	// Perform the needed cleanup after the first sync
 	// Remove frontends and backends that were present at startup but not anymore in the cluster
