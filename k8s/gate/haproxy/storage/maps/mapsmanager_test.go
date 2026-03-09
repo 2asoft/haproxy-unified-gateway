@@ -23,7 +23,7 @@ import (
 func newTestState() *MapFileState {
 	handler := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{})
 	logger := slog.New(handler)
-	return NewMapFileState("test.map", logger)
+	return NewMapFileState("fe", "test.map", logger)
 }
 
 func TestMapFileState_ApplyDesiredBackends_Full_WithPath(t *testing.T) {
@@ -195,10 +195,11 @@ func TestMapFileState_ApplyDesiredBackends_DeleteScenarios(t *testing.T) {
 		{
 			name: "2 hostnames, 1 backend deleted, different origin",
 			setupFn: func(m *MapFileState, ek EntryKey) {
-				if ek.Hostname == "a.com" {
+				switch ek.Hostname {
+				case "a.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res1"},
 						map[string]*WeightedBackend{"be1": {BackendName: "be1", Weight: new(int32(1))}})
-				} else if ek.Hostname == "b.com" {
+				case "b.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res2"},
 						map[string]*WeightedBackend{"be2": {BackendName: "be2", Weight: new(int32(2))}})
 				}
@@ -278,10 +279,11 @@ func TestMapFileState_ApplyDesiredBackends_DeleteScenarios(t *testing.T) {
 		{
 			name: "2 hostnames, 2 identical backends deleted, different origin",
 			setupFn: func(m *MapFileState, ek EntryKey) {
-				if ek.Hostname == "a.com" {
+				switch ek.Hostname {
+				case "a.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res1"},
 						map[string]*WeightedBackend{"be1": {BackendName: "be1", Weight: new(int32(2))}})
-				} else if ek.Hostname == "b.com" {
+				case "b.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res2"},
 						map[string]*WeightedBackend{"be1": {BackendName: "be1", Weight: new(int32(5))}})
 				}
@@ -361,10 +363,11 @@ func TestMapFileState_DeleteBackends(t *testing.T) {
 		{
 			name: "2 hostnames, 1 backend deleted, different origin",
 			setupFn: func(m *MapFileState, ek EntryKey) {
-				if ek.Hostname == "a.com" {
+				switch ek.Hostname {
+				case "a.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res1"},
 						map[string]*WeightedBackend{"be1": {BackendName: "be1", Weight: new(int32(1))}})
-				} else if ek.Hostname == "b.com" {
+				case "b.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res2"},
 						map[string]*WeightedBackend{"be2": {BackendName: "be2", Weight: new(int32(2))}})
 				}
@@ -444,10 +447,11 @@ func TestMapFileState_DeleteBackends(t *testing.T) {
 		{
 			name: "2 hostnames, 2 identical backends deleted, different origin",
 			setupFn: func(m *MapFileState, ek EntryKey) {
-				if ek.Hostname == "a.com" {
+				switch ek.Hostname {
+				case "a.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res1"},
 						map[string]*WeightedBackend{"be1": {BackendName: "be1", Weight: new(int32(2))}})
-				} else if ek.Hostname == "b.com" {
+				case "b.com":
 					m.ApplyDesiredBackends(ek, ResourceOrigin{"default", "res2"},
 						map[string]*WeightedBackend{"be1": {BackendName: "be1", Weight: new(int32(5))}})
 				}

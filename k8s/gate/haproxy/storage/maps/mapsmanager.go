@@ -29,10 +29,11 @@ import (
 
 // NewMapFileState creates a new instance of MapFileState with the given filename and logger.
 // It returns a pointer to the new instance.
-func NewMapFileState(fileName string, logger *slog.Logger) *MapFileState {
+func NewMapFileState(relativeMapPath, mapFilePath string, logger *slog.Logger) *MapFileState {
 	mylogger := logger.With(logging.LogAttrCategory(logging.LogMapsStorage))
 	return &MapFileState{
-		FileName:          fileName,
+		FileName:          mapFilePath,
+		RelativeFileName:  relativeMapPath,
 		Entries:           map[EntryKey]*EntryValue{},
 		EntriesByResource: map[ResourceOrigin]map[EntryKey]struct{}{},
 		logger:            mylogger,
@@ -48,9 +49,8 @@ func NewMapFileState(fileName string, logger *slog.Logger) *MapFileState {
 func (m *MapFileState) ProcessMapFiles() {
 	m.logger.LogAttrs(
 		context.Background(),
-		slog.LevelDebug,
-		"Processing map file",
-		slog.String("map file", m.FileName))
+		slog.LevelDebug, "Processing map file",
+		logging.LogAttrMapFilePath(m.RelativeFileName))
 	// Iteration over each entry/intent for the filename
 	for _, entryValue := range m.Entries {
 		// We collect the operations for each backend, backend name -> weights + operations (create, update, delete, empty)
@@ -127,8 +127,8 @@ func (m *MapFileState) ProcessMapFiles() {
 			}
 			entryValue.DiffValue[backendName] = diffValue
 			// DesiredValue
-			if entryValue.DiffValue[backendName].Operation == Create ||
-				entryValue.DiffValue[backendName].Operation == Update {
+			switch entryValue.DiffValue[backendName].Operation {
+			case Create, Update:
 				entryValue.DesiredValue[backendName] = &WeightedBackend{
 					BackendName: backendName,
 					Weight: func() *int32 {
@@ -139,20 +139,17 @@ func (m *MapFileState) ProcessMapFiles() {
 						return nil
 					}(),
 				}
-			} else if entryValue.DiffValue[backendName].Operation == Delete {
+			case Delete:
 				delete(entryValue.DesiredValue, backendName)
 			}
 		}
 	}
-	if m.logger.Enabled(context.Background(), slog.LevelDebug) {
-		m.logger.LogAttrs(
-			context.Background(),
-			slog.LevelDebug,
-			"Processed map file",
-			slog.String("map file", m.FileName),
-			slog.String("map file contents", m.PrettyString()),
-		)
-	}
+	m.logger.LogAttrs(
+		context.Background(),
+		slog.LevelDebug, "Processed map file",
+		logging.LogAttrMapFilePath(m.RelativeFileName),
+		logging.LogAttrMapFileContent(m.PrettyString()),
+	)
 }
 
 // Reset resets the MapFileState to its initial state.
@@ -162,9 +159,8 @@ func (m *MapFileState) ProcessMapFiles() {
 func (m *MapFileState) Reset() {
 	m.logger.LogAttrs(
 		context.Background(),
-		slog.LevelDebug,
-		"Resetting map file",
-		slog.String("map file", m.FileName))
+		slog.LevelDebug, "Resetting map file",
+		logging.LogAttrMapFilePath(m.RelativeFileName))
 	for entryKey, entryValue := range m.Entries {
 		if entryValue == nil {
 			delete(m.Entries, entryKey)
@@ -281,6 +277,7 @@ type MapFileState struct {
 	EntriesByResource map[ResourceOrigin]map[EntryKey]struct{}
 	logger            *slog.Logger
 	FileName          string
+	RelativeFileName  string
 }
 
 // Collect all intentions for each backend
@@ -348,23 +345,18 @@ func (m *MapFileState) ApplyDesiredBackends(
 ) {
 	m.logger.LogAttrs(
 		context.Background(),
-		slog.LevelDebug,
-		"Applying desired backends",
-		slog.String("map file", m.FileName),
-		slog.String("entry key", m.FileName),
-		slog.String("resource origin", m.FileName),
+		slog.LevelDebug, "Applying desired backends",
+		logging.LogAttrMapFilePath(m.RelativeFileName),
+		slog.String("entry key", m.RelativeFileName),
 		slog.Any("desired backends", desired),
 	)
 
-	if m.logger.Enabled(context.Background(), slog.LevelDebug) {
-		m.logger.LogAttrs(
-			context.Background(),
-			slog.LevelDebug,
-			"Before applying desired backends",
-			slog.String("map file", m.FileName),
-			slog.String("map file contents", m.PrettyString()),
-		)
-	}
+	m.logger.LogAttrs(
+		context.Background(),
+		slog.LevelDebug, "Before applying desired backends",
+		logging.LogAttrMapFilePath(m.RelativeFileName),
+		logging.LogAttrMapFileContent(m.PrettyString()),
+	)
 
 	entriesForResource := m.EntriesByResource[resourceOrigin]
 	if entriesForResource == nil {
@@ -428,30 +420,18 @@ func (m *MapFileState) ApplyDesiredBackends(
 			currentIntent.Operation = Update
 		}
 	}
-	if m.logger.Enabled(context.Background(), slog.LevelDebug) {
-		m.logger.LogAttrs(
-			context.Background(),
-			slog.LevelDebug,
-			"After applying desired backends",
-			slog.String("map file", m.FileName),
-			slog.String("map file contents", m.PrettyString()),
-		)
-	}
+	m.logger.LogAttrs(
+		context.Background(),
+		slog.LevelDebug, "After applying desired backends",
+		logging.LogAttrMapFilePath(m.RelativeFileName),
+		logging.LogAttrMapFileContent(m.PrettyString()),
+	)
 }
 
 // WriteOnDiskIfChanged writes the MapFileState to disk if there are any differences between the desired state and the current state.
 // It iterates over the entries in the map file state and checks if there are any differences between the desired state and the current state.
 // If there are differences, it writes the desired state to disk in the format "key value\n"
 func (m *MapFileState) WriteOnDiskIfChanged() error {
-	if m.logger.Enabled(context.Background(), slog.LevelDebug) {
-		m.logger.LogAttrs(
-			context.Background(),
-			slog.LevelDebug,
-			"Writing map file to disk",
-			slog.String("map file", m.FileName),
-			slog.String("map file contents", m.PrettyString()),
-		)
-	}
 	var f *os.File
 	var err error
 	dir := filepath.Dir(m.FileName)
@@ -480,6 +460,13 @@ func (m *MapFileState) WriteOnDiskIfChanged() error {
 	if !hasDiff {
 		return nil
 	}
+
+	m.logger.LogAttrs(
+		context.Background(),
+		slog.LevelDebug, "Writing map file to disk",
+		logging.LogAttrMapFilePath(m.RelativeFileName),
+		logging.LogAttrMapFileContent(m.PrettyString()),
+	)
 
 	f, err = os.Create(m.FileName)
 	if err != nil {
@@ -601,7 +588,7 @@ func sortedStringKeys[T any](m map[string]T) []string {
 func (m *MapFileState) PrettyString() string {
 	var b strings.Builder
 
-	_, _ = fmt.Fprintf(&b, "MapFileState: %s\n", m.FileName)
+	_, _ = fmt.Fprintf(&b, "MapFileState: %s\n", m.RelativeFileName)
 
 	for _, key := range sortedEntryKeys(m.Entries) {
 		_, _ = fmt.Fprintf(&b, "└─ %s\n", key.String())
@@ -676,6 +663,7 @@ func (ev *EntryValue) PrettyString(indent string) string {
 
 func compareEntryKeys(a, b EntryKey) int {
 	switch {
+	// TODO: sort by longest path first (longest subdomain)
 	case a.Hostname < b.Hostname:
 		return -1
 	case a.Hostname > b.Hostname:

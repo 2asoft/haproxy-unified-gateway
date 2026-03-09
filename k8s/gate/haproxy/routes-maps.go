@@ -178,19 +178,24 @@ func (b *RouteMgrImpl) writeMaps() error {
 			errs.Add(mapFile.WriteOnDiskIfChanged())
 		}
 	}
+	if len(errs) > 0 {
+		b.topManager.logger.LogAttrs(context.Background(), slog.LevelError, "Failed to fill maps for HTTP routes",
+			logging.LogAttrError(errs.Result()),
+		)
+	}
 	return errs.Result()
 }
 
 // runtimeMapSync updates the runtime maps through runtime API
-func (b *RouteMgrImpl) runtimeMapSync() (mapSyncError error) {
+func (b *RouteMgrImpl) runtimeMapSync() error {
+	b.topManager.logger.LogAttrs(context.Background(), slog.LevelInfo, "map [runtime] updates")
+
 	mapsStorage := b.topManager.params.mapsStorageEx
 	runtimeClient := b.topManager.haproxyClient.RuntimeClient()
 
 	for _, mapFiles := range mapsStorage.GetMaps() {
 		for _, mapData := range mapFiles {
 			mapID := b.getMapID(mapData.FileName)
-			// b.topManager.logger.LogAttrs(context.Background(),
-			// slog.LevelInfo, "Runtime Sync", slog.String("map", mapData.FileName), slog.String("mapID", mapID))
 			for entryKey, entryValue := range mapData.Entries {
 				key := entryKey.Hostname
 				if entryKey.Path != "" {
@@ -199,19 +204,44 @@ func (b *RouteMgrImpl) runtimeMapSync() (mapSyncError error) {
 				routeValue := maps.BuildRouteValue(entryValue.DesiredValue)
 				// if routeValue is empty, delete the entry
 				if routeValue == "" {
-					b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Deleting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelInfo, "Deleting map [runtime] entry", slog.String("map", mapData.RelativeFileName), slog.String("key", key))
 					err := runtimeClient.DeleteMapEntry(mapID, key)
 					if err != nil {
+						b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
+							"[failure] Deleting map [runtime] entry",
+							slog.String("map", mapData.RelativeFileName),
+							slog.String("key", key),
+							logging.LogAttrError(err),
+						)
 						return err
 					}
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelInfo,
+						"[success] Deleting map [runtime] entry",
+						slog.String("map", mapData.RelativeFileName),
+						slog.String("key", key),
+					)
 					continue
 				}
 				// else update the entry
-				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Upserting map entry", slog.String("map", mapData.FileName), slog.String("key", key))
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Set map [runtime] entry", slog.String("map", mapData.RelativeFileName), slog.String("key", key))
+				// TODO: fix here, it should be or SetMapEntry or AddMapEntry if the entry is new
+				// This will work only if we change the backend, any addition of a new line will fail and trigger a reload
+				// To fix if we want to avoid reloads
 				err := runtimeClient.SetMapEntry(mapID, key, routeValue)
 				if err != nil {
+					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
+						"[failure] Set map [runtime] entry",
+						slog.String("map", mapData.RelativeFileName),
+						slog.String("key", key),
+						logging.LogAttrError(err),
+					)
 					return err
 				}
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug,
+					"[success] Set map [runtime] entry",
+					slog.String("map", mapData.RelativeFileName),
+					slog.String("key", key),
+				)
 			}
 		}
 	}

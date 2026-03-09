@@ -140,3 +140,11 @@ func LogAttrReloadMgrAction(state bool, reason string, args ...any) slog.Attr {
 		slog.String("reason", fmt.Sprintf(reason, args...)),
 	)
 }
+
+func LogAttrMapFilePath(path string) slog.Attr {
+	return slog.String("mapFilePath", path)
+}
+
+func LogAttrMapFileContent(path string) slog.Attr {
+	return slog.String("mapFileContent", path)
+}

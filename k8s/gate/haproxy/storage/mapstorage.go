@@ -99,6 +99,7 @@ func (m *MapsStorageExDefault) getMapFile(frontendName string, mapName string) *
 	mapBaseDir := filepath.Join(m.MapsBaseDir, frontendName)
 	mapFileName := mapName + ".map"
 	mapFilePath := filepath.Join(mapBaseDir, mapFileName)
+	relativeMapPath := filepath.Join(frontendName, mapFileName)
 
 	mapFilesInDir := m.mapFiles[mapBaseDir]
 	if mapFilesInDir == nil {
@@ -107,7 +108,7 @@ func (m *MapsStorageExDefault) getMapFile(frontendName string, mapName string) *
 	}
 	mapFile := mapFilesInDir[mapFileName]
 	if mapFile == nil {
-		mapFile = maps.NewMapFileState(mapFilePath, m.logger)
+		mapFile = maps.NewMapFileState(relativeMapPath, mapFilePath, m.logger)
 		m.mapFiles[mapBaseDir][mapFileName] = mapFile
 		err := m.readFromDisk(mapFilePath)
 		if err != nil {
@@ -115,7 +116,7 @@ func (m *MapsStorageExDefault) getMapFile(frontendName string, mapName string) *
 				context.Background(),
 				slog.LevelError,
 				"Error reading map from disk",
-				slog.String("map", mapFilePath),
+				slog.String("map", relativeMapPath),
 				slog.String("error", err.Error()))
 		}
 	}
