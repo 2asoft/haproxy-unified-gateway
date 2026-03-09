@@ -56,10 +56,10 @@ type BackendReferencedBy struct {
 }
 
 type BackendImpactedInCycle struct {
+	PersistenceCandidate *PersistenceCandidate
 	HTTPRouteKey         client.ObjectKey
 	Name                 string
 	BackendRef           gatewayv1.HTTPBackendRef
-	PersistenceCandidate *PersistenceCandidate
 }
 
 type BackendsImpactedInCycle struct {
@@ -233,7 +233,6 @@ func (b *HaproxyConfMgrImpl) upsertHTTPRouteBackends(routeKey k8stypes.Namespace
 				}
 				b.addImpactedHTTPBackendUpserted(beName, routeKey, backendRef, persistenceCandidate)
 				upsertedBackendsReferencedByRoute[beName] = struct{}{}
-
 			}
 		}
 	}
@@ -549,9 +548,8 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 			sessionName = fmt.Sprintf("gwapi-%s", strings.ToLower(backendName))
 		}
 
-		var cookie *models.Cookie
 		// We need to create a cookie for the backend
-		cookie = &models.Cookie{
+		cookie := &models.Cookie{
 			Name:     &sessionName,
 			Type:     "insert",
 			Nocache:  true,
@@ -580,7 +578,6 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 
 		newBackend.Cookie = cookie
 		newBackend.BackendBase.DynamicCookieKey = cookieKey
-
 	}
 
 	return newBackend, errs.Result()
