@@ -102,7 +102,7 @@ func (d *directControl) Service(action string) (string, error) {
 			msg, err := d.masterSocket.Reload()
 			if err == nil {
 				d.logger.LogAttrs(context.Background(), slog.LevelDebug, msg)
-				return "", nil
+				return "", d.waitUntilReady()
 			}
 			d.logger.LogAttrs(context.Background(), slog.LevelError,
 				"failed to reload",
@@ -125,6 +125,31 @@ func (d *directControl) UseAuxFile(useAuxFile bool) {
 
 func (d *directControl) SetAPI(api hapi.HAProxyClient) {
 	d.API = api
+}
+
+func (d *directControl) waitUntilReady() error {
+	runtimeClient := d.API.RuntimeClient()
+	return wait.PollUntilContextTimeout(context.Background(), 200*time.Millisecond, 10*time.Second, true,
+		func(ctx context.Context) (bool, error) {
+			info, err := runtimeClient.GetInfo()
+			if err == nil {
+				if info.Error != "" {
+					d.logger.LogAttrs(context.Background(), slog.LevelDebug, "waiting for haproxy runtime socket after reload",
+						slog.String("error", info.Error))
+					return false, nil
+				}
+				pid := (int64)(0)
+				if info.Info != nil && info.Info.Pid != nil {
+					pid = *info.Info.Pid
+				}
+				d.logger.LogAttrs(ctx, slog.LevelInfo, "haproxy runtime socket is ready after reload",
+					slog.Int64("pid", pid))
+				return true, nil
+			}
+			d.logger.LogAttrs(context.Background(), slog.LevelDebug, "waiting for haproxy runtime socket after reload",
+				logging.LogAttrError(err))
+			return false, nil
+		})
 }
 
 func (d *directControl) waitUntilGone() error {
