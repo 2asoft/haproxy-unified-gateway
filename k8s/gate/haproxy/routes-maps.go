@@ -195,7 +195,22 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 
 	for _, mapFiles := range mapsStorage.GetMaps() {
 		for _, mapData := range mapFiles {
-			mapID := b.getMapID(mapData.FileName)
+			if len(mapData.Entries) == 0 {
+				continue
+			}
+			mapID, err := b.getMapID(mapData.FileName)
+			if err != nil {
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
+					"map [runtime] show maps error",
+					logging.LogAttrMapFilePath(mapData.RelativeFileName),
+					logging.LogAttrError(err),
+				)
+				return err
+			}
+			if mapID == "" {
+				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "map [runtime] skipping as mapID is empty", slog.String("map", mapData.RelativeFileName))
+				continue
+			}
 			for entryKey, entryValue := range mapData.Entries {
 				key := entryKey.Hostname
 				if entryKey.Path != "" {
@@ -209,7 +224,7 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 					if err != nil {
 						b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
 							"[failure] Deleting map [runtime] entry",
-							slog.String("map", mapData.RelativeFileName),
+							logging.LogAttrMapFilePath(mapData.RelativeFileName),
 							slog.String("key", key),
 							logging.LogAttrError(err),
 						)
@@ -217,7 +232,7 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 					}
 					b.topManager.logger.LogAttrs(context.Background(), slog.LevelInfo,
 						"[success] Deleting map [runtime] entry",
-						slog.String("map", mapData.RelativeFileName),
+						logging.LogAttrMapFilePath(mapData.RelativeFileName),
 						slog.String("key", key),
 					)
 					continue
@@ -248,14 +263,17 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 	return nil
 }
 
-func (b *RouteMgrImpl) getMapID(fullPath string) string {
+func (b *RouteMgrImpl) getMapID(fullPath string) (string, error) {
 	runtimeClient := b.topManager.haproxyClient.RuntimeClient()
 	// find the id of a map entry
-	shownMaps, _ := runtimeClient.ShowMaps()
+	shownMaps, err := runtimeClient.ShowMaps()
+	if err != nil {
+		return "", err
+	}
 	for _, m := range shownMaps {
 		if m.File == fullPath {
-			return "#" + m.ID
+			return "#" + m.ID, nil
 		}
 	}
-	return ""
+	return "", nil
 }
