@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -55,10 +56,10 @@ type BackendReferencedBy struct {
 }
 
 type BackendImpactedInCycle struct {
-	HTTPRouteKey       client.ObjectKey
-	Name               string
-	BackendRef         gatewayv1.HTTPBackendRef
-	SessionPersistence *gatewayv1.SessionPersistence
+	HTTPRouteKey         client.ObjectKey
+	Name                 string
+	BackendRef           gatewayv1.HTTPBackendRef
+	PersistenceCandidate *PersistenceCandidate
 }
 
 type BackendsImpactedInCycle struct {
@@ -188,11 +189,11 @@ func (b *HaproxyConfMgrImpl) logTLSRouteUpdate(action string, key k8stypes.Names
 func (b *HaproxyConfMgrImpl) upsertHTTPRouteBackends(routeKey k8stypes.NamespacedName, route *tree.HTTPRoute) error {
 	var errs utils.Errors
 	upsertedBackendsReferencedByRoute := make(map[string]struct{})
-	for _, rule := range route.Rules {
+	for ruleIndex, rule := range route.Rules {
 		if rule.Valid {
 			k8sRule := rule.K8sResource
 			// Iterate now on each referenced Backend
-			for _, backendRef := range k8sRule.BackendRefs {
+			for backendRefIndex, backendRef := range k8sRule.BackendRefs {
 				filterHash := getFilterHash(backendRef.Filters)
 				var svcPort int32
 				svcNsName := tree.ServiceNsNameKey(route.K8sResource.Namespace, backendRef.BackendObjectReference)
@@ -222,8 +223,15 @@ func (b *HaproxyConfMgrImpl) upsertHTTPRouteBackends(routeKey k8stypes.Namespace
 					errs.Add(err)
 					continue
 				}
-
-				b.addImpactedHTTPBackendUpserted(beName, routeKey, backendRef, rule.K8sResource.SessionPersistence)
+				persistenceCandidate := &PersistenceCandidate{
+					CreationTimestamp:  route.K8sResource.CreationTimestamp.Time,
+					Namespace:          route.K8sResource.Namespace,
+					RouteName:          route.K8sResource.Name,
+					RuleIndex:          ruleIndex,
+					BackendIndex:       backendRefIndex,
+					SessionPersistence: k8sRule.SessionPersistence,
+				}
+				b.addImpactedHTTPBackendUpserted(beName, routeKey, backendRef, persistenceCandidate)
 				upsertedBackendsReferencedByRoute[beName] = struct{}{}
 
 			}
@@ -369,13 +377,13 @@ func (b *HaproxyConfMgrImpl) onInvalidTLSRouteUpserted(routeKey k8stypes.Namespa
 }
 
 func (b *HaproxyConfMgrImpl) addImpactedHTTPBackendUpserted(backendName string, routeKey client.ObjectKey,
-	httpBackendRef gatewayv1.HTTPBackendRef, sessionPersistence *gatewayv1.SessionPersistence,
+	httpBackendRef gatewayv1.HTTPBackendRef, persistenceCandidate *PersistenceCandidate,
 ) {
 	impactedBe := BackendImpactedInCycle{
-		Name:               backendName,
-		HTTPRouteKey:       routeKey,
-		BackendRef:         httpBackendRef,
-		SessionPersistence: sessionPersistence,
+		Name:                 backendName,
+		HTTPRouteKey:         routeKey,
+		BackendRef:           httpBackendRef,
+		PersistenceCandidate: persistenceCandidate,
 	}
 
 	if _, ok := b.backendsImpactedInCycle.Upserted[backendName]; !ok {
@@ -724,9 +732,19 @@ func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
 		for _, impactedBE := range mapImpactedBEs {
 			// They should all have the same filters as the backend name is computed from the Backend + Filters hash
 			backendRef = impactedBE.BackendRef
-			sessionPersistence = impactedBE.SessionPersistence
 		}
 
+		var persistenceCandidates []PersistenceCandidate
+		for _, impactedBE := range mapImpactedBEs {
+			if impactedBE.PersistenceCandidate != nil &&
+				impactedBE.PersistenceCandidate.SessionPersistence != nil {
+				persistenceCandidates = append(persistenceCandidates, *impactedBE.PersistenceCandidate)
+			}
+		}
+		slices.SortFunc(persistenceCandidates, persistenceCandidateSort)
+		if len(persistenceCandidates) > 0 {
+			sessionPersistence = persistenceCandidates[0].SessionPersistence
+		}
 		// Same for Namespace, it should be the same for all
 		var namespace string
 		for owner := range ownersForRoute {
@@ -815,4 +833,42 @@ func (b *HaproxyConfMgrImpl) processBackendsDeletedInCycle() utils.Errors {
 		}
 	}
 	return errs
+}
+
+type PersistenceCandidate struct {
+	CreationTimestamp  time.Time
+	SessionPersistence *gatewayv1.SessionPersistence
+	Namespace          string
+	RouteName          string
+	RuleIndex          int
+	BackendIndex       int
+}
+
+func persistenceCandidateSort(a, b PersistenceCandidate) int {
+	if !a.CreationTimestamp.Equal(b.CreationTimestamp) {
+		if a.CreationTimestamp.Before(b.CreationTimestamp) {
+			return -1
+		}
+		return 1
+	}
+
+	if a.Namespace != b.Namespace {
+		if a.Namespace < b.Namespace {
+			return -1
+		}
+		return 1
+	}
+
+	if a.RouteName != b.RouteName {
+		if a.RouteName < b.RouteName {
+			return -1
+		}
+		return 1
+	}
+
+	if d := a.RuleIndex - b.RuleIndex; d != 0 {
+		return d
+	}
+
+	return a.BackendIndex - b.BackendIndex
 }
