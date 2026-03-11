@@ -22,8 +22,6 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: generating files
-        run: task generate-gwapi
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
