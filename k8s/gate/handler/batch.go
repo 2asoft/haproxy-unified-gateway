@@ -170,9 +170,11 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	haproxyConfDiffs := h.haproxyConfBuilder.GetDiffs()
 	if !haproxyConfDiffs.IsEmpty() || haproxyConfDiffs.ReloadNeed {
 		if h.config.TransferHaproxyConfChannel != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelInfo, "DIFFS CONTROLLER => HUG")
 			haproxyConfDiffs.Done = make(chan struct{})
 			h.config.TransferHaproxyConfChannel <- haproxyConfDiffs
 			<-haproxyConfDiffs.Done
+			h.logger.LogAttrs(context.Background(), slog.LevelInfo, "DIFFS HUG => CONTROLLER")
 		}
 	}
 

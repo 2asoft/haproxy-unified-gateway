@@ -148,6 +148,7 @@ tasks:
       - echo "deploying Controller ..."
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/rbac.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/hugconf.yaml
+      - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug/global.yaml
       - /{{.kubectl}} apply -f {{.CONFIG_DIR}}/hug-dev/controller.yaml
       - task: delimiter
       - echo "deploying a complete example in `example` namespace ..."

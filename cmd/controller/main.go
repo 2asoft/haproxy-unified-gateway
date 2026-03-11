@@ -79,7 +79,7 @@ func main() {
 	// Haproxy clients (runtime and configuration)
 	gateconfig := cntlr.Configuration
 	haproxyClient, err := api.New(gateconfig.Logger.With(logging.LogAttrCategory(logging.LogCategoryHaproxyCfgMgr)), gateconfig.HaproxyParams.CfgDir,
-		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket)
+		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket, gateconfig.HaproxyParams.PIDFile)
 	if err != nil {
 		err = fmt.Errorf("failed to initialize haproxy API client: %w", err)
 		panic(err)

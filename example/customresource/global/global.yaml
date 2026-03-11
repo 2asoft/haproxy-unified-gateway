@@ -1,0 +1,9 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Global
+metadata:
+  name: global
+  namespace: haproxy-unified-gateway
+spec:
+  merge_strategy: append
+  performance_options:
+    maxconn: 32100

@@ -19,15 +19,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// ControllerConfPredicate implements a predicate function based on the controller conf CRD ns/name
+// HugConfPredicate implements a predicate function based on the controller conf CRD ns/name
 // This predicate will skip events for GatewayClasses that don't reference this controller.
-type ControllerConfPredicate struct {
+type HugConfPredicate struct {
 	predicate.Funcs
 	ControllerConfName types.NamespacedName
 }
 
 // Create implements default CreateEvent filter for validating a controller conf CRD ns/name.
-func (p ControllerConfPredicate) Create(e event.CreateEvent) bool {
+func (p HugConfPredicate) Create(e event.CreateEvent) bool {
 	if e.Object == nil {
 		return false
 	}
@@ -40,7 +40,7 @@ func (p ControllerConfPredicate) Create(e event.CreateEvent) bool {
 }
 
 // Update implements default UpdateEvent filter for validating a controller conf CRD ns/name.
-func (p ControllerConfPredicate) Update(e event.UpdateEvent) bool {
+func (p HugConfPredicate) Update(e event.UpdateEvent) bool {
 	if e.ObjectOld != nil {
 		objTypesNsName := types.NamespacedName{
 			Name:      e.ObjectOld.GetName(),
@@ -61,7 +61,7 @@ func (p ControllerConfPredicate) Update(e event.UpdateEvent) bool {
 }
 
 // Delete implements default DeleteEvent filter for validating a controller conf CRD ns/name.
-func (p ControllerConfPredicate) Delete(e event.DeleteEvent) bool {
+func (p HugConfPredicate) Delete(e event.DeleteEvent) bool {
 	if e.Object == nil {
 		return false
 	}

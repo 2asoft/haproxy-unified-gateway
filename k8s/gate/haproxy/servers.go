@@ -310,9 +310,7 @@ func (b *HaproxyConfMgrImpl) backendsByServiceForHTTPRoute(routeOwners map[clien
 			}
 			for _, hBackendRef := range rule.K8sResource.BackendRefs {
 				backendRef := hBackendRef.BackendObjectReference
-				nsName := utils.GetNamespacedName(string(backendRef.Name),
-					string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
-					treeHTTPRoute.K8sResource.Namespace)
+				nsName := utils.GetNamespacedName(backendRef.Name, backendRef.Namespace, treeHTTPRoute.K8sResource.Namespace)
 				filterHash := getFilterHash(hBackendRef.Filters)
 				var svcPort int32
 				if backendRef.Port != nil {
@@ -356,9 +354,7 @@ func (b *HaproxyConfMgrImpl) backendsByServiceForTLSRoute(routeOwners map[client
 			}
 			for _, hBackendRef := range rule.K8sResource.BackendRefs {
 				backendRef := hBackendRef.BackendObjectReference
-				nsName := utils.GetNamespacedName(string(backendRef.Name),
-					string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
-					treeTLSRoute.K8sResource.Namespace)
+				nsName := utils.GetNamespacedName(backendRef.Name, backendRef.Namespace, treeTLSRoute.K8sResource.Namespace)
 				var svcPort int32
 				if backendRef.Port != nil {
 					svcPort = int32(*backendRef.Port)

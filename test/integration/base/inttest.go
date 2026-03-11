@@ -243,7 +243,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 	test.HaproxyCfgDir = gateconfig.HaproxyParams.CfgDir
 	test.RuntimeSocketPath = gateconfig.HaproxyParams.RuntimeSocket
 	haproxyClient, err := hapapi.New(gateconfig.Logger, gateconfig.HaproxyParams.CfgDir,
-		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket)
+		gateconfig.HaproxyParams.MainCfgFile, gateconfig.HaproxyParams.HaproxyBinary, gateconfig.HaproxyParams.RuntimeSocket, gateconfig.HaproxyParams.PIDFile)
 	if err != nil {
 		err = fmt.Errorf("failed to initialize haproxy API client: %w", err)
 		panic(err)

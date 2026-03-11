@@ -1,0 +1,6 @@
+hard_stop_after: 1800000
+pidfile: {{ .PIDFile }}
+runtime_apis:
+- address: {{ .RuntimeSocket }}
+  expose_fd_listeners: true
+  level: admin

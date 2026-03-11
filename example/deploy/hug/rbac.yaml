@@ -149,6 +149,7 @@ rules:
       - huggates
       - hugconfs
       - backends
+      - globals
     verbs:
       - get
       - list

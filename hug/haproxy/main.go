@@ -111,14 +111,16 @@ func (h *AppManagerImpl) Run() {
 
 func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs) error {
 	var err error
-	if haproxyCfgDiffs.IsEmpty() && !haproxyCfgDiffs.ReloadNeed {
-		// Should not happen, already checked before
-		return nil
-	}
 	// Process the received HaproxyConfDiffs
 	h.logger.LogAttrs(context.Background(), slog.LevelDebug,
 		"Starting processing HaproxyConfDiffs",
 		slog.String("HaproxyConfDiffs", fmt.Sprintf("%+v", haproxyCfgDiffs.Stats())))
+
+	if haproxyCfgDiffs.IsEmpty() && !haproxyCfgDiffs.ReloadNeed {
+		// Should not happen, already checked before
+		return nil
+	}
+
 	// Log, send result to the controller to update status
 	defer func() {
 		h.confUpdateProcessed(haproxyCfgDiffs, err)
@@ -135,10 +137,10 @@ func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs)
 		return err
 	}
 
-	if err = h.processCreate(haproxyCfgDiffs.Created); err != nil {
+	if err = h.processCreate(haproxyCfgDiffs.Created, haproxyCfgDiffs.MergeStrategies); err != nil {
 		return err
 	}
-	if err = h.processUpdate(haproxyCfgDiffs.Updated); err != nil {
+	if err = h.processUpdate(haproxyCfgDiffs.Updated, haproxyCfgDiffs.MergeStrategies); err != nil {
 		return err
 	}
 	if err = h.processDelete(haproxyCfgDiffs.Deleted); err != nil {
@@ -176,7 +178,7 @@ func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs)
 	return nil
 }
 
-func (h *AppManagerImpl) processCreate(created structured.Structured) error {
+func (h *AppManagerImpl) processCreate(created structured.Structured, mergeStategies diffs.MergeStategies) error {
 	var errors utils.Errors
 
 	// Frontends
@@ -214,6 +216,18 @@ func (h *AppManagerImpl) processCreate(created structured.Structured) error {
 			continue
 		}
 	}
+
+	// Global
+	for _, global := range created.Globals {
+		err := h.client.GlobalEdit(global, mergeStategies.Global)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit global",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+		}
+	}
+
 	return errors.Result()
 }
 
@@ -245,10 +259,21 @@ func (h *AppManagerImpl) processDelete(deleted structured.Structured) error {
 		}
 	}
 
+	// Global
+	for range deleted.Globals {
+		err := h.client.GlobalEdit(nil, "")
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to reset global to default value",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+		}
+	}
+
 	return errors.Result()
 }
 
-func (h *AppManagerImpl) processUpdate(updated structured.Structured) error {
+func (h *AppManagerImpl) processUpdate(updated structured.Structured, mergeStrategies diffs.MergeStategies) error {
 	var errors utils.Errors
 
 	// Frontends
@@ -290,6 +315,18 @@ func (h *AppManagerImpl) processUpdate(updated structured.Structured) error {
 			continue
 		}
 	}
+
+	// Global
+	for _, global := range updated.Globals {
+		err := h.client.GlobalEdit(global, mergeStrategies.Global)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit global",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+		}
+	}
+
 	return errors.Result()
 }
 

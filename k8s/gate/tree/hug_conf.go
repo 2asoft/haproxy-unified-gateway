@@ -14,9 +14,6 @@
 package tree
 
 import (
-	"context"
-	"log/slog"
-
 	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
@@ -61,44 +58,33 @@ func (b *HugConfBuilderImpl) Build() {
 	case store.StatusDeleted:
 		// Case DELETED
 		if confUpdate.Status == store.StatusDeleted {
-			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
-				"Resetting controller log configuration to defaults",
-			)
-			// Reset the log category filter handler to defaults
-			b.logCategoryFilterHandler.ResetToDefaults()
-			l, m := logging.GetLogSettings()
-			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
-				"Reconciled controller log configuration",
-				logging.LogAttrLogSettings(l, m),
-			)
+			b.onDeleted(confUpdate)
 			return
 		}
 	case store.StatusUpserted:
 		// Case UPSERTED
-		newConf := b.ClusterStore.ControllerConfs[b.hugConfNsName]
-		if newConf == nil {
-			b.Logger.LogAttrs(context.Background(), slog.LevelError,
-				"Controller configuration not found",
-				logging.LogAttrNsName(b.hugConfNsName),
-			)
-			return
-		}
-
-		expectedLogCategoryPerLevel := make(map[v3.Category]slog.Level)
-		for _, catLevel := range newConf.Spec.Logging.CategoryLevelList {
-			expectedLogCategoryPerLevel[catLevel.Category] = logging.LogLevelString2SlogLevel(string(catLevel.Level))
-		}
-		expectedLevel := logging.LogLevelString2SlogLevel(string(newConf.Spec.Logging.DefaultLevel))
-
-		changed := b.logCategoryFilterHandler.ReconcileLogSettings(expectedLevel, expectedLogCategoryPerLevel)
-		if changed {
-			l, m := logging.GetLogSettings()
-			b.Logger.LogAttrs(context.Background(), slog.LevelInfo,
-				"Reconciled controller log configuration",
-				logging.LogAttrLogSettings(l, m),
-			)
-		}
+		b.onUpserted(confUpdate)
 	}
+}
+
+// -------------------------------
+// HugConf deleted
+
+// onDeleted handles the deletion of a HugConf resource by resetting all
+// subsystems that were configured by it to their default state.
+func (b *HugConfBuilderImpl) onDeleted(hugConfUpdate store.Update[*v3.HugConf]) {
+	b.onDeletedSubSystemLogConf()
+	b.onDeletedSubsystemGlobal(hugConfUpdate)
+}
+
+// -------------------------------
+// HugConf upserted
+
+// onUpserted handles the creation or update of a HugConf resource by
+// triggering upsert logic for all sub-resources (log configuration, global).
+func (b *HugConfBuilderImpl) onUpserted(hugConfUpdate store.Update[*v3.HugConf]) {
+	b.onUpsertedSubsystemLogConf()
+	b.onUpsertedSubsystemGlobal(hugConfUpdate)
 }
 
 func (*HugConfBuilderImpl) BuildStatus() {

@@ -156,20 +156,21 @@ func Add(
 	}
 
 	clusterStore := &store.ClusterStore{
-		GatewayClasses:  make(map[types.NamespacedName]*gatewayv1.GatewayClass),
-		Gateways:        make(map[types.NamespacedName]*gatewayv1.Gateway),
-		HTTPRoutes:      make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
-		TLSRoutes:       make(map[types.NamespacedName]*gatewayv1alpha2.TLSRoute),
-		Services:        make(map[types.NamespacedName]*apiv1.Service),
-		Namespaces:      make(map[types.NamespacedName]*apiv1.Namespace),
-		Secrets:         make(map[types.NamespacedName]*apiv1.Secret),
-		ConfigMaps:      make(map[types.NamespacedName]*apiv1.ConfigMap),
-		GatewayAPICRDs:  make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
-		HugGates:        make(map[types.NamespacedName]*v3.HugGate),
-		ControllerConfs: make(map[types.NamespacedName]*v3.HugConf),
-		EndpointSlices:  make(map[types.NamespacedName]*discoveryV1.EndpointSlice),
-		BackendCRs:      make(map[types.NamespacedName]*v3.Backend),
-		Updates:         store.NewClusterUpdates(),
+		GatewayClasses: make(map[types.NamespacedName]*gatewayv1.GatewayClass),
+		Gateways:       make(map[types.NamespacedName]*gatewayv1.Gateway),
+		HTTPRoutes:     make(map[types.NamespacedName]*gatewayv1.HTTPRoute),
+		TLSRoutes:      make(map[types.NamespacedName]*gatewayv1alpha2.TLSRoute),
+		Services:       make(map[types.NamespacedName]*apiv1.Service),
+		Namespaces:     make(map[types.NamespacedName]*apiv1.Namespace),
+		Secrets:        make(map[types.NamespacedName]*apiv1.Secret),
+		ConfigMaps:     make(map[types.NamespacedName]*apiv1.ConfigMap),
+		GatewayAPICRDs: make(map[types.NamespacedName]*metav1.PartialObjectMetadata),
+		HugGates:       make(map[types.NamespacedName]*v3.HugGate),
+		HugConfs:       make(map[types.NamespacedName]*v3.HugConf),
+		EndpointSlices: make(map[types.NamespacedName]*discoveryV1.EndpointSlice),
+		BackendCRs:     make(map[types.NamespacedName]*v3.Backend),
+		GlobalCRs:      make(map[types.NamespacedName]*v3.Global),
+		Updates:        store.NewClusterUpdates(),
 	}
 
 	var certificateStorage storage.CertificateStorage
@@ -349,7 +350,7 @@ func registerControllers(ctx context.Context, extractGVK utilsk8s.ExtractGVK, cf
 							predicate.NewNamespacePredicate(cfg.Namespaces),
 						),
 					},
-					// Watch BAckend CRs
+					// Watch Backend CRs
 					{
 						watchSource: objtypes.ObjectTypeBackend,
 						enqueueFunc: enqueueHTTPRouteForBackendCR,
@@ -436,23 +437,46 @@ func registerControllers(ctx context.Context, extractGVK utilsk8s.ExtractGVK, cf
 			},
 		},
 		{
-			name:       "ControllerConf",
+			name:       "HugConf",
 			objectType: &v3.HugConf{},
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(
 						k8spredicate.ResourceVersionChangedPredicate{},
 						predicate.NewNamespacePredicate(cfg.Namespaces),
-						predicate.ControllerConfPredicate{
+						predicate.HugConfPredicate{
 							ControllerConfName: cfg.HugConfCRD,
 						},
 					),
 				),
+				WithEnqueueFor([]enqueueForParams{
+					{
+						// Watch GlobalCR
+						watchSource: objtypes.ObjectTypeGlobal,
+						enqueueFunc: enqueueHugConfForGlobalCR,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
+				}),
 			},
 		},
 		{
 			name:       "BackendCR",
 			objectType: objtypes.ObjectTypeBackend,
+			options: []Option{
+				WithK8sPredicate(
+					k8spredicate.And(
+						k8spredicate.ResourceVersionChangedPredicate{},
+						predicate.NewNamespacePredicate(cfg.Namespaces),
+					),
+				),
+			},
+		},
+		{
+			name:       "GlobalCR",
+			objectType: objtypes.ObjectTypeGlobal,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(

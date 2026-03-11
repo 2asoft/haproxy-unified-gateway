@@ -32,20 +32,21 @@ import (
 
 // ClusterStore includes cluster resources necessary to build the Tree.
 type ClusterStore struct {
-	GatewayClasses  map[types.NamespacedName]*gatewayv1.GatewayClass
-	Gateways        map[types.NamespacedName]*gatewayv1.Gateway
-	HTTPRoutes      map[types.NamespacedName]*gatewayv1.HTTPRoute
-	TLSRoutes       map[types.NamespacedName]*gatewayv1alpha2.TLSRoute
-	Services        map[types.NamespacedName]*v1.Service
-	Namespaces      map[types.NamespacedName]*v1.Namespace
-	Secrets         map[types.NamespacedName]*v1.Secret
-	ConfigMaps      map[types.NamespacedName]*v1.ConfigMap
-	GatewayAPICRDs  map[types.NamespacedName]*metav1.PartialObjectMetadata
-	HugGates        map[types.NamespacedName]*v3.HugGate
-	BackendCRs      map[types.NamespacedName]*v3.Backend
-	ControllerConfs map[types.NamespacedName]*v3.HugConf
-	EndpointSlices  map[types.NamespacedName]*discoveryV1.EndpointSlice
-	Updates         ClusterUpdates
+	GatewayClasses map[types.NamespacedName]*gatewayv1.GatewayClass
+	Gateways       map[types.NamespacedName]*gatewayv1.Gateway
+	HTTPRoutes     map[types.NamespacedName]*gatewayv1.HTTPRoute
+	TLSRoutes      map[types.NamespacedName]*gatewayv1alpha2.TLSRoute
+	Services       map[types.NamespacedName]*v1.Service
+	Namespaces     map[types.NamespacedName]*v1.Namespace
+	Secrets        map[types.NamespacedName]*v1.Secret
+	ConfigMaps     map[types.NamespacedName]*v1.ConfigMap
+	GatewayAPICRDs map[types.NamespacedName]*metav1.PartialObjectMetadata
+	HugGates       map[types.NamespacedName]*v3.HugGate
+	BackendCRs     map[types.NamespacedName]*v3.Backend
+	GlobalCRs      map[types.NamespacedName]*v3.Global
+	HugConfs       map[types.NamespacedName]*v3.HugConf
+	EndpointSlices map[types.NamespacedName]*discoveryV1.EndpointSlice
+	Updates        ClusterUpdates
 }
 
 // ClusterStoreUpdater updates the cluster store.
@@ -85,7 +86,8 @@ func NewClusterStoreUpdaterImpl(
 				extractGVK(&apiext.CustomResourceDefinition{}): newObjectStoreImpl(clusterStore.GatewayAPICRDs, clusterStore.Updates.GatewayAPICRDs, logger),
 				extractGVK(&v3.HugGate{}):                      newObjectStoreImpl(clusterStore.HugGates, clusterStore.Updates.HugGates, logger),
 				extractGVK(&v3.Backend{}):                      newObjectStoreImpl(clusterStore.BackendCRs, clusterStore.Updates.BackendCRs, logger),
-				extractGVK(&v3.HugConf{}):                      newObjectStoreImpl(clusterStore.ControllerConfs, clusterStore.Updates.HugConfs, logger),
+				extractGVK(&v3.Global{}):                       newObjectStoreImpl(clusterStore.GlobalCRs, clusterStore.Updates.GlobalCRs, logger),
+				extractGVK(&v3.HugConf{}):                      newObjectStoreImpl(clusterStore.HugConfs, clusterStore.Updates.HugConfs, logger),
 				extractGVK(&discoveryV1.EndpointSlice{}):       newObjectStoreImpl(clusterStore.EndpointSlices, clusterStore.Updates.EndpointSlices, logger),
 			},
 		},

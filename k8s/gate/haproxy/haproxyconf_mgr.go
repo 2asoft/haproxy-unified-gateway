@@ -119,6 +119,13 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 			logging.LogAttrError(err))
 	}
 
+	// ----------
+	// Global CR
+	if err := b.processGlobal(); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing globalCR",
+			logging.LogAttrError(err))
+	}
+
 	// -----------
 	// Certificates
 	if err := b.processCertificates(); err != nil {

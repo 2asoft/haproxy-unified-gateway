@@ -27,6 +27,8 @@ import (
 	"github.com/haproxytech/client-native/v6/options"
 	"github.com/haproxytech/client-native/v6/runtime"
 	runtimeoptions "github.com/haproxytech/client-native/v6/runtime/options"
+	defaultcrs "github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/default_cr"
+	"github.com/haproxytech/haproxy-unified-gateway/hug/haproxy/mandatory"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
 )
 
@@ -39,6 +41,7 @@ type HAProxyClient interface { //nolint:interfacebloat
 	Bind
 	Backend
 	Defaults
+	Global
 	RuntimeClient() runtime.Runtime
 }
 
@@ -66,6 +69,11 @@ type Backend interface {
 	BackendEdit(backend models.Backend) error
 }
 
+type Global interface {
+	GlobalGet() (models.Global, error)
+	GlobalEdit(global *models.Global, mergeStrategy string) error
+}
+
 type Defaults interface {
 	DefaultsSectionGet(name string) (*models.Defaults, error)
 }
@@ -83,9 +91,11 @@ type clientNative struct {
 	logger                              *slog.Logger
 	activeTransaction                   string
 	configurationHashAtTransactionStart string
+	defaultGlobal                       models.Global
+	mandatoryGlobal                     models.Global
 }
 
-func New(logger *slog.Logger, transactionDir, configFile, programPath, runtimeSocket string) (client HAProxyClient, err error) { //nolint:ireturn
+func New(logger *slog.Logger, transactionDir, configFile, programPath, runtimeSocket, pidFile string) (client HAProxyClient, err error) { //nolint:ireturn
 	var runtimeClient runtime.Runtime
 	if runtimeSocket != "" {
 		runtimeClient, err = runtime.New(context.Background(), runtimeoptions.Socket(runtimeSocket), runtimeoptions.DoNotCheckRuntimeOnInit)
@@ -116,9 +126,21 @@ func New(logger *slog.Logger, transactionDir, configFile, programPath, runtimeSo
 		return nil, err
 	}
 
+	defaultGlobal, err := defaultcrs.DefaultGlobal(runtimeSocket, pidFile)
+	if err != nil {
+		return nil, err
+	}
+
+	mandatoryGlobal, err := mandatory.MandatoryGlobal(runtimeSocket, pidFile)
+	if err != nil {
+		return nil, err
+	}
+
 	cn := clientNative{
-		nativeAPI: cnHAProxyClient,
-		logger:    logger,
+		nativeAPI:       cnHAProxyClient,
+		logger:          logger,
+		defaultGlobal:   defaultGlobal,
+		mandatoryGlobal: mandatoryGlobal,
 	}
 	return &cn, nil
 }

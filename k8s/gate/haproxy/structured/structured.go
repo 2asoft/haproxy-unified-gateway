@@ -17,24 +17,29 @@ import (
 	"github.com/haproxytech/client-native/v6/models"
 )
 
+// GlobalKey is the fixed map key used for the single Global entry.
+const GlobalKey = "global"
+
 type Structured struct {
 	// Note that for Deleted Structured:
 	// *models.Frontend will be nil
 	// *models.Backend will be nil
 	// certificate.CertificateData.Data will be empty
-	Frontends map[string]*models.Frontend // map[frontendName ] => Frontend
-	Backends  map[string]*models.Backend  // map[backendName ] => Frontend
+	Frontends map[string]*models.Frontend // map[frontendName] => Frontend
+	Backends  map[string]*models.Backend  // map[backendName]  => Backend
+	Globals   map[string]*models.Global   // map[GlobalKey]    => Global (at most one entry)
 }
 
 func NewStructuredConf() Structured {
 	return Structured{
 		Frontends: make(map[string]*models.Frontend),
 		Backends:  make(map[string]*models.Backend),
+		Globals:   make(map[string]*models.Global),
 	}
 }
 
 func (c Structured) IsEmpty() bool {
-	return len(c.Frontends) == 0 && len(c.Backends) == 0
+	return len(c.Frontends) == 0 && len(c.Backends) == 0 && len(c.Globals) == 0
 }
 
 // Maps

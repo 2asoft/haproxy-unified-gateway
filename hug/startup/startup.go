@@ -56,10 +56,7 @@ func StructuredFromFile(hugConfig hugconfig.HUGConfig) (structured.Structured, e
 		return structured.Structured{}, err
 	}
 
-	structuredCfg := structured.Structured{
-		Backends:  make(map[string]*models.Backend),
-		Frontends: make(map[string]*models.Frontend),
-	}
+	structuredCfg := structured.NewStructuredConf()
 	for _, backend := range backends {
 		if isUnifiedGatewayManaged(backend) {
 			structuredCfg.Backends[backend.Name] = backend

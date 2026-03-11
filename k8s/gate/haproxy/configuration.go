@@ -33,7 +33,10 @@ import (
 type Configuration struct {
 	// structured contains the complete Structured configuration
 	structured structured.Structured
-	diffs      diffs.HaproxyConfDiffs
+	// mergeStrategies holds the merge strategies currently applied for each config type.
+	// It is used to detect changes in merge strategy even when the config content is unchanged.
+	mergeStrategies diffs.MergeStategies
+	diffs           diffs.HaproxyConfDiffs
 }
 
 func (c *Configuration) resetDiffs() {
@@ -230,6 +233,59 @@ func (c *Configuration) upsertBackendMetadata(logger *slog.Logger, beName string
 		c.diffs.Updated.Backends[beName] = deepCopied
 		c.structured.Backends[beName] = previousBe
 	}
+	return nil
+}
+
+// upsertGlobal stores the given Global in the structured configuration and
+// records the appropriate diff. If a Global was already present and is
+// unchanged, the call is a no-op. If it differs from the stored one it is
+// recorded as Updated; if no Global was stored yet it is recorded as Created.
+func (c *Configuration) upsertGlobal(logger *slog.Logger, global *models.Global, mergeStrategy string) error {
+	if global == nil {
+		logger.LogAttrs(context.Background(), slog.LevelError, "nil global")
+		return errors.New("nil global")
+	}
+
+	if previous, ok := c.structured.Globals[structured.GlobalKey]; ok {
+		if previous.Equal(*global) && c.mergeStrategies.Global == mergeStrategy {
+			logger.LogAttrs(context.Background(), slog.LevelDebug, "Global [same]")
+			return nil
+		}
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Global [UPDATE]")
+		deepCopied, err := DeepCopyGlobal(global)
+		if err != nil {
+			return err
+		}
+		c.diffs.Updated.Globals[structured.GlobalKey] = deepCopied
+		c.diffs.MergeStrategies.Global = mergeStrategy
+		c.mergeStrategies.Global = mergeStrategy
+		c.structured.Globals[structured.GlobalKey] = global
+	} else {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Global [CREATE]")
+		deepCopied, err := DeepCopyGlobal(global)
+		if err != nil {
+			return err
+		}
+		c.structured.Globals[structured.GlobalKey] = deepCopied
+		c.diffs.Created.Globals[structured.GlobalKey] = deepCopied
+		c.diffs.MergeStrategies.Global = mergeStrategy
+		c.mergeStrategies.Global = mergeStrategy
+	}
+	return nil
+}
+
+// deleteGlobal removes the Global from the structured configuration and records
+// it as Deleted in HaproxyConfDiffs. If no Global is currently stored the call
+// is a no-op.
+func (c *Configuration) deleteGlobal(logger *slog.Logger) error {
+	if _, ok := c.structured.Globals[structured.GlobalKey]; !ok {
+		return nil
+	}
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "Global [DELETE]")
+	c.diffs.Deleted.Globals[structured.GlobalKey] = nil
+	c.diffs.MergeStrategies.Global = "" // useless but clear
+	c.mergeStrategies.Global = ""
+	delete(c.structured.Globals, structured.GlobalKey)
 	return nil
 }
 

@@ -17,6 +17,7 @@ package v3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // if we plan to change structure of this CRD in future versions, we need to
@@ -53,8 +54,23 @@ type Logging struct {
 	// if a category is not present, the default level is used
 	CategoryLevelList []CategoryLevel `json:"categoryLevelList,omitempty"`
 }
+
+type CRReference struct {
+	// Group is the group of the referent.
+	Group *v1.Group `json:"group,omitempty"`
+
+	// Kind is the kind of the referent.
+	Kind *v1.Kind `json:"kind,omitempty"`
+
+	// Namespace is the namespace of the referent.
+	Namespace *v1.Namespace `json:"namespace,omitempty"`
+
+	// Name is the name of the referent.
+	Name v1.ObjectName `json:"name"`
+}
 type ControllerConfSpec struct {
-	Logging Logging `json:"logging"`
+	GlobalRef *CRReference `json:"globalRef,omitempty"`
+	Logging   Logging      `json:"logging"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

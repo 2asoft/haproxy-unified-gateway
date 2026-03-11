@@ -14,6 +14,7 @@ package utilsk8s
 import (
 	"strings"
 
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -88,6 +89,20 @@ func IsSecretGroupKindSupported(certRef gatewayv1.SecretObjectReference) bool {
 		return false
 	}
 	if certRef.Group != nil && *certRef.Group != "" {
+		return false
+	}
+	return true
+}
+
+// IsGlobalRefGroupKindSupported checks if the provided Global reference has a supported Group and Kind.
+// It only supports `v3.Global` resources.
+func IsGlobalRefGroupKindSupported(globalRef v3.CRReference, extractGVK ExtractGVK) bool {
+	globalGVK := extractGVK(objtypes.ObjectTypeGlobal)
+
+	if globalRef.Kind != nil && *globalRef.Kind != gatewayv1.Kind(globalGVK.Kind) {
+		return false
+	}
+	if globalRef.Group != nil && *globalRef.Group != gatewayv1.Group(globalGVK.Group) {
 		return false
 	}
 	return true

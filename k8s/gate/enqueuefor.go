@@ -18,6 +18,7 @@ package controller
 import (
 	"context"
 
+	v3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
@@ -184,9 +185,7 @@ func enqueueGatewayForSecret(ctrlclient client.Client, _ utilsk8s.ExtractGVK) ha
 					if !utilsk8s.IsSecretGroupKindSupported(certRef) {
 						continue
 					}
-					secretNsName := utils.GetNamespacedName(string(certRef.Name),
-						string(utils.PointerDefaultValueIfNil(certRef.Namespace)),
-						gw.GetNamespace())
+					secretNsName := utils.GetNamespacedName(certRef.Name, certRef.Namespace, gw.GetNamespace())
 
 					if secretNsName.Name == o.GetName() && secretNsName.Namespace == o.GetNamespace() {
 						requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
@@ -221,9 +220,7 @@ func enqueueHTTPRouteForGateway(ctrlclient client.Client, extractGVK utilsk8s.Ex
 				if !utilsk8s.IsParentRefGroupKindSupported(parentRef, extractGVK) {
 					continue
 				}
-				gwNsName := utils.GetNamespacedName(string(parentRef.Name),
-					string(utils.PointerDefaultValueIfNil(parentRef.Namespace)),
-					route.GetNamespace())
+				gwNsName := utils.GetNamespacedName(parentRef.Name, parentRef.Namespace, route.GetNamespace())
 
 				if gwNsName.Name == o.GetName() && gwNsName.Namespace == o.GetNamespace() {
 					requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
@@ -259,10 +256,7 @@ func enqueueHTTPRouteForService(ctrlclient client.Client, extractGVK utilsk8s.Ex
 					if !utilsk8s.IsBackendRefGroupKindSupported(backendRef.BackendObjectReference, extractGVK) {
 						continue
 					}
-					serviceNsName := utils.GetNamespacedName(
-						string(backendRef.Name),
-						string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
-						route.GetNamespace())
+					serviceNsName := utils.GetNamespacedName(backendRef.Name, backendRef.Namespace, route.GetNamespace())
 
 					if serviceNsName.Name == o.GetName() && serviceNsName.Namespace == o.GetNamespace() {
 						requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
@@ -343,10 +337,7 @@ func enqueueTLSRouteForService(ctrlclient client.Client, extractGVK utilsk8s.Ext
 					if !utilsk8s.IsBackendRefGroupKindSupported(backendRef.BackendObjectReference, extractGVK) {
 						continue
 					}
-					serviceNsName := utils.GetNamespacedName(
-						string(backendRef.Name),
-						string(utils.PointerDefaultValueIfNil(backendRef.Namespace)),
-						route.GetNamespace())
+					serviceNsName := utils.GetNamespacedName(backendRef.Name, backendRef.Namespace, route.GetNamespace())
 
 					if serviceNsName.Name == o.GetName() && serviceNsName.Namespace == o.GetNamespace() {
 						requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
@@ -382,9 +373,7 @@ func enqueueTLSRouteForGateway(ctrlclient client.Client, extractGVK utilsk8s.Ext
 				if !utilsk8s.IsParentRefGroupKindSupported(parentRef, extractGVK) {
 					continue
 				}
-				gwNsName := utils.GetNamespacedName(string(parentRef.Name),
-					string(utils.PointerDefaultValueIfNil(parentRef.Namespace)),
-					route.GetNamespace())
+				gwNsName := utils.GetNamespacedName(parentRef.Name, parentRef.Namespace, route.GetNamespace())
 
 				if gwNsName.Name == o.GetName() && gwNsName.Namespace == o.GetNamespace() {
 					requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
@@ -395,6 +384,45 @@ func enqueueTLSRouteForGateway(ctrlclient client.Client, extractGVK utilsk8s.Ext
 			}
 		}
 
+		return requests
+	}
+}
+
+// enqueueHugConfForGlobal returns a handler.EventHandler that enqueues all HugConf
+// related to an observed Global CR.
+func enqueueHugConfForGlobalCR(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		var requests []reconcile.Request
+
+		// HugConfs
+		hugConfList := &v3.HugConfList{}
+
+		listOpts := &client.ListOptions{}
+		if err := ctrlclient.List(ctx, hugConfList, listOpts); err != nil {
+			return []reconcile.Request{}
+		}
+
+		for _, hugConf := range hugConfList.Items {
+			globalRef := hugConf.Spec.GlobalRef
+
+			if globalRef == nil {
+				continue
+			}
+			if !utilsk8s.IsGlobalRefGroupKindSupported(*globalRef, extractGVK) { // globalRef is not nil, checked before
+				continue
+			}
+
+			// We only accept v3.Global
+			globalNsName := utils.GetNamespacedName(globalRef.Name, globalRef.Namespace, hugConf.Namespace)
+			if globalNsName.Name == o.GetName() && globalNsName.Namespace == o.GetNamespace() {
+				{
+					requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+						Namespace: hugConf.GetNamespace(),
+						Name:      hugConf.GetName(),
+					}})
+				}
+			}
+		}
 		return requests
 	}
 }

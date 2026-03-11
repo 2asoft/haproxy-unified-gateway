@@ -193,11 +193,12 @@ func PointerDefaultValueIfNil[T any](arg *T) T {
 	return *arg
 }
 
-func GetNamespacedName(name, namespace, defaultNamespace string) types.NamespacedName {
-	if namespace == "" {
-		namespace = defaultNamespace
+func GetNamespacedName(name gatewayv1.ObjectName, namespace *gatewayv1.Namespace, defaultNamespace string) types.NamespacedName {
+	ns := defaultNamespace
+	if namespace != nil {
+		ns = string(*namespace)
 	}
-	return types.NamespacedName{Name: name, Namespace: namespace}
+	return types.NamespacedName{Name: string(name), Namespace: ns}
 }
 
 // GetHostnamesForRouteWithListener returns the hostnames that match a listener and a route.
