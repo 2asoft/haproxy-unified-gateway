@@ -24,6 +24,7 @@ import (
 	"html/template"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/haproxytech/client-native/v6/models"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
@@ -549,6 +550,15 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 			Indirect: true,
 			Dynamic:  true,
 			Domains:  []*models.Domain{},
+		}
+
+		if sessionPersistence.AbsoluteTimeout != nil {
+			absoluteTimeout, err := time.ParseDuration(string(*sessionPersistence.AbsoluteTimeout))
+			if err != nil {
+				errs.Add(err)
+			} else {
+				cookie.Maxlife = int64(absoluteTimeout.Seconds())
+			}
 		}
 
 		newBackend.Cookie = cookie
