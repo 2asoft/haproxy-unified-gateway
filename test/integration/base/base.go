@@ -64,6 +64,7 @@ func (b *BaseSuite) SetupSuite(crdRelativePath string, levelsUp int) {
 
 func (b *BaseSuite) TearDownSuite() {
 	b.test.StopTestEnv(b.T())
+	b.test.StopHaproxy(b.T())
 }
 
 // CreateFixtures will create all the objects from manifests that are in the fixturePath directory

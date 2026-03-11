@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -91,6 +92,7 @@ type IntTest struct {
 	Namespace         string
 	HaproxyCfgDir     string
 	RuntimeSocketPath string
+	PIDFilePath       string
 }
 
 func NewIntTest(t *testing.T, crdRelativePath string, levelsUp int) (test IntTest, err error) {
@@ -157,6 +159,7 @@ func (test *IntTest) StartTestEnv(t *testing.T) { //revive:disable:function-leng
 
 	// Controller HUGConfig
 	hugConfig := hugConfig(test, t)
+	test.PIDFilePath = hugConfig.HaproxyDirs.PIDFile
 
 	// Cleanup configDir
 	err = os.RemoveAll(hugConfig.HaproxyDirs.CfgDir)
@@ -312,6 +315,28 @@ func (test *IntTest) StopTestEnv(t *testing.T) {
 	// Now it is safer to stop the environment
 	if err := test.TestEnv.Stop(); err != nil {
 		t.Fatalf("failed to stop testEnv: %s", err)
+	}
+}
+
+func (test *IntTest) StopHaproxy(t *testing.T) {
+	data, err := os.ReadFile(test.PIDFilePath)
+	if err != nil {
+		t.Logf("StopHaproxy: could not read PID file %s: %v", test.PIDFilePath, err)
+		return
+	}
+	pidStr := strings.TrimSpace(string(data))
+	var pid int
+	if _, err := fmt.Sscanf(pidStr, "%d", &pid); err != nil {
+		t.Logf("StopHaproxy: invalid PID in file %s: %v", test.PIDFilePath, err)
+		return
+	}
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		t.Logf("StopHaproxy: could not find process %d: %v", pid, err)
+		return
+	}
+	if err := p.Signal(syscall.SIGTERM); err != nil {
+		t.Logf("StopHaproxy: could not signal process %d: %v", pid, err)
 	}
 }
 
