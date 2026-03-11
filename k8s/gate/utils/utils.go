@@ -18,9 +18,7 @@ package utils // revive:disable:var-naming
 import (
 	"cmp"
 	"fmt"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -263,47 +261,4 @@ func ConvertSliceWithFunc[U, V any](arg []U, f func(U) V) []V {
 
 func ConvertV1Alpha2HostnameToString(hostname v1alpha2.Hostname) string {
 	return string(hostname)
-}
-
-// ParseGatewayDuration parses a string representing a duration into an int64 in seconds.
-// The input string should be in the format "<value><unit>" where <value> is a number and <unit> is one of the following:
-// - h for hours
-// - m for minutes
-// - s for seconds
-// - ms for milliseconds
-//
-// Returns the total number of seconds as an int64, and an error if the input string is invalid.
-func ParseGatewayDuration(durationStr string) (int64, error) {
-	re := regexp.MustCompile(`([0-9]{1,5})(h|m|s|ms)`)
-	matches := re.FindAllStringSubmatch(durationStr, -1)
-	if matches == nil {
-		return 0, fmt.Errorf("duration format invalid: %s", durationStr)
-	}
-
-	var totalSeconds float64
-	for _, match := range matches {
-		if len(match) != 3 {
-			return 0, fmt.Errorf("duration format invalid: %v", match)
-		}
-		valueStr, unit := match[1], match[2]
-		value, err := strconv.ParseFloat(valueStr, 64)
-		if err != nil {
-			return 0, fmt.Errorf("failed to parse number '%s': %v", valueStr, err)
-		}
-
-		switch strings.ToLower(unit) {
-		case "h":
-			totalSeconds += value * 3600
-		case "m":
-			totalSeconds += value * 60
-		case "s":
-			totalSeconds += value
-		case "ms":
-			totalSeconds += value / 1000
-		default:
-			return 0, fmt.Errorf("unknown duration unit: %s", unit)
-		}
-	}
-
-	return int64(totalSeconds), nil
 }

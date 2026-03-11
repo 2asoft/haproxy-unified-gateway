@@ -561,6 +561,15 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 			}
 		}
 
+		if sessionPersistence.IdleTimeout != nil {
+			idleTimeout, err := time.ParseDuration(string(*sessionPersistence.IdleTimeout))
+			if err != nil {
+				errs.Add(err)
+			} else {
+				cookie.Maxidle = int64(idleTimeout.Seconds())
+			}
+		}
+
 		newBackend.Cookie = cookie
 		newBackend.BackendBase.DynamicCookieKey = cookieKey
 
