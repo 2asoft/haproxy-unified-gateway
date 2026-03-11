@@ -16,7 +16,6 @@
 package httproute
 
 import (
-	"fmt"
 	"path"
 	"testing"
 	"time"
@@ -45,16 +44,10 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "ok")
 	s.CreateFixtures(fixturePath, nil)
-	mapFileRelativePath2 := "hug_http_8088"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFileRelativePath2))
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
+	mapFileRelativePath2 := "hug_http_8088"
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath, mapFileRelativePath2})
+
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -74,21 +67,8 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK() {
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
-
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath2, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath2))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
+	s.ExpectMapContents(mapFileRelativePath2, expectedMapsPath)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
@@ -112,13 +92,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_1_parent_not_allowed() {
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
@@ -143,13 +117,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_no_matching_parent() {
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
@@ -158,10 +126,11 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir)
 	mapFileRelativePath := "hug_http_8080"
+	mapFileRelativePath2 := "hug_http_8088"
 	s.CreateFixtures(fixturePath, []string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"})
 	defer s.CleanupFixturesCheckMapFiles(fixturePath,
 		[]string{"gatewayclass.yaml", "gateway.yaml", "http-echo.yaml", "route.yaml"},
-		[]string{mapFileRelativePath})
+		[]string{mapFileRelativePath, mapFileRelativePath2})
 
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
@@ -177,9 +146,7 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_AttachedRoutes() {
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	s.Eventually(func() bool {
-		return s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
 
 	// 2- Now create a 2nd route
 	s.CreateFixtures(fixturePath, []string{"route-2.yaml"})
@@ -207,7 +174,9 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "ko_resolvedRef")
 	s.CreateFixtures(fixturePath, nil)
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
+	mapFileRelativePath2 := "hug_http_8088"
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath, mapFileRelativePath2})
+
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -222,13 +191,8 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_KO_ResolvedRefs() {
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
+	s.ExpectMapContents(mapFileRelativePath2, expectedMapsPath)
 }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() {
@@ -237,16 +201,10 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() 
 
 	fixturePath := path.Join(fixtureDirPath, fixtureDir, "ok _multiple_listeners_one_gateway")
 	s.CreateFixtures(fixturePath, nil)
-	mapFileRelativePath2 := "hug_http_8088"
-	defer s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath2, "")
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath2, "")
-	}, timeout, interval, fmt.Sprintf("maps in %s were not emptied", mapFileRelativePath2))
 	mapFileRelativePath := "hug_http_8080"
-	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath})
+	mapFileRelativePath2 := "hug_http_8088"
+	defer s.CleanupFixturesCheckMapFiles(fixturePath, nil, []string{mapFileRelativePath, mapFileRelativePath2})
+
 	// Expected Conditions
 	expectationsPath := path.Join(fixturePath, "expectations")
 	expectedCondPath := path.Join(expectationsPath, "route-conditions.yaml")
@@ -266,19 +224,6 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_OK_Multiple_Listeners_One_Gateway() 
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
-
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath2, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath2, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath2))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
+	s.ExpectMapContents(mapFileRelativePath2, expectedMapsPath)
 }
