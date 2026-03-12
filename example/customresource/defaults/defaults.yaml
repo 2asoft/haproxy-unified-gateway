@@ -1,0 +1,10 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Defaults
+metadata:
+  name: defaults
+  namespace: haproxy-unified-gateway
+spec:
+  merge_strategy: append
+  name: haproxytech
+  client_timeout: 60000
+  server_timeout: 60000

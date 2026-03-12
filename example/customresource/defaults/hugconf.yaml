@@ -1,0 +1,20 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: HugConf
+metadata:
+  name: hugconf
+  namespace: haproxy-unified-gateway
+spec:
+  logging:
+    defaultLevel: "Debug"
+    categoryLevelList:
+      # - category: "gate"
+      #   level: "Debug"
+      # - category: "status"
+      #   level: "Debug"
+      - category: "k8s"
+        level: "Info"
+  defaultsRef:
+    group: gate.v3.haproxy.org
+    kind: Defaults
+    name: defaults
+    namespace: haproxy-unified-gateway
