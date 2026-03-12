@@ -127,6 +127,13 @@ func (b *HaproxyConfMgrImpl) ComputeDiffs(ctx context.Context) error {
 	}
 
 	// -----------
+	// Defaults CR
+	if err := b.processDefaults(); err != nil {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing defaultsCR",
+			logging.LogAttrError(err))
+	}
+
+	// -----------
 	// Certificates
 	if err := b.processCertificates(); err != nil {
 		logger.LogAttrs(context.Background(), slog.LevelInfo, "Error processing certificates",

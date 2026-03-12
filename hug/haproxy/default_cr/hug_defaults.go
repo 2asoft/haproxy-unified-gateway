@@ -25,6 +25,9 @@ import (
 //go:embed default_global.yaml
 var defaultGlobalYAML []byte
 
+//go:embed default_defaults.yaml
+var defaultDefaultsYAML []byte
+
 type defaultGlobalParams struct {
 	RuntimeSocket string
 	PIDFile       string
@@ -44,4 +47,12 @@ func DefaultGlobal(runtimeSocket, pidFile string) (models.Global, error) {
 		return models.Global{}, err
 	}
 	return global, nil
+}
+
+func DefaultDefaults() (models.Defaults, error) {
+	var defaults models.Defaults
+	if err := k8syaml.Unmarshal(defaultDefaultsYAML, &defaults); err != nil {
+		return models.Defaults{}, err
+	}
+	return defaults, nil
 }

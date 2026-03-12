@@ -75,16 +75,18 @@ func (b *HugConfBuilderImpl) Build() {
 func (b *HugConfBuilderImpl) onDeleted(hugConfUpdate store.Update[*v3.HugConf]) {
 	b.onDeletedSubSystemLogConf()
 	b.onDeletedSubsystemGlobal(hugConfUpdate)
+	b.onDeletedSubsystemDefaults(hugConfUpdate)
 }
 
 // -------------------------------
 // HugConf upserted
 
 // onUpserted handles the creation or update of a HugConf resource by
-// triggering upsert logic for all sub-resources (log configuration, global).
+// triggering upsert logic for all sub-resources (log configuration, global, defaults).
 func (b *HugConfBuilderImpl) onUpserted(hugConfUpdate store.Update[*v3.HugConf]) {
 	b.onUpsertedSubsystemLogConf()
 	b.onUpsertedSubsystemGlobal(hugConfUpdate)
+	b.onUpsertedSubsystemDefaults(hugConfUpdate)
 }
 
 func (*HugConfBuilderImpl) BuildStatus() {

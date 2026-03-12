@@ -228,6 +228,17 @@ func (h *AppManagerImpl) processCreate(created structured.Structured, mergeState
 		}
 	}
 
+	// Defaults
+	for _, defaults := range created.Defaults {
+		err := h.client.DefaultsSectionEdit(defaults, mergeStategies.Defaults)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit defaults section",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+		}
+	}
+
 	return errors.Result()
 }
 
@@ -264,6 +275,17 @@ func (h *AppManagerImpl) processDelete(deleted structured.Structured) error {
 		err := h.client.GlobalEdit(nil, "")
 		if err != nil {
 			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to reset global to default value",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+		}
+	}
+
+	// Defaults
+	for range deleted.Defaults {
+		err := h.client.DefaultsSectionEdit(nil, "")
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to reset defaults to default value",
 				logging.LogAttrError(err),
 			)
 			errors.Add(err)
@@ -321,6 +343,17 @@ func (h *AppManagerImpl) processUpdate(updated structured.Structured, mergeStrat
 		err := h.client.GlobalEdit(global, mergeStrategies.Global)
 		if err != nil {
 			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit global",
+				logging.LogAttrError(err),
+			)
+			errors.Add(err)
+		}
+	}
+
+	// Defaults
+	for _, defaults := range updated.Defaults {
+		err := h.client.DefaultsSectionEdit(defaults, mergeStrategies.Defaults)
+		if err != nil {
+			h.logger.LogAttrs(context.Background(), slog.LevelError, "failed to edit defaults section",
 				logging.LogAttrError(err),
 			)
 			errors.Add(err)

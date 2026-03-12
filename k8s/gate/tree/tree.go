@@ -51,6 +51,7 @@ type GateTree struct {
 	VirtualListeners         map[string]*VirtualListener // map[virtualListener.name()]VirtualListener
 	PreviousVirtualListeners map[string]*VirtualListener // map[virtualListener.name()]VirtualListener
 	Global                   *Global
+	Defaults                 *DefaultsCR
 }
 
 type ReferencedObjects struct {
@@ -92,7 +93,7 @@ func NewGateTree() *GateTree {
 
 // TreeResource is a constraint that permits any of the tree's resource types.
 type TreeResource interface {
-	GatewayClass | Gateway | Secret | HTTPRoute | Service | TLSRoute | Global
+	GatewayClass | Gateway | Secret | HTTPRoute | Service | TLSRoute | Global | DefaultsCR
 }
 
 type TreeObject[T TreeResource] interface {

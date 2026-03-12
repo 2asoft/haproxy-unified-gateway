@@ -29,6 +29,7 @@ var (
 	ObjectTypeHugGate      = &v3.HugGate{}
 	ObjectTypeBackend      = &v3.Backend{}
 	ObjectTypeGlobal       = &v3.Global{}
+	ObjectTypeDefaults     = &v3.Defaults{}
 	ObjectTypeTLSRoute     = &gatewayv1alpha2.TLSRoute{}
 )
 

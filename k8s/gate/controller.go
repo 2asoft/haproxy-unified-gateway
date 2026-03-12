@@ -170,6 +170,7 @@ func Add(
 		EndpointSlices: make(map[types.NamespacedName]*discoveryV1.EndpointSlice),
 		BackendCRs:     make(map[types.NamespacedName]*v3.Backend),
 		GlobalCRs:      make(map[types.NamespacedName]*v3.Global),
+		DefaultsCRs:    make(map[types.NamespacedName]*v3.Defaults),
 		Updates:        store.NewClusterUpdates(),
 	}
 
@@ -459,6 +460,15 @@ func registerControllers(ctx context.Context, extractGVK utilsk8s.ExtractGVK, cf
 							predicate.NewNamespacePredicate(cfg.Namespaces),
 						),
 					},
+					{
+						// Watch DefaultsCR
+						watchSource: objtypes.ObjectTypeDefaults,
+						enqueueFunc: enqueueHugConfForDefaultsCR,
+						predicate: k8spredicate.And(
+							k8spredicate.ResourceVersionChangedPredicate{},
+							predicate.NewNamespacePredicate(cfg.Namespaces),
+						),
+					},
 				}),
 			},
 		},
@@ -477,6 +487,18 @@ func registerControllers(ctx context.Context, extractGVK utilsk8s.ExtractGVK, cf
 		{
 			name:       "GlobalCR",
 			objectType: objtypes.ObjectTypeGlobal,
+			options: []Option{
+				WithK8sPredicate(
+					k8spredicate.And(
+						k8spredicate.ResourceVersionChangedPredicate{},
+						predicate.NewNamespacePredicate(cfg.Namespaces),
+					),
+				),
+			},
+		},
+		{
+			name:       "DefaultsCR",
+			objectType: objtypes.ObjectTypeDefaults,
 			options: []Option{
 				WithK8sPredicate(
 					k8spredicate.And(

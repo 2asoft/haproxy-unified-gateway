@@ -388,6 +388,45 @@ func enqueueTLSRouteForGateway(ctrlclient client.Client, extractGVK utilsk8s.Ext
 	}
 }
 
+// enqueueHugConfForDefaultsCR returns a handler.EventHandler that enqueues all HugConf
+// objects whose DefaultsRef points to the observed Defaults CR.
+func enqueueHugConfForDefaultsCR(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {
+	return func(ctx context.Context, o client.Object) []reconcile.Request {
+		var requests []reconcile.Request
+
+		// HugConfs
+		hugConfList := &v3.HugConfList{}
+
+		listOpts := &client.ListOptions{}
+		if err := ctrlclient.List(ctx, hugConfList, listOpts); err != nil {
+			return []reconcile.Request{}
+		}
+
+		for _, hugConf := range hugConfList.Items {
+			defaultsRef := hugConf.Spec.DefaultsRef
+
+			if defaultsRef == nil {
+				continue
+			}
+			if !utilsk8s.IsDefaultsRefGroupKindSupported(*defaultsRef, extractGVK) { // defaultsRef is not nil, checked before
+				continue
+			}
+
+			// We only accept v3.Defaults
+			defaultsNsName := utils.GetNamespacedName(defaultsRef.Name, defaultsRef.Namespace, hugConf.Namespace)
+			if defaultsNsName.Name == o.GetName() && defaultsNsName.Namespace == o.GetNamespace() {
+				{
+					requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+						Namespace: hugConf.GetNamespace(),
+						Name:      hugConf.GetName(),
+					}})
+				}
+			}
+		}
+		return requests
+	}
+}
+
 // enqueueHugConfForGlobal returns a handler.EventHandler that enqueues all HugConf
 // related to an observed Global CR.
 func enqueueHugConfForGlobalCR(ctrlclient client.Client, extractGVK utilsk8s.ExtractGVK) handler.MapFunc {

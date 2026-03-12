@@ -52,6 +52,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&BackendList{},
 		&Global{},
 		&GlobalList{},
+		&Defaults{},
+		&DefaultsList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

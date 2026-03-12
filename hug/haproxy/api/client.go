@@ -76,6 +76,7 @@ type Global interface {
 
 type Defaults interface {
 	DefaultsSectionGet(name string) (*models.Defaults, error)
+	DefaultsSectionEdit(defaults *models.Defaults, mergeStrategy string) error
 }
 
 type Server interface {
@@ -93,6 +94,7 @@ type clientNative struct {
 	configurationHashAtTransactionStart string
 	defaultGlobal                       models.Global
 	mandatoryGlobal                     models.Global
+	defaultDefaults                     models.Defaults
 }
 
 func New(logger *slog.Logger, transactionDir, configFile, programPath, runtimeSocket, pidFile string) (client HAProxyClient, err error) { //nolint:ireturn
@@ -136,11 +138,17 @@ func New(logger *slog.Logger, transactionDir, configFile, programPath, runtimeSo
 		return nil, err
 	}
 
+	defaultDefaults, err := defaultcrs.DefaultDefaults()
+	if err != nil {
+		return nil, err
+	}
+
 	cn := clientNative{
 		nativeAPI:       cnHAProxyClient,
 		logger:          logger,
 		defaultGlobal:   defaultGlobal,
 		mandatoryGlobal: mandatoryGlobal,
+		defaultDefaults: defaultDefaults,
 	}
 	return &cn, nil
 }

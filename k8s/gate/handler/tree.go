@@ -79,6 +79,8 @@ func NewGateTreeBuilder(controllerStore *tree.ControllerStore, cfg GateTreeConfi
 		MapsStorageEx:   cfg.MapsStorage,
 	})
 
+	defaultsCRBuilder := tree.NewDefaultsCRBuilder(controllerStore)
+
 	treeBuilder := GateTreeBuilder{
 		cfg:              cfg,
 		referenceManager: referenceManager,
@@ -92,6 +94,7 @@ func NewGateTreeBuilder(controllerStore *tree.ControllerStore, cfg GateTreeConfi
 			serviceBuilder,
 			httpRouteBuilder,
 			tlsRouteBuilder,
+			defaultsCRBuilder,
 		},
 	}
 

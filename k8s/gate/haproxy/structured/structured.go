@@ -20,6 +20,9 @@ import (
 // GlobalKey is the fixed map key used for the single Global entry.
 const GlobalKey = "global"
 
+// DefaultsKey is the fixed map key used for the single Defaults entry (the "haproxytech" section).
+const DefaultsKey = "haproxytech"
+
 type Structured struct {
 	// Note that for Deleted Structured:
 	// *models.Frontend will be nil
@@ -28,6 +31,7 @@ type Structured struct {
 	Frontends map[string]*models.Frontend // map[frontendName] => Frontend
 	Backends  map[string]*models.Backend  // map[backendName]  => Backend
 	Globals   map[string]*models.Global   // map[GlobalKey]    => Global (at most one entry)
+	Defaults  map[string]*models.Defaults // map[DefaultsKey]  => Defaults (at most one entry)
 }
 
 func NewStructuredConf() Structured {
@@ -35,11 +39,12 @@ func NewStructuredConf() Structured {
 		Frontends: make(map[string]*models.Frontend),
 		Backends:  make(map[string]*models.Backend),
 		Globals:   make(map[string]*models.Global),
+		Defaults:  make(map[string]*models.Defaults),
 	}
 }
 
 func (c Structured) IsEmpty() bool {
-	return len(c.Frontends) == 0 && len(c.Backends) == 0 && len(c.Globals) == 0
+	return len(c.Frontends) == 0 && len(c.Backends) == 0 && len(c.Globals) == 0 && len(c.Defaults) == 0
 }
 
 // Maps

@@ -69,8 +69,9 @@ type CRReference struct {
 	Name v1.ObjectName `json:"name"`
 }
 type ControllerConfSpec struct {
-	GlobalRef *CRReference `json:"globalRef,omitempty"`
-	Logging   Logging      `json:"logging"`
+	GlobalRef   *CRReference `json:"globalRef,omitempty"`
+	DefaultsRef *CRReference `json:"defaultsRef,omitempty"`
+	Logging     Logging      `json:"logging"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

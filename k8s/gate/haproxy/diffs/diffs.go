@@ -20,7 +20,8 @@ import (
 )
 
 type MergeStategies struct {
-	Global string // override or append
+	Global   string // override or append
+	Defaults string // override or append
 }
 
 type HaproxyConfDiffs struct {
@@ -45,10 +46,11 @@ func (c HaproxyConfDiffs) IsEmpty() bool {
 }
 
 func (c HaproxyConfDiffs) Stats() string {
-	return fmt.Sprintf("Created/Updated/Deleted FE:[%d/%d/%d] BE[%d/%d/%d] Global[%d/%d/%d] Reload[%t]",
+	return fmt.Sprintf("Created/Updated/Deleted FE:[%d/%d/%d] BE[%d/%d/%d] Global[%d/%d/%d] Defaults[%d/%d/%d] Reload[%t]",
 		len(c.Created.Frontends), len(c.Updated.Frontends), len(c.Deleted.Frontends),
 		len(c.Created.Backends), len(c.Updated.Backends), len(c.Deleted.Backends),
 		len(c.Created.Globals), len(c.Updated.Globals), len(c.Deleted.Globals),
+		len(c.Created.Defaults), len(c.Updated.Defaults), len(c.Deleted.Defaults),
 		c.ReloadNeed,
 	)
 }

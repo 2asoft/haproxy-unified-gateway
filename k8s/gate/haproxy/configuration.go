@@ -289,6 +289,57 @@ func (c *Configuration) deleteGlobal(logger *slog.Logger) error {
 	return nil
 }
 
+// upsertDefaults stores the given Defaults in the structured configuration and
+// records the appropriate diff (Created or Updated). A no-op if unchanged.
+func (c *Configuration) upsertDefaults(logger *slog.Logger, defaults *models.Defaults, mergeStrategy string) error {
+	if defaults == nil {
+		logger.LogAttrs(context.Background(), slog.LevelError, "nil defaults")
+		return errors.New("nil defaults")
+	}
+
+	if previous, ok := c.structured.Defaults[structured.DefaultsKey]; ok {
+		if previous.Equal(*defaults) && c.mergeStrategies.Defaults == mergeStrategy {
+			logger.LogAttrs(context.Background(), slog.LevelDebug, "Defaults [same]")
+			return nil
+		}
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Defaults [UPDATE]")
+		deepCopied, err := DeepCopyDefaults(defaults)
+		if err != nil {
+			return err
+		}
+		c.diffs.Updated.Defaults[structured.DefaultsKey] = deepCopied
+		c.diffs.MergeStrategies.Defaults = mergeStrategy
+		c.mergeStrategies.Defaults = mergeStrategy
+		c.structured.Defaults[structured.DefaultsKey] = defaults
+	} else {
+		logger.LogAttrs(context.Background(), slog.LevelInfo, "Defaults [CREATE]")
+		deepCopied, err := DeepCopyDefaults(defaults)
+		if err != nil {
+			return err
+		}
+		c.structured.Defaults[structured.DefaultsKey] = deepCopied
+		c.diffs.Created.Defaults[structured.DefaultsKey] = deepCopied
+		c.diffs.MergeStrategies.Defaults = mergeStrategy
+		c.mergeStrategies.Defaults = mergeStrategy
+	}
+	return nil
+}
+
+// deleteDefaults removes the Defaults from the structured configuration and records
+// it as Deleted in HaproxyConfDiffs. If no Defaults is currently stored the call
+// is a no-op.
+func (c *Configuration) deleteDefaults(logger *slog.Logger) error {
+	if _, ok := c.structured.Defaults[structured.DefaultsKey]; !ok {
+		return nil
+	}
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "Defaults [DELETE]")
+	c.diffs.Deleted.Defaults[structured.DefaultsKey] = nil
+	c.diffs.MergeStrategies.Defaults = "" // useless but clear
+	c.mergeStrategies.Defaults = ""
+	delete(c.structured.Defaults, structured.DefaultsKey)
+	return nil
+}
+
 func (c *Configuration) deleteBackend(logger *slog.Logger, beName string) error {
 	// Retrieve the backend from the store
 	be, ok := c.structured.Backends[beName]

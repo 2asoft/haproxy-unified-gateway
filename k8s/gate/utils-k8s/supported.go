@@ -107,3 +107,17 @@ func IsGlobalRefGroupKindSupported(globalRef v3.CRReference, extractGVK ExtractG
 	}
 	return true
 }
+
+// IsDefaultsRefGroupKindSupported checks if the provided Defaults reference has a supported Group and Kind.
+// It only supports `v3.Defaults` resources.
+func IsDefaultsRefGroupKindSupported(defaultsRef v3.CRReference, extractGVK ExtractGVK) bool {
+	defaultsGVK := extractGVK(objtypes.ObjectTypeDefaults)
+
+	if defaultsRef.Kind != nil && *defaultsRef.Kind != gatewayv1.Kind(defaultsGVK.Kind) {
+		return false
+	}
+	if defaultsRef.Group != nil && *defaultsRef.Group != gatewayv1.Group(defaultsGVK.Group) {
+		return false
+	}
+	return true
+}
