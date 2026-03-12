@@ -1,0 +1,12 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Global
+metadata:
+  name: global
+spec:
+  merge_strategy: append
+  # append adds this entry to the existing default log_target_list (which has one "stdout" entry).
+  # Result: 2 log targets (default stdout + this custom entry).
+  log_target_list:
+    - address: 127.0.0.1:514
+      facility: local0
+      format: rfc3164

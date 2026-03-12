@@ -51,7 +51,7 @@ func hugConfig(test *IntTest, t *testing.T) hugconfig.HUGConfig {
 		StartupSyncPeriod: 2 * time.Second,
 		ControllerConfCRD: hugconfig.NamespaceNameValue{Name: hugConfNsName.Name, Namespace: hugConfNsName.Namespace},
 		ControllerName:    TestControllerName,
-		Namespaces:        []string{test.Namespace, "other"},
+		Namespaces:        []string{test.Namespace, "other", hugConfNsName.Namespace},
 		LogType:           string(logging.LogHandlerTypeText),
 		DefaultLogLevel:   slog.LevelDebug,
 		LogSettings: map[v3.Category]slog.Level{

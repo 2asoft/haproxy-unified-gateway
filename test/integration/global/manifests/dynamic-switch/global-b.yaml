@@ -1,0 +1,8 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Global
+metadata:
+  name: global-b
+spec:
+  merge_strategy: override
+  performance_options:
+    maxconn: 16384
