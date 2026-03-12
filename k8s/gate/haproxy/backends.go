@@ -56,10 +56,10 @@ type BackendReferencedBy struct {
 }
 
 type BackendImpactedInCycle struct {
-	PersistenceCandidate *PersistenceCandidate
-	HTTPRouteKey         client.ObjectKey
-	Name                 string
-	BackendRef           gatewayv1.HTTPBackendRef
+	ResourceCandidate ResourceCandidate
+	HTTPRouteKey      client.ObjectKey
+	Name              string
+	BackendRef        gatewayv1.HTTPBackendRef
 }
 
 type BackendsImpactedInCycle struct {
@@ -223,13 +223,14 @@ func (b *HaproxyConfMgrImpl) upsertHTTPRouteBackends(routeKey k8stypes.Namespace
 					errs.Add(err)
 					continue
 				}
-				persistenceCandidate := &PersistenceCandidate{
+				persistenceCandidate := ResourceCandidate{
 					CreationTimestamp:  route.K8sResource.CreationTimestamp.Time,
 					Namespace:          route.K8sResource.Namespace,
 					RouteName:          route.K8sResource.Name,
 					RuleIndex:          ruleIndex,
 					BackendIndex:       backendRefIndex,
 					SessionPersistence: k8sRule.SessionPersistence,
+					HTTPTimeouts:       k8sRule.Timeouts,
 				}
 				b.addImpactedHTTPBackendUpserted(beName, routeKey, backendRef, persistenceCandidate)
 				upsertedBackendsReferencedByRoute[beName] = struct{}{}
@@ -376,13 +377,13 @@ func (b *HaproxyConfMgrImpl) onInvalidTLSRouteUpserted(routeKey k8stypes.Namespa
 }
 
 func (b *HaproxyConfMgrImpl) addImpactedHTTPBackendUpserted(backendName string, routeKey client.ObjectKey,
-	httpBackendRef gatewayv1.HTTPBackendRef, persistenceCandidate *PersistenceCandidate,
+	httpBackendRef gatewayv1.HTTPBackendRef, resourceCandidate ResourceCandidate,
 ) {
 	impactedBe := BackendImpactedInCycle{
-		Name:                 backendName,
-		HTTPRouteKey:         routeKey,
-		BackendRef:           httpBackendRef,
-		PersistenceCandidate: persistenceCandidate,
+		Name:              backendName,
+		HTTPRouteKey:      routeKey,
+		BackendRef:        httpBackendRef,
+		ResourceCandidate: resourceCandidate,
 	}
 
 	if _, ok := b.backendsImpactedInCycle.Upserted[backendName]; !ok {
@@ -505,7 +506,7 @@ func (b *HaproxyConfMgrImpl) cleanupUnreferencedBackendsForHTTPRoutes(ownerType 
 //revive:disable:flag-parameter
 func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData,
 	backendRef gatewayv1.HTTPBackendRef, sessionPersistence *gatewayv1.SessionPersistence,
-	namespace string, isHTTPBackend bool,
+	httpTimeouts *gatewayv1.HTTPRouteTimeouts, namespace string, isHTTPBackend bool,
 ) (*models.Backend, error) {
 	// First, we merge the Backend CRDs from filters, if there are some
 	// Backend CRDs are defined in the Filters of type: ExtensionRef
@@ -578,6 +579,18 @@ func (b *HaproxyConfMgrImpl) newBackend(backendName string, md metadata.MetaData
 
 		newBackend.Cookie = cookie
 		newBackend.BackendBase.DynamicCookieKey = cookieKey
+	}
+
+	if httpTimeouts != nil {
+		// At this time, HAProxy does not provide a way to configure the timeout for the request
+		// So we will only configure the timeout for the backend request
+		if httpTimeouts.BackendRequest != nil {
+			backendRequestTimeout, err := time.ParseDuration(string(*httpTimeouts.BackendRequest))
+			if err == nil {
+				v := int64(backendRequestTimeout.Seconds() * 1000)
+				newBackend.ServerTimeout = &v
+			}
+		}
 	}
 
 	return newBackend, errs.Result()
@@ -725,22 +738,30 @@ func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
 		beMd := b.metadataManager.BackendMetaData(routesInfo)
 
 		var backendRef gatewayv1.HTTPBackendRef
-		var sessionPersistence *gatewayv1.SessionPersistence
 		for _, impactedBE := range mapImpactedBEs {
 			// They should all have the same filters as the backend name is computed from the Backend + Filters hash
 			backendRef = impactedBE.BackendRef
 		}
 
-		var persistenceCandidates []PersistenceCandidate
+		var persistenceCandidates []ResourceCandidate
 		for _, impactedBE := range mapImpactedBEs {
-			if impactedBE.PersistenceCandidate != nil &&
-				impactedBE.PersistenceCandidate.SessionPersistence != nil {
-				persistenceCandidates = append(persistenceCandidates, *impactedBE.PersistenceCandidate)
-			}
+			persistenceCandidates = append(persistenceCandidates, impactedBE.ResourceCandidate)
 		}
-		slices.SortFunc(persistenceCandidates, persistenceCandidateSort)
+		var sessionPersistence *gatewayv1.SessionPersistence
+		var httpTimeouts *gatewayv1.HTTPRouteTimeouts
 		if len(persistenceCandidates) > 0 {
-			sessionPersistence = persistenceCandidates[0].SessionPersistence
+			slices.SortFunc(persistenceCandidates, persistenceCandidateSort)
+			for _, persistenceCandidate := range persistenceCandidates {
+				if sessionPersistence == nil && persistenceCandidate.SessionPersistence != nil {
+					sessionPersistence = persistenceCandidate.SessionPersistence
+				}
+				if httpTimeouts == nil && persistenceCandidate.HTTPTimeouts != nil {
+					httpTimeouts = persistenceCandidate.HTTPTimeouts
+				}
+				if httpTimeouts != nil && sessionPersistence != nil {
+					break
+				}
+			}
 		}
 		// Same for Namespace, it should be the same for all
 		var namespace string
@@ -749,7 +770,7 @@ func (b *HaproxyConfMgrImpl) processBackendsUpsertedInCycle() utils.Errors {
 			break
 		}
 
-		be, err := b.newBackend(backendName, beMd, backendRef, sessionPersistence, namespace, isHTTPBackend)
+		be, err := b.newBackend(backendName, beMd, backendRef, sessionPersistence, httpTimeouts, namespace, isHTTPBackend)
 		if err != nil {
 			errs.Add(err)
 			continue
@@ -832,16 +853,17 @@ func (b *HaproxyConfMgrImpl) processBackendsDeletedInCycle() utils.Errors {
 	return errs
 }
 
-type PersistenceCandidate struct {
+type ResourceCandidate struct {
 	CreationTimestamp  time.Time
 	SessionPersistence *gatewayv1.SessionPersistence
+	HTTPTimeouts       *gatewayv1.HTTPRouteTimeouts
 	Namespace          string
 	RouteName          string
 	RuleIndex          int
 	BackendIndex       int
 }
 
-func persistenceCandidateSort(a, b PersistenceCandidate) int {
+func persistenceCandidateSort(a, b ResourceCandidate) int {
 	if !a.CreationTimestamp.Equal(b.CreationTimestamp) {
 		if a.CreationTimestamp.Before(b.CreationTimestamp) {
 			return -1
