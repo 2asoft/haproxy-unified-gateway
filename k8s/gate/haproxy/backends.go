@@ -56,10 +56,10 @@ type BackendReferencedBy struct {
 }
 
 type BackendImpactedInCycle struct {
-	ResourceCandidate ResourceCandidate
 	HTTPRouteKey      client.ObjectKey
 	Name              string
 	BackendRef        gatewayv1.HTTPBackendRef
+	ResourceCandidate ResourceCandidate
 }
 
 type BackendsImpactedInCycle struct {
