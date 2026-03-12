@@ -14,6 +14,8 @@
 package api
 
 import (
+	"encoding/json"
+
 	"github.com/imdario/mergo"
 
 	"github.com/haproxytech/client-native/v6/models"
@@ -42,10 +44,14 @@ func (c *clientNative) GlobalGet() (models.Global, error) {
 // from startup parameters). Non-zero fields in global override the defaults;
 // omitted fields keep their default values. Passing nil applies the defaults as-is.
 func (c *clientNative) GlobalEdit(global *models.Global, mergeStrategy string) error {
-	// Start from the pre-built default so runtime_api.address and pidfile are
-	// always set from params, even when the caller omits them.
-	// If omitted, applies HUG default value
-	merged := c.defaultGlobal
+	// Start from a deep copy of the pre-built default so runtime_api.address
+	// and pidfile are always set from params, even when the caller omits them.
+	// A deep copy is required because models.Global contains pointer/slice fields
+	// that mergo would otherwise mutate in place, permanently drifting defaultGlobal.
+	merged, err := deepCopyGlobal(c.defaultGlobal)
+	if err != nil {
+		return err
+	}
 
 	if global != nil {
 		opts := []func(*mergo.Config){}
@@ -82,6 +88,21 @@ func applyMandatoryGlobal(merged *models.Global, mand models.Global) {
 	_ = mergo.Merge(merged, mand, mergo.WithOverride)
 
 	merged.RuntimeAPIs = mandatoryFirstRuntimeAPIs(merged.RuntimeAPIs, mandRuntimeAPIs)
+}
+
+// deepCopyGlobal returns a deep copy of g via JSON round-trip.
+// This is necessary because models.Global contains pointer/slice fields that
+// would otherwise be shared between the copy and the original.
+func deepCopyGlobal(g models.Global) (models.Global, error) {
+	b, err := json.Marshal(g)
+	if err != nil {
+		return models.Global{}, err
+	}
+	var out models.Global
+	if err := json.Unmarshal(b, &out); err != nil {
+		return models.Global{}, err
+	}
+	return out, nil
 }
 
 // mandatoryFirstRuntimeAPIs places mandatory entries at the front of the list,
