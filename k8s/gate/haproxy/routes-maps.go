@@ -18,6 +18,7 @@ import (
 	"context"
 	"log/slog"
 	"regexp"
+	"strings"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
@@ -248,19 +249,22 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 				}
 				// else update the entry
 				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "Set map [runtime] entry", slog.String("map", mapData.RelativeFileName), slog.String("key", key))
-				// TODO: fix here, it should be or SetMapEntry or AddMapEntry if the entry is new
-				// This will work only if we change the backend, any addition of a new line will fail and trigger a reload
-				// To fix if we want to avoid reloads
+
 				err := runtimeClient.SetMapEntry(mapID, key, routeValue)
 				if err != nil {
-					metrics.MapStorageOperations.WithLabelValues("runtime_set", "error").Inc()
-					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
-						"[failure] Set map [runtime] entry",
-						slog.String("map", mapData.RelativeFileName),
-						slog.String("key", key),
-						logging.LogAttrError(err),
-					)
-					return err
+					if strings.Contains(err.Error(), "entry not found") {
+						err = runtimeClient.AddMapEntry(mapID, key, routeValue)
+					}
+					if err != nil {
+						metrics.MapStorageOperations.WithLabelValues("runtime_set", "error").Inc()
+						b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
+							"[failure] Set map [runtime] entry",
+							slog.String("map", mapData.RelativeFileName),
+							slog.String("key", key),
+							logging.LogAttrError(err),
+						)
+						return err
+					}
 				}
 				metrics.MapStorageOperations.WithLabelValues("runtime_set", "ok").Inc()
 				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug,
