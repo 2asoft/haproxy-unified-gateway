@@ -16,7 +16,6 @@
 package httproute
 
 import (
-	"fmt"
 	"path"
 
 	"github.com/haproxytech/haproxy-unified-gateway/test/integration/utils"
@@ -103,12 +102,5 @@ func (s *HTTPRouteTestSuite) RunHTTPRouteSessionPersistenceTest(fixtureTestDir s
 
 	// Check Maps
 	expectedMapsPath := path.Join(expectationsPath, "maps")
-
-	s.Eventually(func() bool {
-		correctMapContents := s.CheckMapContents(mapFileRelativePath, expectedMapsPath)
-		if !correctMapContents {
-			return false
-		}
-		return s.CheckRuntimeMapContents(mapFileRelativePath, expectedMapsPath)
-	}, timeout, interval, fmt.Sprintf("maps in %s did not match expected contents", mapFileRelativePath))
+	s.ExpectMapContents(mapFileRelativePath, expectedMapsPath)
 }
