@@ -1,0 +1,8 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Defaults
+metadata:
+  name: ignored
+spec:
+  merge_strategy: override
+  name: not-haproxytech
+  connect_timeout: 10000

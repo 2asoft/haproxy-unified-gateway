@@ -1,0 +1,13 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Defaults
+metadata:
+  name: defaults
+spec:
+  merge_strategy: append
+  name: haproxytech
+  # append adds this entry to the existing default log_target_list (which has one "global: true" entry).
+  # Result: 2 log targets (default global + this custom entry).
+  log_target_list:
+    - address: 127.0.0.1:514
+      facility: local0
+      format: rfc3164

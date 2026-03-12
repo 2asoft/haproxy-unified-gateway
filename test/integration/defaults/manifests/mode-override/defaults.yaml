@@ -1,0 +1,13 @@
+apiVersion: gate.v3.haproxy.org/v3
+kind: Defaults
+metadata:
+  name: defaults
+spec:
+  merge_strategy: override
+  name: haproxytech
+  # override replaces the default log_target_list (which has one "global: true" entry)
+  # with this single custom entry. Result: exactly 1 log target.
+  log_target_list:
+    - address: 127.0.0.1:514
+      facility: local0
+      format: rfc3164
