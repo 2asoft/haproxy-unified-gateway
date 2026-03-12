@@ -64,6 +64,28 @@ type GlobalList struct {
 	Items []Global `json:"items"`
 }
 
+// MarshalJSON implements json.Marshaler for GlobalSpec.
+// This is needed because the embedded models.Global has its own MarshalJSON,
+// which would be promoted and would omit the merge_strategy field.
+func (s GlobalSpec) MarshalJSON() ([]byte, error) {
+	globalJSON, err := s.Global.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(globalJSON, &m); err != nil {
+		return nil, err
+	}
+	if m == nil {
+		m = make(map[string]json.RawMessage)
+	}
+	m["merge_strategy"], err = json.Marshal(s.MergeStrategy)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(m)
+}
+
 // UnmarshalJSON implements json.Unmarshaler for GlobalSpec.
 // This is needed because the embedded models.Global has its own UnmarshalJSON,
 // which would be promoted and would swallow the merge_strategy field.
