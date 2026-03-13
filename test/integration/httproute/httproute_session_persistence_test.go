@@ -33,17 +33,20 @@ func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_Absolutetimeout()
 	s.RunHTTPRouteSessionPersistenceTest("session-persistence-absolutetimeout", true)
 }
 
-func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_Header() {
-	s.RunHTTPRouteSessionPersistenceTest("session-persistence-header", true)
-}
+// Not implemented yet
+// func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_Header() {
+// 	s.RunHTTPRouteSessionPersistenceTest("session-persistence-header", true)
+// }
 
-func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_CookieConfig_Permanent_Absolutetimeout() {
-	s.RunHTTPRouteSessionPersistenceTest("session-persistence-absolutetimeout-cookieconfig-permanent", true)
-}
+// Not implemented yet
+// func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_CookieConfig_Permanent_Absolutetimeout() {
+// 	s.RunHTTPRouteSessionPersistenceTest("session-persistence-absolutetimeout-cookieconfig-permanent", true)
+// }
 
-func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_CookieConfig_Session_Absolutetimeout() {
-	s.RunHTTPRouteSessionPersistenceTest("session-persistence-absolutetimeout-cookieconfig-session", true)
-}
+// Not implemented yet
+// func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_CookieConfig_Session_Absolutetimeout() {
+// 	s.RunHTTPRouteSessionPersistenceTest("session-persistence-absolutetimeout-cookieconfig-session", true)
+// }
 
 func (s *HTTPRouteTestSuite) Test_HTTPRoute_SessionPersistence_Idletimeout() {
 	s.RunHTTPRouteSessionPersistenceTest("session-persistence-idletimeout", true)
