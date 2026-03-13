@@ -24,7 +24,7 @@ spec:
           image: haproxytech/haproxy-unified-gateway:latest
           # imagePullPolicy: this is set to never for kind cluster usage
           # imagePullPolicy: Always for other environments
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
               memory: 2560Mi

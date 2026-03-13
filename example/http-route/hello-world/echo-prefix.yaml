@@ -15,7 +15,7 @@ spec:
       containers:
         - name: hello-world-prefix
           image: "haproxytech/http-echo:latest"
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8888

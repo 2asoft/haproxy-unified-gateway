@@ -15,7 +15,7 @@ spec:
       containers:
         - name: http-echo
           image: "haproxytech/http-echo:latest"
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8888

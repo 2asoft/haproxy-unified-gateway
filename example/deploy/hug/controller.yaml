@@ -24,7 +24,7 @@ spec:
           # image: haproxytech/haproxy-unified-gateway:latest
           # imagePullPolicy: this is set to never for kind cluster usage
           imagePullPolicy: Always
-          # imagePullPolicy: Never
+          # imagePullPolicy: IfNotPresent
           args:
             # specify the hugconf CRD location, all other params are in configuration file
             - --hugconf-crd=haproxy-unified-gateway/hugconf
