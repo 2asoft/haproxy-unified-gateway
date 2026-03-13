@@ -19,6 +19,8 @@ import (
 	"go/parser"
 	"go/token"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -58,68 +60,69 @@ func main() { //revive:disable:cognitive-complexity,unhandled-error,function-len
 	pkgPath := "../../k8s/gate/options"
 
 	fs := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fs, pkgPath, nil, parser.ParseComments)
+	entries, err := os.ReadDir(pkgPath)
 	if err != nil {
 		log.Panic().Err(err).Msg("")
 	}
 
-	// Iterate over the packages
-	for _, pkg := range pkgs {
-		// Iterate over the files in the package
-		for _, file := range pkg.Files {
-			// Iterate over the declarations in the file
-			for _, decl := range file.Decls {
-				// Check if the declaration is a function declaration
-				if funcDecl, ok := decl.(*ast.FuncDecl); ok {
-					// Check if the function is exported (starts with an uppercase letter)
-					if funcDecl.Name.IsExported() {
-						if strings.HasPrefix(funcDecl.Name.Name, "Test") {
-							continue
-						}
-						if funcDecl.Type.Results == nil || len(funcDecl.Type.Results.List) != 1 {
-							continue
-						}
-						if result, ok := funcDecl.Type.Results.List[0].Type.(*ast.StarExpr); ok {
-							if sel, ok := result.X.(*ast.SelectorExpr); ok {
-								if sel.Sel.Name == "Configuration" && sel.X.(*ast.Ident).Name == "config" {
-									continue
-								}
+	var files []*ast.File
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			continue
+		}
+		f, parseErr := parser.ParseFile(fs, filepath.Join(pkgPath, entry.Name()), nil, parser.ParseComments)
+		if parseErr != nil {
+			log.Panic().Err(parseErr).Msg("")
+		}
+		files = append(files, f)
+	}
+
+	for _, file := range files {
+		// Iterate over the declarations in the file
+		for _, decl := range file.Decls {
+			// Check if the declaration is a function declaration
+			if funcDecl, ok := decl.(*ast.FuncDecl); ok {
+				// Check if the function is exported (starts with an uppercase letter)
+				if funcDecl.Name.IsExported() {
+					if strings.HasPrefix(funcDecl.Name.Name, "Test") {
+						continue
+					}
+					if funcDecl.Type.Results == nil || len(funcDecl.Type.Results.List) != 1 {
+						continue
+					}
+					if result, ok := funcDecl.Type.Results.List[0].Type.(*ast.StarExpr); ok {
+						if sel, ok := result.X.(*ast.SelectorExpr); ok {
+							if sel.Sel.Name == "Configuration" && sel.X.(*ast.Ident).Name == "config" {
+								continue
 							}
 						}
+					}
 
-						// fmt.Println("Exported function:", funcDecl.Name.Name)
-
-						args := make([]arguments, 0)
-						// Iterate over the parameters of the function
-						for _, param := range funcDecl.Type.Params.List {
-							// Handle different types of parameter types
-							switch t := param.Type.(type) {
-							case *ast.Ident:
-								// fmt.Println("  Parameter:", param.Names[0].Name, "-", t.Name)
-								args = append(args, arguments{Name: param.Names[0].Name, Type: t.Name})
-							case *ast.StarExpr:
-								if ident, ok := t.X.(*ast.Ident); ok {
-									log.Info().Str("parameter", param.Names[0].Name).Str("value", "*"+ident.Name).Msg("")
-									args = append(args, arguments{Name: param.Names[0].Name, Type: "*" + ident.Name})
-								}
-							case *ast.SelectorExpr:
-								log.Info().Str("parameter", param.Names[0].Name).Str("value", t.X.(*ast.Ident).Name+"."+t.Sel.Name).Msg("")
-								args = append(args, arguments{Name: param.Names[0].Name, Type: t.X.(*ast.Ident).Name + "." + t.Sel.Name})
-							default:
-								log.Info().Str("parameter", param.Names[0].Name).Str("value", fmt.Sprintf("%T", t)).Msg("")
-								args = append(args, arguments{Name: param.Names[0].Name, Type: fmt.Sprintf("%T", t)})
+					args := make([]arguments, 0)
+					// Iterate over the parameters of the function
+					for _, param := range funcDecl.Type.Params.List {
+						// Handle different types of parameter types
+						switch t := param.Type.(type) {
+						case *ast.Ident:
+							args = append(args, arguments{Name: param.Names[0].Name, Type: t.Name})
+						case *ast.StarExpr:
+							if ident, ok := t.X.(*ast.Ident); ok {
+								log.Info().Str("parameter", param.Names[0].Name).Str("value", "*"+ident.Name).Msg("")
+								args = append(args, arguments{Name: param.Names[0].Name, Type: "*" + ident.Name})
 							}
+						case *ast.SelectorExpr:
+							log.Info().Str("parameter", param.Names[0].Name).Str("value", t.X.(*ast.Ident).Name+"."+t.Sel.Name).Msg("")
+							args = append(args, arguments{Name: param.Names[0].Name, Type: t.X.(*ast.Ident).Name + "." + t.Sel.Name})
+						default:
+							log.Info().Str("parameter", param.Names[0].Name).Str("value", fmt.Sprintf("%T", t)).Msg("")
+							args = append(args, arguments{Name: param.Names[0].Name, Type: fmt.Sprintf("%T", t)})
 						}
+					}
 
-						// print also the comments that are attached to the function
-						// for _, comment := range funcDecl.Doc.List {
-						// 	fmt.Println("  Comment:", comment.Text)
-						// }
-						documentation[funcDecl.Name.Name] = docItem{
-							Name:    funcDecl.Name.Name,
-							Args:    args,
-							Comment: funcDecl.Doc.Text(),
-						}
+					documentation[funcDecl.Name.Name] = docItem{
+						Name:    funcDecl.Name.Name,
+						Args:    args,
+						Comment: funcDecl.Doc.Text(),
 					}
 				}
 			}

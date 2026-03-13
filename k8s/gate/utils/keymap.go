@@ -13,7 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils // revive:disable:var-naming
+// Package utils provides utility functions for key mapping and conversions.
+//
+//revive:disable-next-line:package-naming
+package utils
 
 import (
 	"fmt"

@@ -13,11 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils // revive:disable:var-naming
+package utils //revive:disable-line:package-naming
 
-import "strings"
-
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 type Errors []error
 

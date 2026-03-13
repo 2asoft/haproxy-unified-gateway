@@ -48,5 +48,8 @@ enableAllRules = true
 [rule.argument-limit]
   arguments = [10]
 
+[rule.package-naming]
+  exclude = ["test/**", "**/*_test.go"]
+
 [rule.var-naming]
   arguments = [[], [], [{skipPackageNameChecks = true}]]
