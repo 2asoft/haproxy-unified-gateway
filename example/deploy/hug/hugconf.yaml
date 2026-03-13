@@ -5,13 +5,19 @@ metadata:
   namespace: haproxy-unified-gateway
 spec:
   logging:
-    defaultLevel: "Debug"
+    defaultLevel: "Info"
     categoryLevelList:
-      # - category: "gate"
-      #   level: "Debug"
-      # - category: "status"
-      #   level: "Debug"
       - category: "k8s"
+        level: "Error"
+      - category: "gate"
+        level: "Info"
+      - category: "status"
+        level: "Info"
+      - category: "batch"
+        level: "Error"
+      - category: "app"
+        level: "Info"
+      - category: "certs-storage"
         level: "Info"
   globalRef:
     group: gate.v3.haproxy.org

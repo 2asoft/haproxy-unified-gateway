@@ -216,12 +216,12 @@ func (c *HUGConfig) Init(external External) error {
 	// Log levels
 	if len(c.LogSettings) == 0 {
 		c.LogSettings = map[v3.Category]slog.Level{
-			logging.LogCategoryK8s:          slog.LevelInfo,
-			logging.LogCategoryGate:         slog.LevelDebug,
-			logging.LogCategoryStatus:       slog.LevelDebug,
-			logging.LogCategoryBatch:        slog.LevelDebug,
-			logging.LogCategoryApp:          slog.LevelDebug,
-			logging.LogCategoryCertsStorage: slog.LevelDebug,
+			logging.LogCategoryK8s:          slog.LevelError,
+			logging.LogCategoryGate:         slog.LevelInfo,
+			logging.LogCategoryStatus:       slog.LevelInfo,
+			logging.LogCategoryBatch:        slog.LevelError,
+			logging.LogCategoryApp:          slog.LevelInfo,
+			logging.LogCategoryCertsStorage: slog.LevelInfo,
 		}
 	}
 
