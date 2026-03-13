@@ -283,7 +283,7 @@ tests-GW-API-{{.CI}}:
     - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller/community' && $CI_PIPELINE_SOURCE == 'push'"
   stage: unit-tests
   image:
-    name: $CI_REGISTRY_GO/haproxy-alpine:$HAPROXY_VERSION-go$GO_VERSION
+    name: $HAPROXY_REGISTRY_GO/haproxy-alpine:$HAPROXY_VERSION-go$GO_VERSION
     entrypoint: [""]
   tags:
     - go
@@ -306,7 +306,7 @@ unit-tests-todo:
     - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller/community' && $CI_PIPELINE_SOURCE == 'push'"
   stage: unit-tests
   image:
-    name: $CI_REGISTRY_GO/haproxy-alpine:3.2-go$GO_VERSION
+    name: $HAPROXY_REGISTRY_GO/haproxy-alpine:3.2-go$GO_VERSION
     entrypoint: [""]
   tags:
     - go

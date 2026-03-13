@@ -14,6 +14,7 @@ variables:
   DOCKER_VERSION: "28.1"
   JUNIT_FILE: "junit-report.xml"
   GOTESTSUM_JUNITFILE: "junit-report.xml"
+  HAPROXY_REGISTRY_GO: "registry.haproxy.com/gophers"
 
 include:
   - local: .gitlab/bots.yml
