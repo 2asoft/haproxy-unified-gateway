@@ -150,6 +150,7 @@ rules:
       - hugconfs
       - backends
       - globals
+      - defaults
     verbs:
       - get
       - list

@@ -56,6 +56,7 @@ allowed:
   - passthrough
   - pid
   - pidfile
+  - rbac
   - readme
   - reconciler
   - releaser

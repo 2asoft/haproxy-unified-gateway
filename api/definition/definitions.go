@@ -1,6 +1,8 @@
 package definition
 
-import _ "embed"
+import (
+	_ "embed"
+)
 
 //go:embed gate.v3.haproxy.org_backends.yaml
 var backends []byte
@@ -14,6 +16,9 @@ var hugGates []byte
 //go:embed gate.v3.haproxy.org_globals.yaml
 var globals []byte
 
+//go:embed gate.v3.haproxy.org_defaults.yaml
+var defaults []byte
+
 // getCRDs returns a map of CRD definitions
 func getCRDs() map[string][]byte {
 	return map[string][]byte{
@@ -21,5 +26,6 @@ func getCRDs() map[string][]byte {
 		"global.gate.v3.haproxy.org":   globals,
 		"huggates.gate.v3.haproxy.org": hugGates,
 		"hugconfs.gate.v3.haproxy.org": hugConf,
+		"defaults.gate.v3.haproxy.org": defaults,
 	}
 }
