@@ -178,7 +178,7 @@ func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs)
 	return nil
 }
 
-func (h *AppManagerImpl) processCreate(created structured.Structured, mergeStategies diffs.MergeStategies) error {
+func (h *AppManagerImpl) processCreate(created structured.Structured, mergeStategies diffs.MergeStrategies) error {
 	var errors utils.Errors
 
 	// Frontends
@@ -295,7 +295,7 @@ func (h *AppManagerImpl) processDelete(deleted structured.Structured) error {
 	return errors.Result()
 }
 
-func (h *AppManagerImpl) processUpdate(updated structured.Structured, mergeStrategies diffs.MergeStategies) error {
+func (h *AppManagerImpl) processUpdate(updated structured.Structured, mergeStrategies diffs.MergeStrategies) error {
 	var errors utils.Errors
 
 	// Frontends

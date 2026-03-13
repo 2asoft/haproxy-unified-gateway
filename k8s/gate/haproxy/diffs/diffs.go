@@ -19,7 +19,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
 )
 
-type MergeStategies struct {
+type MergeStrategies struct {
 	Global   string // override or append
 	Defaults string // override or append
 }
@@ -37,7 +37,7 @@ type HaproxyConfDiffs struct {
 	// }
 	Done chan struct{}
 
-	MergeStrategies MergeStategies
+	MergeStrategies MergeStrategies
 	ReloadNeed      bool
 }
 
