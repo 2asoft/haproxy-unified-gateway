@@ -1,0 +1,24 @@
+metrics-report:
+  stage: metrics-report
+  needs:
+    - job: tests-GW-API-1_3_0
+      artifacts: true
+    - job: tests-GW-API-1_4_0
+      artifacts: true
+    - job: tests-GW-API-1_5_0
+      artifacts: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  image:
+    name: $HAPROXY_REGISTRY_GO/haproxy-alpine:$HAPROXY_VERSION-go$GO_VERSION
+    entrypoint: [""]
+  tags:
+    - go
+  variables:
+    METRICS_OUTPUT_DIR: metrics-output
+  script:
+    - go run cmd/metrics-report/main.go
+  artifacts:
+    when: always
+    paths:
+      - metrics-output/metrics-report.md

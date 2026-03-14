@@ -36,19 +36,19 @@ import (
 type HUGConfig struct {
 	LogSettings map[v3.Category]slog.Level
 	haproxy.HaproxyDirs
-	ControllerConfCRD NamespaceNameValue `ff:"          long: hugconf-crd,                         usage: 'namespace/name of the HugConf CRD'"`
-	ControllerName    string             `ff:"          long: controller-name,                     usage: 'spec.controllerName' GatewayClass selector'"`
-	IPV4BindAddr      string             `ff:"          long: ipv4-bind-address,                   usage: 'IPv4 address to bind to'"`
-	IPV6BindAddr      string             `ff:"          long: ipv6-bind-address,	               usage: 'IPv6 address to bind to'"`
-	LogType           string             `ff:"          long: log-type,	      		               usage: 'sets up the log output type (possible values: text, json)"`
-	JobGWAPI          string             `ff:"          long: job-gwapi,                       usage: 'install Gateway API experimental CRDs for given version (e.g. 1.3.0) and exit'"`
+	ControllerConfCRD        NamespaceNameValue `ff:"          long: hugconf-crd,                         usage: 'namespace/name of the HugConf CRD'"`
+	ControllerName           string             `ff:"          long: controller-name,                     usage: 'spec.controllerName' GatewayClass selector'"`
+	IPV4BindAddr             string             `ff:"          long: ipv4-bind-address,                   usage: 'IPv4 address to bind to'"`
+	IPV6BindAddr             string             `ff:"          long: ipv6-bind-address,	               usage: 'IPv6 address to bind to'"`
+	LogType                  string             `ff:"          long: log-type,	      		               usage: 'sets up the log output type (possible values: text, json)"`
+	JobGWAPI                 string             `ff:"          long: job-gwapi,                       usage: 'install Gateway API experimental CRDs for given version (e.g. 1.3.0) and exit'"`
+	MetricsAuth              string             `ff:"          long: metrics-auth, default: none,     usage: 'metrics endpoint auth mode: none, kube-rbac, basic'"`
+	MetricsBasicAuthUser     string             `ff:"          long: metrics-basic-auth-user,         usage: 'basic auth username for metrics endpoint'"`
+	MetricsBasicAuthPassword string             `ff:"          long: metrics-basic-auth-password,     usage: 'basic auth password for metrics endpoint'"`
 	External
 	Namespaces                   CommaSeparatedValues `ff:"          long: namespaces,                      usage: 'comma separated list of namespaces that controller will monitor'"`
 	StatsPort                    int64                `ff:"          long: stats-port, default: 1024,       usage: 'port to listen on for HAProxy stats'"`
 	ControllerPort               int                  `ff:"          long: controller-port,                 usage: 'port to listen on for controller data: prometheus'"`
-	MetricsAuth                  string               `ff:"          long: metrics-auth, default: none,     usage: 'metrics endpoint auth mode: none, kube-rbac, basic'"`
-	MetricsBasicAuthUser         string               `ff:"          long: metrics-basic-auth-user,         usage: 'basic auth username for metrics endpoint'"`
-	MetricsBasicAuthPassword     string               `ff:"          long: metrics-basic-auth-password,     usage: 'basic auth password for metrics endpoint'"`
 	SyncPeriod                   time.Duration        `ff:"          long: sync-period, default: 0,         usage: 'sets the period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
 	StartupSyncPeriod            time.Duration        `ff:"          long: startup-sync-period, default: 0, usage: 'sets the startup period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
 	CacheResyncPeriod            time.Duration        `ff:"          long: cache-resync-period, default: 0, usage: 'sets the controller-runtime manager cache SyncPeriod. If not set, defaults to controller-runtime defaults (10 hours)'"`

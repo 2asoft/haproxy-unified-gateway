@@ -5,6 +5,7 @@ stages:
   - security
   - build
   - unit-tests
+  - metrics-report
 variables:
   HAPROXY_VERSION: "3.2"
   KIND: v0.27.0
@@ -15,6 +16,9 @@ variables:
   JUNIT_FILE: "junit-report.xml"
   GOTESTSUM_JUNITFILE: "junit-report.xml"
   HAPROXY_REGISTRY_GO: "registry.haproxy.com/gophers"
+  METRICS_SAMPLE_ENABLED: "1"
+  METRICS_SAMPLE_INTERVAL: "2"
+  METRICS_OUTPUT_DIR: "${CI_PROJECT_DIR}/metrics-output"
 
 include:
   - local: .gitlab/bots.yml
@@ -23,3 +27,4 @@ include:
   - local: .gitlab/security.yml
   - local: .gitlab/build.yaml
   - local: .gitlab/unit-tests.yml
+  - local: .gitlab/metrics-report.yml

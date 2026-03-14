@@ -287,14 +287,18 @@ tests-GW-API-{{.CI}}:
     entrypoint: [""]
   tags:
     - go
+  variables:
+    METRICS_OUTPUT_DIR: ${CI_PROJECT_DIR}/metrics-output/gwapi-{{.CI}}
   before_script:
     - export PATH=$PATH:/root/go/bin
+    - mkdir -p $METRICS_OUTPUT_DIR
   script:
     - GWAPI_VERSION={{.Short}} task test
   artifacts:
     when: always
     paths:
       - junit-report.xml
+      - metrics-output/gwapi-{{.CI}}
     reports:
       junit: junit-report.xml
 {{end -}}
@@ -310,14 +314,18 @@ unit-tests-todo:
     entrypoint: [""]
   tags:
     - go
+  variables:
+    METRICS_OUTPUT_DIR: ${CI_PROJECT_DIR}/metrics-output/todo
   before_script:
     - export PATH=$PATH:/root/go/bin
+    - mkdir -p $METRICS_OUTPUT_DIR
   script:
     - task test-todo
   artifacts:
     when: always
     paths:
       - junit-report.xml
+      - metrics-output/todo
     reports:
       junit: junit-report.xml
 `

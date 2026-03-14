@@ -38,6 +38,9 @@ enableAllRules = true
 [rule.enforce-switch-style]
   disabled = true
 
+[rule.flag-parameter]
+  disabled = true
+
 [rule.struct-tag] # tag inline unrecognized
   disabled = true
 

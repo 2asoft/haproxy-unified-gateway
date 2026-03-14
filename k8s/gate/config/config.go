@@ -51,6 +51,8 @@ type Configuration struct {
 	LogHandler                   *logging.CategoryFilterHandler
 	// TransferHaproxyConfChannel is used to send the HaproxyConfDiffs to the application
 	TransferHaproxyConfChannel chan diffs.HaproxyConfDiffs
+	// MetricsConfig specifies the metrics config.
+	MetricsConfig MetricsConfig
 	// ControllerPodConfig contains information about this Pod.
 	ControllerPodConfig ControllerPodConfig
 	//  Namespace and name of the controller conf CRD:  HugConf
@@ -68,8 +70,6 @@ type Configuration struct {
 	Namespaces []string
 	// HaproxyConfParams contains the needed configuration to compute the FE/BE/...
 	HaproxyParams haproxy.HaproxyConfParams
-	// MetricsConfig specifies the metrics config.
-	MetricsConfig MetricsConfig
 	// SyncPeriod is the duration we wait after handling one batch before the next one
 	SyncPeriod time.Duration
 	// StartupSyncPeriod is the first (at startup) duration we wait after handling one batch before the next one
@@ -103,25 +103,25 @@ type ControllerPodConfig struct {
 type MetricsAuthMode string
 
 const (
-	MetricsAuthNone    MetricsAuthMode = "none"
+	MetricsAuthNone     MetricsAuthMode = "none"
 	MetricsAuthKubeRBAC MetricsAuthMode = "kube-rbac"
-	MetricsAuthBasic   MetricsAuthMode = "basic"
+	MetricsAuthBasic    MetricsAuthMode = "basic"
 )
 
 // MetricsConfig specifies the metrics config.
 type MetricsConfig struct {
-	// Port is the port the metrics should be exposed on.
-	Port int
-	// Enabled is the flag for toggling metrics on or off.
-	Enabled bool
-	// Secure is the flag for toggling the metrics endpoint to https.
-	Secure bool
 	// AuthMode is the authentication mode for the metrics endpoint.
 	AuthMode MetricsAuthMode
 	// BasicAuthUser is the username for basic auth (when AuthMode is "basic").
 	BasicAuthUser string
 	// BasicAuthPassword is the password for basic auth (when AuthMode is "basic").
 	BasicAuthPassword string
+	// Port is the port the metrics should be exposed on.
+	Port int
+	// Enabled is the flag for toggling metrics on or off.
+	Enabled bool
+	// Secure is the flag for toggling the metrics endpoint to https.
+	Secure bool
 }
 
 // LeaderElectionConfig contains the configuration for leader election.

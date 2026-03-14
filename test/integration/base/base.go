@@ -17,6 +17,7 @@ package base
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -24,12 +25,16 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	rc "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/routes"
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/yaml"
 
 	"github.com/haproxytech/client-native/v6/models"
@@ -47,7 +52,9 @@ const (
 
 type BaseSuite struct {
 	suite.Suite
-	test IntTest
+	metricsCancel context.CancelFunc
+	metricsDone   chan struct{}
+	test          IntTest
 }
 
 func (b *BaseSuite) Test() IntTest {
@@ -60,11 +67,240 @@ func (b *BaseSuite) SetupSuite(crdRelativePath string, levelsUp int) {
 	b.Require().NoError(err)
 
 	b.test.StartTestEnv(b.T())
+	b.startMetricsSampler()
 }
 
 func (b *BaseSuite) TearDownSuite() {
+	b.stopMetricsSampler()
 	b.test.StopTestEnv(b.T())
 	b.test.StopHaproxy(b.T())
+}
+
+// metricsInterval returns the sampling interval from the METRICS_SAMPLE_INTERVAL
+// environment variable (in seconds). Defaults to 2 seconds.
+func metricsInterval() time.Duration {
+	if v := os.Getenv("METRICS_SAMPLE_INTERVAL"); v != "" {
+		if secs, err := strconv.Atoi(v); err == nil && secs > 0 {
+			return time.Duration(secs) * time.Second
+		}
+	}
+	return 2 * time.Second
+}
+
+// metricsOutputDir returns the directory where metrics samples are written.
+// Uses METRICS_OUTPUT_DIR if set, otherwise falls back to HaproxyCfgDir.
+func (b *BaseSuite) metricsOutputDir() string {
+	if dir := os.Getenv("METRICS_OUTPUT_DIR"); dir != "" {
+		return dir
+	}
+	return b.test.HaproxyCfgDir
+}
+
+// metricsSample is a single timestamped snapshot of all metric values.
+type metricsSample struct {
+	Timestamp time.Time               `json:"ts"`
+	Metrics   map[string]metricValues `json:"metrics"`
+	Suite     string                  `json:"suite"`
+	Test      string                  `json:"test"`
+	Elapsed   float64                 `json:"elapsed_s"`
+}
+
+// metricValues holds the numeric values for a single metric family.
+// For counters/gauges: Value is set. For histograms: Count, Sum, Buckets are set.
+type metricValues struct {
+	Type    string            `json:"type"`
+	Labels  map[string]string `json:"labels,omitempty"`
+	Value   *float64          `json:"value,omitempty"`
+	Count   *uint64           `json:"count,omitempty"`
+	Sum     *float64          `json:"sum,omitempty"`
+	Buckets []histBucket      `json:"buckets,omitempty"`
+}
+
+type histBucket struct {
+	UpperBound float64 `json:"le"`
+	Count      uint64  `json:"count"`
+}
+
+// metricsSamplingEnabled returns true when METRICS_SAMPLE_ENABLED is set to "1".
+// When not set (e.g. local dev), no sampling or file writing occurs.
+func metricsSamplingEnabled() bool {
+	return os.Getenv("METRICS_SAMPLE_ENABLED") == "1"
+}
+
+// startMetricsSampler starts a background goroutine that periodically gathers
+// metrics from the controller-runtime registry and writes them as JSON lines.
+func (b *BaseSuite) startMetricsSampler() {
+	if !metricsSamplingEnabled() {
+		return
+	}
+
+	outputDir := b.metricsOutputDir()
+	if outputDir == "" {
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	b.metricsCancel = cancel
+	b.metricsDone = make(chan struct{})
+
+	sampleInterval := metricsInterval()
+	b.T().Logf("metrics sampler: interval=%v, output=%s", sampleInterval, outputDir)
+
+	go func() {
+		defer close(b.metricsDone)
+
+		suiteName := b.T().Name()
+		samplesFile := filepath.Join(outputDir, "hug_metrics_samples.jsonl")
+		f, err := os.OpenFile(samplesFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+
+		enc := json.NewEncoder(f)
+		startTime := time.Now()
+		ticker := time.NewTicker(sampleInterval)
+		defer ticker.Stop()
+
+		// Take an initial sample immediately
+		b.writeSample(enc, suiteName, b.T().Name(), startTime)
+
+		for {
+			select {
+			case <-ctx.Done():
+				// Final sample on shutdown
+				b.writeSample(enc, suiteName, b.T().Name(), startTime)
+				return
+			case <-ticker.C:
+				// b.T().Name() is mutex-protected in testify and returns
+				// the current subtest name (e.g. "TestSuite/TestMethod").
+				b.writeSample(enc, suiteName, b.T().Name(), startTime)
+			}
+		}
+	}()
+}
+
+func (*BaseSuite) writeSample(enc *json.Encoder, suiteName, testName string, startTime time.Time) {
+	families, err := metrics.Registry.Gather()
+	if err != nil {
+		return
+	}
+
+	now := time.Now()
+	sample := metricsSample{
+		Suite:     suiteName,
+		Test:      testName,
+		Timestamp: now,
+		Elapsed:   now.Sub(startTime).Seconds(),
+		Metrics:   make(map[string]metricValues),
+	}
+
+	for _, mf := range families {
+		for _, m := range mf.GetMetric() {
+			name := mf.GetName()
+			labels := labelsToMap(m.GetLabel())
+			key := name
+			if len(labels) > 0 {
+				// Make key unique per label combination
+				var parts []string
+				for k, v := range labels {
+					parts = append(parts, k+"="+v)
+				}
+				slices.Sort(parts)
+				key = name + "{" + strings.Join(parts, ",") + "}"
+			}
+
+			mv := metricValues{Labels: labels}
+			switch mf.GetType() {
+			case dto.MetricType_COUNTER:
+				mv.Type = "counter"
+				v := m.GetCounter().GetValue()
+				mv.Value = &v
+			case dto.MetricType_GAUGE:
+				mv.Type = "gauge"
+				v := m.GetGauge().GetValue()
+				mv.Value = &v
+			case dto.MetricType_HISTOGRAM:
+				mv.Type = "histogram"
+				h := m.GetHistogram()
+				c := h.GetSampleCount()
+				s := h.GetSampleSum()
+				mv.Count = &c
+				mv.Sum = &s
+				for _, b := range h.GetBucket() {
+					mv.Buckets = append(mv.Buckets, histBucket{
+						UpperBound: b.GetUpperBound(),
+						Count:      b.GetCumulativeCount(),
+					})
+				}
+			default:
+				continue
+			}
+
+			sample.Metrics[key] = mv
+		}
+	}
+
+	_ = enc.Encode(sample)
+}
+
+func labelsToMap(lps []*dto.LabelPair) map[string]string {
+	if len(lps) == 0 {
+		return nil
+	}
+	m := make(map[string]string, len(lps))
+	for _, lp := range lps {
+		m[lp.GetName()] = lp.GetValue()
+	}
+	return m
+}
+
+// stopMetricsSampler stops the background sampler and writes a final
+// Prometheus text dump for quick human inspection.
+func (b *BaseSuite) stopMetricsSampler() {
+	if !metricsSamplingEnabled() {
+		return
+	}
+
+	if b.metricsCancel != nil {
+		b.metricsCancel()
+		<-b.metricsDone
+	}
+
+	// Also write a final Prometheus text format snapshot
+	b.dumpMetricsText()
+}
+
+// dumpMetricsText writes the current metrics state in Prometheus text format.
+func (b *BaseSuite) dumpMetricsText() {
+	t := b.T()
+	families, err := metrics.Registry.Gather()
+	if err != nil {
+		t.Logf("DumpMetrics: failed to gather metrics: %v", err)
+		return
+	}
+
+	var buf bytes.Buffer
+	encoder := expfmt.NewEncoder(&buf, expfmt.NewFormat(expfmt.TypeTextPlain))
+	for _, mf := range families {
+		if err := encoder.Encode(mf); err != nil {
+			t.Logf("DumpMetrics: failed to encode metric family %s: %v", mf.GetName(), err)
+			continue
+		}
+	}
+
+	// for debugging only
+	// t.Logf("=== HUG Prometheus Metrics ===\n%s", buf.String())
+
+	outputDir := b.metricsOutputDir()
+	if outputDir != "" {
+		metricsFile := filepath.Join(outputDir, "hug_metrics.txt")
+		if err := os.WriteFile(metricsFile, buf.Bytes(), 0o644); err != nil {
+			t.Logf("DumpMetrics: failed to write metrics file %s: %v", metricsFile, err)
+		} else {
+			t.Logf("DumpMetrics: metrics written to %s", metricsFile)
+		}
+	}
 }
 
 // CreateFixtures will create all the objects from manifests that are in the fixturePath directory
