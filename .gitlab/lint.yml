@@ -5,7 +5,7 @@ tidy:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller/community' && $CI_PIPELINE_SOURCE == 'push'"
   image:
-    name: $HAPROXY_REGISTRY_GO/golang:$GO_VERSION
+    name: $HAPROXY_REGISTRY_GO/golang:latest-alpine
     entrypoint: [""]
   tags:
     - go
@@ -60,7 +60,7 @@ lint:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: "$CI_PROJECT_NAMESPACE != 'haproxy-controller/community' && $CI_PIPELINE_SOURCE == 'push'"
   image:
-    name: $HAPROXY_REGISTRY_GO/golang:$GO_VERSION
+    name: $HAPROXY_REGISTRY_GO/golang:latest-alpine
     entrypoint: [""]
   tags:
     - go
@@ -85,7 +85,7 @@ commit-policy:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   image:
-    name: $HAPROXY_REGISTRY_GO/commit-check:5.4.2
+    name: $HAPROXY_REGISTRY_GO/commit-check:latest
     entrypoint: [""]
   tags:
     - go
@@ -104,7 +104,7 @@ check-committer:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   image:
-    name: $HAPROXY_REGISTRY_GO/golang:$GO_VERSION
+    name: $HAPROXY_REGISTRY_GO/golang:latest-alpine
     entrypoint: [ "" ]
   tags:
     - go

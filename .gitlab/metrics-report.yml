@@ -10,7 +10,7 @@ metrics-report:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   image:
-    name: $HAPROXY_REGISTRY_GO/haproxy-alpine:$HAPROXY_VERSION-go$GO_VERSION
+    name: $HAPROXY_REGISTRY_GO/golang:latest-alpine
     entrypoint: [""]
   tags:
     - go
