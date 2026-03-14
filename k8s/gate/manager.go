@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/config"
+	hugmetrics "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/metrics"
 
 	haproxyapiv3 "github.com/haproxytech/haproxy-unified-gateway/api/gate/v3"
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,6 +34,7 @@ import (
 	ctlr "sigs.k8s.io/controller-runtime"
 	ctrlcfg "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsfilters "sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -98,6 +100,15 @@ func getMetricsOptions(cfg config.MetricsConfig) metricsserver.Options {
 			metricsOptions.SecureServing = true
 		}
 		metricsOptions.BindAddress = fmt.Sprintf(":%v", cfg.Port)
+
+		switch cfg.AuthMode {
+		case config.MetricsAuthKubeRBAC:
+			metricsOptions.SecureServing = true
+			metricsOptions.FilterProvider = metricsfilters.WithAuthenticationAndAuthorization
+		case config.MetricsAuthBasic:
+			metricsOptions.SecureServing = true
+			metricsOptions.FilterProvider = hugmetrics.WithBasicAuth(cfg.BasicAuthUser, cfg.BasicAuthPassword)
+		}
 	}
 
 	return metricsOptions

@@ -20,6 +20,7 @@ import (
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/metrics"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
@@ -175,7 +176,12 @@ func (b *RouteMgrImpl) writeMaps() error {
 			continue
 		}
 		for _, mapFile := range mapDir {
-			errs.Add(mapFile.WriteOnDiskIfChanged())
+			if err := mapFile.WriteOnDiskIfChanged(); err != nil {
+				metrics.MapStorageOperations.WithLabelValues("write", "error").Inc()
+				errs.Add(err)
+			} else {
+				metrics.MapStorageOperations.WithLabelValues("write", "ok").Inc()
+			}
 		}
 	}
 	if len(errs) > 0 {
@@ -222,6 +228,7 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 					b.topManager.logger.LogAttrs(context.Background(), slog.LevelInfo, "Deleting map [runtime] entry", slog.String("map", mapData.RelativeFileName), slog.String("key", key))
 					err := runtimeClient.DeleteMapEntry(mapID, key)
 					if err != nil {
+						metrics.MapStorageOperations.WithLabelValues("runtime_delete", "error").Inc()
 						b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
 							"[failure] Deleting map [runtime] entry",
 							logging.LogAttrMapFilePath(mapData.RelativeFileName),
@@ -230,6 +237,7 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 						)
 						return err
 					}
+					metrics.MapStorageOperations.WithLabelValues("runtime_delete", "ok").Inc()
 					b.topManager.logger.LogAttrs(context.Background(), slog.LevelInfo,
 						"[success] Deleting map [runtime] entry",
 						logging.LogAttrMapFilePath(mapData.RelativeFileName),
@@ -244,6 +252,7 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 				// To fix if we want to avoid reloads
 				err := runtimeClient.SetMapEntry(mapID, key, routeValue)
 				if err != nil {
+					metrics.MapStorageOperations.WithLabelValues("runtime_set", "error").Inc()
 					b.topManager.logger.LogAttrs(context.Background(), slog.LevelError,
 						"[failure] Set map [runtime] entry",
 						slog.String("map", mapData.RelativeFileName),
@@ -252,6 +261,7 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 					)
 					return err
 				}
+				metrics.MapStorageOperations.WithLabelValues("runtime_set", "ok").Inc()
 				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug,
 					"[success] Set map [runtime] entry",
 					slog.String("map", mapData.RelativeFileName),

@@ -28,9 +28,12 @@ import (
 
 func SetupGateConfig(hugConfig hugconfig.HUGConfig) gateconfig.GateConfigOptions {
 	metricsConfig := gateconfig.MetricsConfig{
-		Port:    6062,
-		Enabled: false,
-		Secure:  false,
+		Port:              hugConfig.ControllerPort,
+		Enabled:           true,
+		Secure:            false,
+		AuthMode:          gateconfig.MetricsAuthMode(hugConfig.MetricsAuth),
+		BasicAuthUser:     hugConfig.MetricsBasicAuthUser,
+		BasicAuthPassword: hugConfig.MetricsBasicAuthPassword,
 	}
 
 	// kubeconfig := testKubeConfig

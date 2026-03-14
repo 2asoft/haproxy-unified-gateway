@@ -46,6 +46,9 @@ type HUGConfig struct {
 	Namespaces                   CommaSeparatedValues `ff:"          long: namespaces,                      usage: 'comma separated list of namespaces that controller will monitor'"`
 	StatsPort                    int64                `ff:"          long: stats-port, default: 1024,       usage: 'port to listen on for HAProxy stats'"`
 	ControllerPort               int                  `ff:"          long: controller-port,                 usage: 'port to listen on for controller data: prometheus'"`
+	MetricsAuth                  string               `ff:"          long: metrics-auth, default: none,     usage: 'metrics endpoint auth mode: none, kube-rbac, basic'"`
+	MetricsBasicAuthUser         string               `ff:"          long: metrics-basic-auth-user,         usage: 'basic auth username for metrics endpoint'"`
+	MetricsBasicAuthPassword     string               `ff:"          long: metrics-basic-auth-password,     usage: 'basic auth password for metrics endpoint'"`
 	SyncPeriod                   time.Duration        `ff:"          long: sync-period, default: 0,         usage: 'sets the period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
 	StartupSyncPeriod            time.Duration        `ff:"          long: startup-sync-period, default: 0, usage: 'sets the startup period at which the controller computes HAProxy configuration file (e.g. 5s, 1m)'"`
 	CacheResyncPeriod            time.Duration        `ff:"          long: cache-resync-period, default: 0, usage: 'sets the controller-runtime manager cache SyncPeriod. If not set, defaults to controller-runtime defaults (10 hours)'"`

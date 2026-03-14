@@ -39,6 +39,11 @@ spec:
             # specify the hugconf CRD location, all other params are in configuration file
             - --hugconf-crd=haproxy-unified-gateway/hugconf
             - --log-type=text  ## default is json output
+            # metrics auth: none (default), kube-rbac, or basic
+            # - --metrics-auth=kube-rbac
+            # - --metrics-auth=basic
+            # - --metrics-basic-auth-user=prometheus
+            # - --metrics-basic-auth-password=changeme
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false
@@ -60,6 +65,9 @@ spec:
             # additional container port to specify the stats port
             - name: stat
               containerPort: 31024
+            # prometheus metrics port
+            - name: metrics
+              containerPort: 31060
           env:
             # specify the environment variables needed for logs and metrics
             - name: POD_NAME
@@ -112,3 +120,6 @@ spec:
     - name: stat
       port: 31024
       targetPort: 31024
+    - name: metrics
+      port: 31060
+      targetPort: 31060

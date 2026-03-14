@@ -22,6 +22,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/hug/reload"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/metrics"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
@@ -69,15 +70,19 @@ func (b *HaproxyConfMgrImpl) executeRuntimeCertCommands() error {
 	// 1- Process Cert create and update
 	for _, cert := range certUpdates.Created {
 		if err := b.runtimeCreateCert(cert); err != nil {
+			metrics.CertRuntimeOperations.WithLabelValues("create", "error").Inc()
 			reload.Instance().SetReload("runtime cert create failed")
 			return err
 		}
+		metrics.CertRuntimeOperations.WithLabelValues("create", "ok").Inc()
 	}
 	for _, cert := range certUpdates.Updated {
 		if err := b.runtimeUpdateCert(cert); err != nil {
+			metrics.CertRuntimeOperations.WithLabelValues("update", "error").Inc()
 			reload.Instance().SetReload("runtime cert update failed")
 			return err
 		}
+		metrics.CertRuntimeOperations.WithLabelValues("update", "ok").Inc()
 	}
 
 	// 2- Process crt-list create + delete: no, this can not be done dynamically
@@ -85,16 +90,20 @@ func (b *HaproxyConfMgrImpl) executeRuntimeCertCommands() error {
 	// 3- Process crt-list update - This must be before cert delete as we can not delete from crt-list a cert that is still used in a crt-list
 	for _, crtList := range b.controllerStore.CrtListUpdates.Updated {
 		if err := b.runtimeUpdateCrtList(crtList); err != nil {
+			metrics.CertRuntimeOperations.WithLabelValues("crtlist_update", "error").Inc()
 			reload.Instance().SetReload("runtime crt-list failed")
 			return err
 		}
+		metrics.CertRuntimeOperations.WithLabelValues("crtlist_update", "ok").Inc()
 	}
 	// 4 - Finally cert delete
 	for _, cert := range certUpdates.Deleted {
 		if err := b.runtimeDeleteCert(cert); err != nil {
+			metrics.CertRuntimeOperations.WithLabelValues("delete", "error").Inc()
 			reload.Instance().SetReload("runtime cert delete failed")
 			return err
 		}
+		metrics.CertRuntimeOperations.WithLabelValues("delete", "ok").Inc()
 	}
 
 	return nil

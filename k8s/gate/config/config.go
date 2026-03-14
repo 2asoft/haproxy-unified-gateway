@@ -99,6 +99,15 @@ type ControllerPodConfig struct {
 	Name string
 }
 
+// MetricsAuthMode defines the authentication mode for the metrics endpoint.
+type MetricsAuthMode string
+
+const (
+	MetricsAuthNone    MetricsAuthMode = "none"
+	MetricsAuthKubeRBAC MetricsAuthMode = "kube-rbac"
+	MetricsAuthBasic   MetricsAuthMode = "basic"
+)
+
 // MetricsConfig specifies the metrics config.
 type MetricsConfig struct {
 	// Port is the port the metrics should be exposed on.
@@ -107,6 +116,12 @@ type MetricsConfig struct {
 	Enabled bool
 	// Secure is the flag for toggling the metrics endpoint to https.
 	Secure bool
+	// AuthMode is the authentication mode for the metrics endpoint.
+	AuthMode MetricsAuthMode
+	// BasicAuthUser is the username for basic auth (when AuthMode is "basic").
+	BasicAuthUser string
+	// BasicAuthPassword is the password for basic auth (when AuthMode is "basic").
+	BasicAuthPassword string
 }
 
 // LeaderElectionConfig contains the configuration for leader election.

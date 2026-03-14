@@ -90,3 +90,4 @@ allowed:
   - optim
   - gzip
   - gwapi
+  - prometheus

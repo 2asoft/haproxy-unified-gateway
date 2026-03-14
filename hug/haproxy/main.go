@@ -29,6 +29,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/metrics"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
 
@@ -171,6 +172,7 @@ func (h *AppManagerImpl) applyCfgUpdates(haproxyCfgDiffs diffs.HaproxyConfDiffs)
 			)
 			return err
 		}
+		metrics.HaproxyReloadTotal.Inc()
 		h.logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Haproxy reloaded")
 	}

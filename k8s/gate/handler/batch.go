@@ -26,6 +26,7 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/structured"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/metrics"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/status"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
@@ -145,6 +146,9 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 
 	defer func() {
 		duration := time.Since(start)
+		metrics.EventBatchDuration.Observe(duration.Seconds())
+		metrics.EventBatchSize.Observe(float64(len(batch.Events)))
+		metrics.EventBatchTotal.Inc()
 		h.logger.LogAttrs(context.Background(), slog.LevelInfo,
 			"Finished processing event batch",
 			logging.LogAttrBatch(batch.BatchID, len(batch.Events)),
@@ -160,20 +164,26 @@ func (h *eventHandlerImpl) HandleEventBatch(ctx context.Context, batch events.Ev
 	gatetree := h.treeBuilder.GetTree()
 
 	// HAProxy Configuration building
+	configStart := time.Now()
 	err := h.haproxyConfBuilder.ComputeDiffs(ctx)
+	metrics.ConfigGenerationDuration.Observe(time.Since(configStart).Seconds())
 	if err != nil {
+		metrics.EventBatchErrors.Inc()
 		h.logger.LogAttrs(context.Background(), slog.LevelError,
 			"error building HAProxy configuration",
 			logging.LogAttrError(err),
 		)
 	}
 	haproxyConfDiffs := h.haproxyConfBuilder.GetDiffs()
+	h.recordDiffMetrics(haproxyConfDiffs)
 	if !haproxyConfDiffs.IsEmpty() || haproxyConfDiffs.ReloadNeed {
 		if h.config.TransferHaproxyConfChannel != nil {
 			h.logger.LogAttrs(context.Background(), slog.LevelInfo, "DIFFS CONTROLLER => HUG")
 			haproxyConfDiffs.Done = make(chan struct{})
+			transferStart := time.Now()
 			h.config.TransferHaproxyConfChannel <- haproxyConfDiffs
 			<-haproxyConfDiffs.Done
+			metrics.ConfigTransferDuration.Observe(time.Since(transferStart).Seconds())
 			h.logger.LogAttrs(context.Background(), slog.LevelInfo, "DIFFS HUG => CONTROLLER")
 		}
 	}
@@ -212,7 +222,7 @@ func (h *eventHandlerImpl) updateClusterStore(event any) {
 			logging.LogAttrEventType("upsert"),
 			logging.LogAttrResource(obj.Resource, gvk),
 		)
-
+		metrics.EventsProcessed.WithLabelValues("upsert").Inc()
 		h.clusterStoreUpdater.Upsert(obj.Resource)
 
 	case *events.DeleteEvent:
@@ -223,7 +233,22 @@ func (h *eventHandlerImpl) updateClusterStore(event any) {
 			logging.LogAttrEventType("delete"),
 			logging.LogAttrResource(obj.Type, gvk),
 		)
-
+		metrics.EventsProcessed.WithLabelValues("delete").Inc()
 		h.clusterStoreUpdater.Delete(obj.Type, obj.NamespacedName)
 	}
+}
+
+func (*eventHandlerImpl) recordDiffMetrics(d diffs.HaproxyConfDiffs) {
+	metrics.ConfigDiffs.WithLabelValues("created", "frontend").Add(float64(len(d.Created.Frontends)))
+	metrics.ConfigDiffs.WithLabelValues("updated", "frontend").Add(float64(len(d.Updated.Frontends)))
+	metrics.ConfigDiffs.WithLabelValues("deleted", "frontend").Add(float64(len(d.Deleted.Frontends)))
+	metrics.ConfigDiffs.WithLabelValues("created", "backend").Add(float64(len(d.Created.Backends)))
+	metrics.ConfigDiffs.WithLabelValues("updated", "backend").Add(float64(len(d.Updated.Backends)))
+	metrics.ConfigDiffs.WithLabelValues("deleted", "backend").Add(float64(len(d.Deleted.Backends)))
+	metrics.ConfigDiffs.WithLabelValues("created", "global").Add(float64(len(d.Created.Globals)))
+	metrics.ConfigDiffs.WithLabelValues("updated", "global").Add(float64(len(d.Updated.Globals)))
+	metrics.ConfigDiffs.WithLabelValues("deleted", "global").Add(float64(len(d.Deleted.Globals)))
+	metrics.ConfigDiffs.WithLabelValues("created", "defaults").Add(float64(len(d.Created.Defaults)))
+	metrics.ConfigDiffs.WithLabelValues("updated", "defaults").Add(float64(len(d.Updated.Defaults)))
+	metrics.ConfigDiffs.WithLabelValues("deleted", "defaults").Add(float64(len(d.Deleted.Defaults)))
 }

@@ -25,6 +25,7 @@ import (
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/metrics"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -76,6 +77,7 @@ func (c *CertificateStorageDefault) WriteCrtListOnDisk(crtList certificate.CrtLi
 	// Create or open the file for writing.
 	file, err := os.Create(crtListFullPath)
 	if err != nil {
+		metrics.CrtListStorageOperations.WithLabelValues("write", "error").Inc()
 		c.logger.LogAttrs(context.Background(), slog.LevelError, "crt-list [not written]",
 			slog.String("crt-list", crtListFullPath),
 		)
@@ -87,12 +89,14 @@ func (c *CertificateStorageDefault) WriteCrtListOnDisk(crtList certificate.CrtLi
 	// Write the entire string from the builder to the file in a single operation.
 	_, err = file.WriteString(builder.String())
 	if err != nil {
+		metrics.CrtListStorageOperations.WithLabelValues("write", "error").Inc()
 		c.logger.LogAttrs(context.Background(), slog.LevelError, "crt-list [not written]",
 			slog.String("crt-list", crtListFullPath),
 		)
 		return err
 	}
 
+	metrics.CrtListStorageOperations.WithLabelValues("write", "ok").Inc()
 	c.logger.LogAttrs(context.Background(), slog.LevelInfo, "crt-list [written]",
 		slog.String("crt-list", crtListFullPath),
 	)
@@ -105,6 +109,7 @@ func (c *CertificateStorageDefault) DeleteCrtListFromDisk(crtListData certificat
 
 	err := crtListFilePath.DeleteFromDisk()
 	if err == nil {
+		metrics.CrtListStorageOperations.WithLabelValues("delete", "ok").Inc()
 		c.logger.LogAttrs(context.Background(), slog.LevelInfo, "crt-list [deleted]",
 			slog.String("crt-list", fullPath))
 		return nil
@@ -113,6 +118,7 @@ func (c *CertificateStorageDefault) DeleteCrtListFromDisk(crtListData certificat
 		return nil
 	}
 
+	metrics.CrtListStorageOperations.WithLabelValues("delete", "error").Inc()
 	c.logger.LogAttrs(context.Background(), slog.LevelError, "crt-list [not deleted] from disk",
 		slog.String("crt-list", fullPath),
 		logging.LogAttrError(err))

@@ -155,6 +155,19 @@ rules:
       - get
       - list
       - watch
+  # Required for kube-rbac metrics auth (TokenReview + SubjectAccessReview)
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -169,3 +182,27 @@ subjects:
   - kind: ServiceAccount
     name: haproxy-unified-gateway
     namespace: haproxy-unified-gateway
+---
+# ClusterRole for Prometheus to scrape metrics (used with --metrics-auth=kube-rbac)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: haproxy-unified-gateway-metrics-reader
+rules:
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: haproxy-unified-gateway-metrics-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: haproxy-unified-gateway-metrics-reader
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring

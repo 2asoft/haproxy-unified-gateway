@@ -20,10 +20,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"time"
+
 	"github.com/google/renameio"
 	futils "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/fileutils"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/certificate"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/metrics"
 	utilsk8s "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils-k8s"
 
 	v1 "k8s.io/api/core/v1"
@@ -129,16 +132,20 @@ func (c *CertificateStorageDefault) NewCertificateData(secret *v1.Secret) (certi
 }
 
 func (c *CertificateStorageDefault) WriteOnDisk(certData certificate.CertificateData) error {
+	start := time.Now()
 	c.ensureDirectoryExists(certData.Path.Dir)
 	certFullPath := certData.Path.FullPath()
 	err := writeCert(certFullPath, certData.Data)
+	metrics.CertStorageDuration.WithLabelValues("write").Observe(time.Since(start).Seconds())
 	if err != nil {
+		metrics.CertStorageOperations.WithLabelValues("write", "error").Inc()
 		c.logger.LogAttrs(context.Background(), slog.LevelError, "Cert [not written] on disk",
 			slog.String("cert", certFullPath),
 			logging.LogAttrError(err))
 		return err
 	}
 
+	metrics.CertStorageOperations.WithLabelValues("write", "ok").Inc()
 	c.logger.LogAttrs(context.Background(), slog.LevelInfo, "Cert [written]",
 		slog.String("cert", certFullPath),
 	)
@@ -154,6 +161,7 @@ func (c *CertificateStorageDefault) DeleteFromDisk(certData certificate.Certific
 
 	err := certFilePath.DeleteFromDisk()
 	if err == nil {
+		metrics.CertStorageOperations.WithLabelValues("delete", "ok").Inc()
 		c.logger.LogAttrs(context.Background(), slog.LevelInfo, "Cert [deleted]",
 			slog.String("cert", fullPath),
 		)
@@ -163,6 +171,7 @@ func (c *CertificateStorageDefault) DeleteFromDisk(certData certificate.Certific
 		return nil
 	}
 
+	metrics.CertStorageOperations.WithLabelValues("delete", "error").Inc()
 	c.logger.LogAttrs(context.Background(), slog.LevelError, "Cert [not deleted] from disk",
 		slog.String("cert", fullPath),
 		logging.LogAttrError(err))
