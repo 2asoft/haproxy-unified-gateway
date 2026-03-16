@@ -17,6 +17,7 @@ package haproxy
 import (
 	"context"
 	"log/slog"
+	"regexp"
 
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage/maps"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/logging"
@@ -24,6 +25,8 @@ import (
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/store"
 	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/utils"
 )
+
+var re = regexp.MustCompile(`\\+`)
 
 // ErrMapRuntimeUpdate is an error type for runtime map update failures
 type ErrMapRuntimeUpdate struct {
@@ -194,8 +197,6 @@ func (b *RouteMgrImpl) writeMaps() error {
 
 // runtimeMapSync updates the runtime maps through runtime API
 func (b *RouteMgrImpl) runtimeMapSync() error {
-	b.topManager.logger.LogAttrs(context.Background(), slog.LevelInfo, "map [runtime] updates")
-
 	mapsStorage := b.topManager.params.mapsStorageEx
 	runtimeClient := b.topManager.haproxyClient.RuntimeClient()
 
@@ -218,7 +219,7 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 				continue
 			}
 			for entryKey, entryValue := range mapData.Entries {
-				key := entryKey.Hostname
+				key := escapeSlashForRuntime(entryKey.Hostname)
 				if entryKey.Path != "" {
 					key += entryKey.Path
 				}
@@ -286,4 +287,10 @@ func (b *RouteMgrImpl) getMapID(fullPath string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func escapeSlashForRuntime(key string) string {
+	return re.ReplaceAllStringFunc(key, func(s string) string {
+		return `\` + s
+	})
 }
