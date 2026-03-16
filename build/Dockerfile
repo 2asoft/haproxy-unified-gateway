@@ -25,7 +25,6 @@ RUN cd /src && go mod download
 WORKDIR /src
 RUN git clone --branch stop-signal --single-branch https://github.com/haproxytech/pebble.git
 RUN cd pebble/cmd/pebble && go build -buildvcs=true -o /go/bin/pebble
-RUN go install github.com/go-task/task/v3/cmd/task@latest
 COPY / /src
 
 RUN mkdir -p /var/run/vars && \
