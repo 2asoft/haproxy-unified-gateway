@@ -99,6 +99,9 @@ func StructuredFromFile(hugConfig hugconfig.HUGConfig) (structured.Structured, e
 			}, global.RuntimeAPIs...)
 		}
 	}
+	// enforce first socket has level admin
+	global.RuntimeAPIs[0].Level = "admin"
+
 	version, err := confClient.GetVersion("")
 	if err != nil {
 		return structured.Structured{}, err
