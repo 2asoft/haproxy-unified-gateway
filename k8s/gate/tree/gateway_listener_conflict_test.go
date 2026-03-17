@@ -149,7 +149,7 @@ func TestComputeListenerConflicts(t *testing.T) {
 			},
 		},
 		{
-			name: "Multiple Gateways - oldest wins",
+			name: "Multiple Gateways - identical listeners on different gateways are merged (no conflict)",
 			gateways: []*Gateway{
 				mkGateway("old", t1,
 					mkListener("l1", 80, gatewayv1.HTTPProtocolType, ptr("foo.com")),
@@ -160,11 +160,11 @@ func TestComputeListenerConflicts(t *testing.T) {
 			},
 			expected: map[string]listenerConflictCondition{
 				"default/old_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
-				"default/new_l1": {hasConflict: true, reason: string(gatewayv1.ListenerReasonHostnameConflict), protocol: protocols.ProtocolCategoryInsecure},
+				"default/new_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
 			},
 		},
 		{
-			name: "Multiple Gateways - oldest wins (reverse order in input)",
+			name: "Multiple Gateways - identical listeners on different gateways are merged (no conflict, reverse order in input)",
 			gateways: []*Gateway{
 				mkGateway("new", t2,
 					mkListener("l1", 80, gatewayv1.HTTPProtocolType, ptr("foo.com")),
@@ -175,7 +175,7 @@ func TestComputeListenerConflicts(t *testing.T) {
 			},
 			expected: map[string]listenerConflictCondition{
 				"default/old_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
-				"default/new_l1": {hasConflict: true, reason: string(gatewayv1.ListenerReasonHostnameConflict), protocol: protocols.ProtocolCategoryInsecure},
+				"default/new_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
 			},
 		},
 		{
@@ -201,14 +201,14 @@ func TestComputeListenerConflicts(t *testing.T) {
 					mkListener("http2", 80, gatewayv1.HTTPProtocolType, ptr("bar.com")),
 				),
 				mkGateway("gw2", t2,
-					mkListener("conflict-foo", 80, gatewayv1.HTTPProtocolType, ptr("foo.com")),
-					mkListener("conflict-all", 80, gatewayv1.HTTPProtocolType, nil), // nil = matches all, overlaps with everything
+					mkListener("ok-foo", 80, gatewayv1.HTTPProtocolType, ptr("foo.com")),
+					mkListener("conflict-all", 80, gatewayv1.HTTPProtocolType, nil), // nil = matches all, overlaps with ok-foo in same gw
 				),
 			},
 			expected: map[string]listenerConflictCondition{
 				"default/gw1_http":         {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
 				"default/gw1_http2":        {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
-				"default/gw2_conflict-foo": {hasConflict: true, reason: string(gatewayv1.ListenerReasonHostnameConflict), protocol: protocols.ProtocolCategoryInsecure},
+				"default/gw2_ok-foo":       {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
 				"default/gw2_conflict-all": {hasConflict: true, reason: string(gatewayv1.ListenerReasonHostnameConflict), protocol: protocols.ProtocolCategoryInsecure},
 			},
 		},
@@ -244,6 +244,24 @@ func TestComputeListenerConflicts(t *testing.T) {
 			},
 		},
 		{
+			name: "Same Gateway - overlapping hostname is still a conflict",
+			gateways: []*Gateway{
+				mkGateway("gw1", t1,
+					mkListener("l1", 80, gatewayv1.HTTPProtocolType, ptr("foo.com")),
+					mkListener("l2", 80, gatewayv1.HTTPProtocolType, ptr("foo.com")),
+				),
+				mkGateway("gw2", t2,
+					mkListener("l1", 80, gatewayv1.HTTPProtocolType, ptr("foo.com")),
+				),
+			},
+			expected: map[string]listenerConflictCondition{
+				// l1 and l2 on same gw1 conflict; gw2/l1 (different gateway) is merged
+				"default/gw1_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
+				"default/gw1_l2": {hasConflict: true, reason: string(gatewayv1.ListenerReasonHostnameConflict), protocol: protocols.ProtocolCategoryInsecure},
+				"default/gw2_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
+			},
+		},
+		{
 			name: "Nil gateways (DELETED status) should be ignored",
 			gateways: []*Gateway{
 				mkGateway("gw1", t1,
@@ -272,8 +290,9 @@ func TestComputeListenerConflicts(t *testing.T) {
 				),
 			},
 			expected: map[string]listenerConflictCondition{
+				// Different gateways with identical listeners → merged, no conflict
 				"default/gw1_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
-				"default/gw2_l1": {hasConflict: true, reason: string(gatewayv1.ListenerReasonHostnameConflict), protocol: protocols.ProtocolCategoryInsecure},
+				"default/gw2_l1": {hasConflict: false, reason: "", protocol: protocols.ProtocolCategoryInsecure},
 			},
 		},
 	}

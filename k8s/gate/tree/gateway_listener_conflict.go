@@ -31,8 +31,11 @@ type listenerRefs struct {
 // It populates b.mapPort2ListenerConflict with the results of the conflict detection.
 // Conflicts can arise from:
 // - Different protocol categories (e.g., HTTP vs HTTPS) on the same port.
-// - Overlapping hostnames for listeners with compatible protocols.
-// The conflict resolution strategy favors the oldest Gateway (by CreationTimestamp).
+// - Overlapping hostnames for listeners with compatible protocols on the same Gateway.
+//
+// Listeners with overlapping hostnames on different Gateways are NOT considered
+// conflicts: they are merged into the same VirtualListener, following the Gateway
+// API conformance requirement.
 func (b *GatewayBuilderImpl) computeListenerConflicts() {
 	// 0- Compute conflicts only between non-deleted Gateways and their listeners. Deleted Gateways and their listeners are ignored in the conflict detection.
 	// 1- Sort all non-deleted Gateways by creation timestamp
@@ -40,55 +43,54 @@ func (b *GatewayBuilderImpl) computeListenerConflicts() {
 
 	portListeners := b.listenersPerPort(sortedGws)
 
-	// In portListeners we have now all listeners grouped by port
-	// Some of them are already marked as conflicting because of protocol category difference
-	// Now we need to check for hostname overlaps
-	for _, listenerRefs := range portListeners {
-		// The first listener in the list is the winner due to the gateway creation timestamp sort.
-		// All subsequent listeners are checked against this winner.
-		if len(listenerRefs) > 1 {
-			winner := listenerRefs[0]
-			winnerHostname := utils.PointerDefaultValueIfNil(winner.listenerRef.Hostname)
-			winnerLk := NewListenerKey(winner.gatewayRef, winner.listenerRef)
+	// In portListeners we have now all listeners grouped by port.
+	// Some of them are already marked as conflicting because of protocol category difference.
+	// Now we need to check for hostname overlaps, but only within the same Gateway.
+	for port, listeners := range portListeners {
+		if _, ok := b.ControllerStore.mapPort2Listeners[port]; !ok {
+			b.ControllerStore.mapPort2Listeners[port] = make(map[client.ObjectKey]listenerConflictCondition)
+		}
 
-			if _, ok := b.ControllerStore.mapPort2Listeners[winner.listenerRef.Port]; !ok {
-				b.ControllerStore.mapPort2Listeners[winner.listenerRef.Port] = make(map[client.ObjectKey]listenerConflictCondition)
-			}
-			b.ControllerStore.mapPort2Listeners[winner.listenerRef.Port][winnerLk] = listenerConflictCondition{
+		// Mark all listeners as non-conflicting initially.
+		for _, lr := range listeners {
+			lk := NewListenerKey(lr.gatewayRef, lr.listenerRef)
+			b.ControllerStore.mapPort2Listeners[port][lk] = listenerConflictCondition{
 				hasConflict: false,
 				reason:      "",
-				protocol:    protocols.ProtocolCategories[winner.listenerRef.Protocol],
+				protocol:    protocols.ProtocolCategories[lr.listenerRef.Protocol],
 			}
+		}
 
-			for i := 1; i < len(listenerRefs); i++ {
-				challenger := listenerRefs[i]
-				challengerHostname := utils.PointerDefaultValueIfNil(challenger.listenerRef.Hostname)
-				challengerLk := NewListenerKey(challenger.gatewayRef, challenger.listenerRef)
+		// Detect hostname conflicts only within the same Gateway.
+		// The first listener in spec order is the winner; later overlapping listeners in the
+		// same Gateway are marked as conflicting.
+		// Listeners from different Gateways with overlapping hostnames are allowed: they will
+		// be merged into the same VirtualListener.
+		for i := range listeners {
+			iKey := NewListenerKey(listeners[i].gatewayRef, listeners[i].listenerRef)
+			// A listener already marked as conflicting cannot be a winner.
+			if b.ControllerStore.mapPort2Listeners[port][iKey].hasConflict {
+				continue
+			}
+			iHostname := utils.PointerDefaultValueIfNil(listeners[i].listenerRef.Hostname)
 
-				lcc := listenerConflictCondition{
-					hasConflict: false,
-					reason:      "",
-					protocol:    protocols.ProtocolCategories[challenger.listenerRef.Protocol],
+			for j := i + 1; j < len(listeners); j++ {
+				// Only detect conflicts within the same Gateway.
+				if listeners[i].gatewayRef.Name != listeners[j].gatewayRef.Name ||
+					listeners[i].gatewayRef.Namespace != listeners[j].gatewayRef.Namespace {
+					continue
 				}
-				if overlaps(string(winnerHostname), string(challengerHostname)) {
-					lcc = listenerConflictCondition{
+
+				jKey := NewListenerKey(listeners[j].gatewayRef, listeners[j].listenerRef)
+				jHostname := utils.PointerDefaultValueIfNil(listeners[j].listenerRef.Hostname)
+
+				if overlaps(string(iHostname), string(jHostname)) {
+					b.ControllerStore.mapPort2Listeners[port][jKey] = listenerConflictCondition{
 						hasConflict: true,
 						reason:      string(gatewayv1.ListenerReasonHostnameConflict),
-						protocol:    protocols.ProtocolCategories[challenger.listenerRef.Protocol],
+						protocol:    protocols.ProtocolCategories[listeners[j].listenerRef.Protocol],
 					}
 				}
-				b.ControllerStore.mapPort2Listeners[winner.listenerRef.Port][challengerLk] = lcc
-			}
-		} else {
-			lk := NewListenerKey(listenerRefs[0].gatewayRef, listenerRefs[0].listenerRef)
-			// Only one listener on this port, no conflict
-			if _, ok := b.ControllerStore.mapPort2Listeners[listenerRefs[0].listenerRef.Port]; !ok {
-				b.ControllerStore.mapPort2Listeners[listenerRefs[0].listenerRef.Port] = make(map[client.ObjectKey]listenerConflictCondition)
-			}
-			b.ControllerStore.mapPort2Listeners[listenerRefs[0].listenerRef.Port][lk] = listenerConflictCondition{
-				hasConflict: false,
-				reason:      "",
-				protocol:    protocols.ProtocolCategories[listenerRefs[0].listenerRef.Protocol],
 			}
 		}
 	}

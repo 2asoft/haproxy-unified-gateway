@@ -2,7 +2,7 @@
     conditions:
     - message: 'Conflicting listeners: e2e-tests-gateway/gateway_http-8080'
       observedGeneration: 1
-      reason: HostnameConflict
+      reason: ProtocolConflict
       status: "True"
       type: Conflicted
     - message: Listener is invalid (see ConditionType Conflicted)
