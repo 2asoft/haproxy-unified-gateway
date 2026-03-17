@@ -1,6 +1,6 @@
   - attachedRoutes: 0
     conditions:
-    - message: 'Conflicting listeners: e2e-tests-gateway/gateway_http-8080'
+    - message: 'Conflicting listeners: http-8080'
       observedGeneration: 1
       reason: ProtocolConflict
       status: "True"

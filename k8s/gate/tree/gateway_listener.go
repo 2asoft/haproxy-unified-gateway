@@ -305,7 +305,11 @@ func (l *Listener) checkConflict(treeGw *Gateway, listenersPerPort map[gatewayv1
 		if glk.String() == NewListenerKey(treeGw.K8sResource, listener).String() {
 			continue
 		}
-		conflictingKeys = append(conflictingKeys, glk.String())
+		_, listenerName, err := ConvertListenerKeyToGatewayKeyAndListenerName(glk)
+		if err != nil {
+			listenerName = glk.Name
+		}
+		conflictingKeys = append(conflictingKeys, listenerName)
 	}
 	if len(conflictingKeys) > 0 {
 		slices.Sort(conflictingKeys)
