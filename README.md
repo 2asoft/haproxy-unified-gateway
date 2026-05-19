@@ -34,6 +34,11 @@ task k0s-create
 
 Examples about deployment can be seen in [example](./example/README.md) folder.
 
+## Engineering notes
+
+- [HTTPRoute merging and HTTP-01 challenge routing](./documentation/httproute-merging-http01.md)
+- [Integration test notes](./test/integration/README.md)
+
 ## Logging
 
 Use `spec.haproxyGlobal.logLineLength` to set `log ... len` on global log targets and `spec.haproxyGlobal.httpLogUriLen` to set `tune.http.logurilen`. If these fields are omitted, HAProxy defaults apply. If log lines are still cut off in `kubectl logs`, check container runtime or log aggregation limits. For long header values, adjust `spec.haproxyDefaults.captureRequestHeaders[].length` in HugConf.

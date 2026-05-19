@@ -1,4 +1,25 @@
-# Tools for degugging: envtest kubeconfig
+# Integration test notes
+
+## HAProxy binary path
+
+Integration tests require a real HAProxy binary. The Taskfile default is `/usr/local/sbin/haproxy`, but some systems install HAProxy at `/usr/bin/haproxy` or `/usr/sbin/haproxy`.
+
+Override the path explicitly when needed:
+
+```sh
+HAPROXY_BIN=/usr/bin/haproxy task test PKG=./test/integration/httproute
+```
+
+The repository `justfile` also provides helper recipes:
+
+```sh
+just integration ./test/integration/httproute
+just integration-container ./test/integration/httproute
+```
+
+`just integration` auto-detects common HAProxy locations unless `HAPROXY_BIN` is set. `just integration-container` runs the tests in a disposable Go container and installs HAProxy inside the container.
+
+# Tools for debugging: envtest kubeconfig
 
 While running integration tests, an envtest kubeconfig is generated in:
 - `cfgDir/test folder/kubeconfig`
