@@ -661,3 +661,23 @@ func TestMapFileState_BackendDeletions(t *testing.T) {
 		})
 	}
 }
+
+func TestSortedEntryKeysOrdersLongerPathsFirstForSameHostname(t *testing.T) {
+	entries := map[EntryKey]*EntryValue{
+		{Hostname: "listener/example.com", Path: "/"}:    {},
+		{Hostname: "listener/example.com", Path: "/app"}: {},
+		{Hostname: "listener/example.com", Path: "/api"}: {},
+	}
+
+	got := SortedEntryKeys(entries)
+	want := []EntryKey{
+		{Hostname: "listener/example.com", Path: "/api"},
+		{Hostname: "listener/example.com", Path: "/app"},
+		{Hostname: "listener/example.com", Path: "/"},
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("SortedEntryKeys()[%d] = %+v, want %+v; full order: %+v", i, got[i], want[i], got)
+		}
+	}
+}

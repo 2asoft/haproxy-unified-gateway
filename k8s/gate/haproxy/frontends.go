@@ -142,6 +142,8 @@ func (b *HaproxyConfMgrImpl) clearListenerMaps(vlName string, vListener *tree.Vi
 	listenerWildcardMatchMap := b.params.mapsStorage.GetListenerWildcardMatchMapFile(frontendName)
 	listenerRouteExactMatchMap := b.params.mapsStorage.GetListenerRouteExactMatchMapFile(frontendName)
 	listenerRouteWildcardMatchMap := b.params.mapsStorage.GetListenerRouteWildcardMatchMapFile(frontendName)
+	listenerHostPathExactMap := b.params.mapsStorage.GetListenerHostPathExactMapFile(frontendName)
+	listenerHostPathPrefixMap := b.params.mapsStorage.GetListenerHostPathPrefixMapFile(frontendName)
 
 	for _, l := range vListener.Listeners {
 		listenerKeyName := l.Key().String()
@@ -159,6 +161,8 @@ func (b *HaproxyConfMgrImpl) clearListenerMaps(vlName string, vListener *tree.Vi
 			}
 			listenerRouteExactMatchMap.ApplyRoute(routeOrigin, map[maps.EntryKey]map[string]*maps.WeightedValue{})
 			listenerRouteWildcardMatchMap.ApplyRoute(routeOrigin, map[maps.EntryKey]map[string]*maps.WeightedValue{})
+			listenerHostPathExactMap.ApplyRoute(routeOrigin, map[maps.EntryKey]map[string]*maps.WeightedValue{})
+			listenerHostPathPrefixMap.ApplyRoute(routeOrigin, map[maps.EntryKey]map[string]*maps.WeightedValue{})
 		}
 	}
 }
@@ -235,6 +239,8 @@ func (b *HaproxyConfMgrImpl) newFrontend(vListenerName string, vListener *tree.V
 	listenerWildcardMatchMap := b.params.mapsStorage.GetListenerWildcardMatchMapFile(frontendName)
 	listenerRouteExactMatchMap := b.params.mapsStorage.GetListenerRouteExactMatchMapFile(frontendName)
 	listenerRouteWildcardMatchMap := b.params.mapsStorage.GetListenerRouteWildcardMatchMapFile(frontendName)
+	listenerHostPathExactMap := b.params.mapsStorage.GetListenerHostPathExactMapFile(frontendName)
+	listenerHostPathPrefixMap := b.params.mapsStorage.GetListenerHostPathPrefixMapFile(frontendName)
 
 	var tcpRules []*models.TCPRequestRule
 	var httpRules []*models.HTTPRequestRule
@@ -301,6 +307,33 @@ func (b *HaproxyConfMgrImpl) newFrontend(vListenerName string, vListener *tree.V
 			// 	LuaAction: "find_listener_route",
 			// },
 			// -------------------
+			// Route-merge lookup: listener + host + path lookup before selecting
+			// a single route for the host. This lets exact and prefix path matches
+			// across different HTTPRoutes obey path precedence before route fallback.
+			{
+				// http-request set-var(txn.listener_host_path) var(txn.selected_listener_name),concat("/",txn.host),concat("",txn.path)
+				Type:     "set-var",
+				VarName:  "listener_host_path",
+				VarScope: "txn",
+				VarExpr:  "var(txn.selected_listener_name),concat(\"/\",txn.host),concat(\"\",txn.path)",
+			},
+			{
+				// http-request set-var(txn.route) var(txn.listener_host_path),map(listener_host_path_exact.map)
+				Type:     "set-var",
+				VarName:  "route",
+				VarScope: "txn",
+				VarExpr:  "var(txn.listener_host_path),map(" + listenerHostPathExactMap.Path.FullPath() + ")",
+				Metadata: map[string]any{"hug": "listener + exact host + exact path"},
+			},
+			{
+				// http-request set-var(txn.route,ifnotexists) var(txn.listener_host_path),map_beg(listener_host_path_prefix.map)
+				Type:     "set-var",
+				VarName:  "route,ifnotexists",
+				VarScope: "txn",
+				VarExpr:  "var(txn.listener_host_path),map_beg(" + listenerHostPathPrefixMap.Path.FullPath() + ")",
+				Metadata: map[string]any{"hug": "listener + exact host + path prefix"},
+			},
+			// -------------------
 			// Look for route name: selected_listener_route
 			{
 				//  listener-route-name exact match
@@ -349,9 +382,9 @@ func (b *HaproxyConfMgrImpl) newFrontend(vListenerName string, vListener *tree.V
 			{
 				// lookup in route_exact_match.map
 				// exact path
-				// http-request set-var(txn.base_listener_route) var(txn.base_listener_route),map(route_exact_match.map)
+				// http-request set-var(txn.route,ifnotexists) var(txn.base_listener_route),map(route_exact_match.map)
 				Type:     "set-var",
-				VarName:  "route",
+				VarName:  "route,ifnotexists",
 				VarScope: "txn",
 				VarExpr:  "var(txn.base_listener_route),map(" + pathExactMap.Path.FullPath() + ")",
 				Metadata: map[string]any{"hug": "exact domain + exact path"},

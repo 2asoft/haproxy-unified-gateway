@@ -33,6 +33,8 @@ const (
 	MAP_LISTENER_WILDCARD_MATCH       = "listener_wildcard_match"
 	MAP_LISTENER_ROUTE_EXACT_MATCH    = "listener_route_exact_match"
 	MAP_LISTENER_ROUTE_WILDCARD_MATCH = "listener_route_wildcard_match"
+	MAP_LISTENER_HOST_PATH_EXACT      = "listener_host_path_exact"
+	MAP_LISTENER_HOST_PATH_PREFIX     = "listener_host_path_prefix"
 )
 
 //revive:enable:var-naming
@@ -70,6 +72,14 @@ func (m *MapsStorageDefault) GetListenerRouteExactMatchMapFile(frontendName stri
 
 func (m *MapsStorageDefault) GetListenerRouteWildcardMatchMapFile(frontendName string) *maps.MapFileState {
 	return m.getMapFile(frontendName, MAP_LISTENER_ROUTE_WILDCARD_MATCH, true)
+}
+
+func (m *MapsStorageDefault) GetListenerHostPathExactMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, MAP_LISTENER_HOST_PATH_EXACT, false)
+}
+
+func (m *MapsStorageDefault) GetListenerHostPathPrefixMapFile(frontendName string) *maps.MapFileState {
+	return m.getMapFile(frontendName, MAP_LISTENER_HOST_PATH_PREFIX, false)
 }
 
 func (m *MapsStorageDefault) GetPathExactMapFile(frontendName string) *maps.MapFileState {

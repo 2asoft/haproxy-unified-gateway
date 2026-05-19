@@ -491,13 +491,7 @@ func (m *MapFileState) WriteOnDiskIfChanged() error {
 	}
 	defer f.Close()
 
-	orderedEntries := []EntryKey{}
-	for entryKey := range m.Entries {
-		orderedEntries = append(orderedEntries, entryKey)
-	}
-	slices.SortFunc(orderedEntries, compareEntryKeys)
-
-	for _, entryKey := range orderedEntries {
+	for _, entryKey := range SortedEntryKeys(m.Entries) {
 		entryValue := m.Entries[entryKey]
 		if entryValue == nil {
 			continue
@@ -619,7 +613,7 @@ func (cbi CollectedBackendIntents) String() string {
 		cbi.PresentOperations, utils.PointerDefaultValueIfNil(cbi.Weight))
 }
 
-func sortedEntryKeys(m map[EntryKey]*EntryValue) []EntryKey {
+func SortedEntryKeys(m map[EntryKey]*EntryValue) []EntryKey {
 	keys := make([]EntryKey, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -642,7 +636,7 @@ func (m *MapFileState) PrettyString() string {
 
 	_, _ = fmt.Fprintf(&b, "MapFileState: %s\n", m.Path.FileName)
 
-	for _, key := range sortedEntryKeys(m.Entries) {
+	for _, key := range SortedEntryKeys(m.Entries) {
 		_, _ = fmt.Fprintf(&b, "└─ %s\n", key.String())
 		b.WriteString(m.Entries[key].PrettyString("   "))
 	}
@@ -715,13 +709,16 @@ func (ev *EntryValue) PrettyString(indent string) string {
 
 func compareEntryKeys(a, b EntryKey) int {
 	switch {
-	// TODO: sort by longest path first (longest subdomain)
 	case a.Hostname < b.Hostname:
 		return -1
 	case a.Hostname > b.Hostname:
 		return 1
 	}
 	switch {
+	case len(a.Path) > len(b.Path):
+		return -1
+	case len(a.Path) < len(b.Path):
+		return 1
 	case a.Path < b.Path:
 		return -1
 	case a.Path > b.Path:

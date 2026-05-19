@@ -14,10 +14,75 @@
 package haproxy
 
 import (
+	"io"
+	"log/slog"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/metadata"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/haproxy/storage"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/protocols"
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/tree"
 )
+
+type frontendTestMetadataManager struct{}
+
+func (frontendTestMetadataManager) FrontendMetaData(_ *tree.VirtualListener) metadata.MetaData {
+	return nil
+}
+
+func (frontendTestMetadataManager) BackendMetaData(_ map[string]metadata.RouteMetadaInfo) metadata.MetaData {
+	return nil
+}
+
+func TestHTTPFrontendChecksListenerHostPathMapsBeforeRouteSelectionFallback(t *testing.T) {
+	mapsStorage := storage.NewMapsStorage(slog.New(slog.NewTextHandler(io.Discard, nil)), "/etc/haproxy")
+	manager := &HaproxyConfMgrImpl{
+		metadataManager: frontendTestMetadataManager{},
+		params: HaproxyConfMgrParams{
+			mapsStorage: mapsStorage,
+			HaproxyConfParams: HaproxyConfParams{
+				DefaultsSectionName: "defaults",
+				LinkID:              "test",
+			},
+		},
+	}
+
+	frontend, err := manager.newFrontend("http_80", &tree.VirtualListener{ProtocolCategory: protocols.ProtocolCategoryInsecure, Port: 80})
+	if err != nil {
+		t.Fatalf("newFrontend returned error: %v", err)
+	}
+
+	var exactFastPath, prefixFastPath, listenerRouteFallback int = -1, -1, -1
+	for i, rule := range frontend.HTTPRequestRuleList {
+		if strings.Contains(rule.VarExpr, "listener_host_path_exact.map") {
+			exactFastPath = i
+		}
+		if strings.Contains(rule.VarExpr, "listener_host_path_prefix.map") {
+			prefixFastPath = i
+		}
+		if strings.Contains(rule.VarExpr, "listener_route_exact_match.map") {
+			listenerRouteFallback = i
+		}
+	}
+
+	if exactFastPath == -1 {
+		t.Fatal("HTTP frontend does not look up listener_host_path_exact.map")
+	}
+	if prefixFastPath == -1 {
+		t.Fatal("HTTP frontend does not look up listener_host_path_prefix.map")
+	}
+	if listenerRouteFallback == -1 {
+		t.Fatal("HTTP frontend does not contain listener_route_exact_match.map fallback")
+	}
+	if exactFastPath > prefixFastPath {
+		t.Fatalf("listener_host_path_exact.map lookup must run before listener_host_path_prefix.map: exact=%d prefix=%d", exactFastPath, prefixFastPath)
+	}
+	if prefixFastPath > listenerRouteFallback {
+		t.Fatalf("listener_host_path_prefix.map lookup must run before listener-route fallback: prefix=%d fallback=%d", prefixFastPath, listenerRouteFallback)
+	}
+}
 
 // TestTLSPassthroughRulesScopeConsistency guards against scope drift between
 // the TCP set-var rules and the ACL that reads those variables. A mismatch

@@ -63,13 +63,13 @@ type RouteMgrImpl struct {
 	topManager *HaproxyConfMgrImpl
 }
 
-func (b *RouteMgrImpl) onUpsertedHTTPRoute(origin maps.ResourceOrigin, routeValueName string, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapFileState,
+func (b *RouteMgrImpl) onUpsertedHTTPRoute(origin maps.ResourceOrigin, listenerKeyName, routeValueName string, route *tree.HTTPRoute,
+	mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix *maps.MapFileState,
 ) error {
 	if route.Valid {
-		return b.onValidHTTPRouteUpserted(origin, routeValueName, route, mapExact, mapPrefix, mapRegex)
+		return b.onValidHTTPRouteUpserted(origin, listenerKeyName, routeValueName, route, mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix)
 	}
-	return b.onInvalidHTTPRouteUpserted(origin, route, mapExact, mapPrefix, mapRegex)
+	return b.onInvalidHTTPRouteUpserted(origin, route, mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix)
 }
 
 func (b *RouteMgrImpl) onUpsertedTLSRoute(routeOrigin maps.ResourceOrigin, routeValueName string, route *tree.TLSRoute,
@@ -145,15 +145,15 @@ func (b *RouteMgrImpl) onDeletedTLSRoute(routeOrigin maps.ResourceOrigin, route 
 }
 
 func (b *RouteMgrImpl) onDeletedHTTPRoute(origin maps.ResourceOrigin, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapFileState,
+	mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix *maps.MapFileState,
 ) error {
-	return b.onInvalidHTTPRouteUpserted(origin, route, mapExact, mapPrefix, mapRegex)
+	return b.onInvalidHTTPRouteUpserted(origin, route, mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix)
 }
 
-func (b *RouteMgrImpl) onValidHTTPRouteUpserted(origin maps.ResourceOrigin, routeValueName string, route *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapFileState,
+func (b *RouteMgrImpl) onValidHTTPRouteUpserted(origin maps.ResourceOrigin, listenerKeyName, routeValueName string, route *tree.HTTPRoute,
+	mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix *maps.MapFileState,
 ) error {
-	desired := newDesiredBackendsMaps()
+	plan := newHTTPRoutePlan()
 
 	for _, rule := range route.Rules {
 		// Rules with a RequestRedirect filter map directly to a redirect pseudo-backend.
@@ -167,8 +167,13 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(origin maps.ResourceOrigin, rout
 			}
 			redirectBeName := b.topManager.getRedirectBackendName(rule.K8sResource.Filters)
 			for _, match := range rule.K8sResource.Matches {
-				bucket, _ := desired.resolveEntry(routeValueName, match)
-				bucket[redirectBeName] = &maps.WeightedValue{ValueName: redirectBeName}
+				plan.addCandidate(httpRouteCandidate{
+					ListenerKeyName: listenerKeyName,
+					RouteValueName:  routeValueName,
+					Hostnames:       route.K8sResource.Spec.Hostnames,
+					Match:           match,
+					Backend:         maps.WeightedValue{ValueName: redirectBeName},
+				})
 			}
 			continue
 		}
@@ -207,25 +212,22 @@ func (b *RouteMgrImpl) onValidHTTPRouteUpserted(origin maps.ResourceOrigin, rout
 				continue
 			}
 			for _, match := range rule.K8sResource.Matches {
-				bucket, _ := desired.resolveEntry(routeValueName, match)
-				existing := bucket[backendName]
-				if existing == nil {
-					bucket[backendName] = &maps.WeightedValue{
-						ValueName: backendName,
-						Weight:    backend.Weight,
-					}
-					continue
-				}
-				newWeight := utils.PointerDefaultValueIfNil(existing.Weight) +
-					utils.PointerDefaultValueIfNil(backend.Weight)
-				existing.Weight = &newWeight
+				plan.addCandidate(httpRouteCandidate{
+					ListenerKeyName: listenerKeyName,
+					RouteValueName:  routeValueName,
+					Hostnames:       route.K8sResource.Spec.Hostnames,
+					Match:           match,
+					Backend:         maps.WeightedValue{ValueName: backendName, Weight: backend.Weight},
+				})
 			}
 		}
 	}
 
-	mapExact.ApplyRoute(origin, desired.exact)
-	mapPrefix.ApplyRoute(origin, desired.prefix)
-	mapRegex.ApplyRoute(origin, desired.regex)
+	mapExact.ApplyRoute(origin, plan.path.exact)
+	mapPrefix.ApplyRoute(origin, plan.path.prefix)
+	mapRegex.ApplyRoute(origin, plan.path.regex)
+	mapListenerHostPathExact.ApplyRoute(origin, plan.listenerHostPathExact)
+	mapListenerHostPathPrefix.ApplyRoute(origin, plan.listenerHostPathPrefix)
 	return nil
 }
 
@@ -290,12 +292,14 @@ func (d *desiredBackendsMaps) resolveEntry(hostname string, match gatewayv1.HTTP
 }
 
 func (RouteMgrImpl) onInvalidHTTPRouteUpserted(origin maps.ResourceOrigin, _ *tree.HTTPRoute,
-	mapExact, mapPrefix, mapRegex *maps.MapFileState,
+	mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix *maps.MapFileState,
 ) error {
 	empty := map[maps.EntryKey]map[string]*maps.WeightedValue{}
 	mapExact.ApplyRoute(origin, empty)
 	mapPrefix.ApplyRoute(origin, empty)
 	mapRegex.ApplyRoute(origin, empty)
+	mapListenerHostPathExact.ApplyRoute(origin, empty)
+	mapListenerHostPathPrefix.ApplyRoute(origin, empty)
 	return nil
 }
 

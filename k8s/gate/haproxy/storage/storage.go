@@ -48,6 +48,8 @@ type MapsStorage interface {
 	GetListenerWildcardMatchMapFile(frontendName string) *maps.MapFileState
 	GetListenerRouteExactMatchMapFile(frontendName string) *maps.MapFileState
 	GetListenerRouteWildcardMatchMapFile(frontendName string) *maps.MapFileState
+	GetListenerHostPathExactMapFile(frontendName string) *maps.MapFileState
+	GetListenerHostPathPrefixMapFile(frontendName string) *maps.MapFileState
 	GetMaps() map[string]map[string]*maps.MapFileState
 	ProcessMapFiles()
 }

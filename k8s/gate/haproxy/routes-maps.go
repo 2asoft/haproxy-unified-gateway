@@ -420,7 +420,9 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 				mapExact := mapsStorage.GetPathExactMapFile(frontendName)
 				mapPrefix := mapsStorage.GetPathPrefixMapFile(frontendName)
 				mapRegex := mapsStorage.GetPathRegexMapFile(frontendName)
-				err := b.onDeletedHTTPRoute(origin, route, mapExact, mapPrefix, mapRegex)
+				mapListenerHostPathExact := mapsStorage.GetListenerHostPathExactMapFile(frontendName)
+				mapListenerHostPathPrefix := mapsStorage.GetListenerHostPathPrefixMapFile(frontendName)
+				err := b.onDeletedHTTPRoute(origin, route, mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix)
 				// errs.Add(err)
 				_ = err // TODO ignore error for now
 			}
@@ -432,20 +434,23 @@ func (b *RouteMgrImpl) fillMapsForHTTPRoutes() {
 		for _, listener := range route.Listeners.Iterate {
 			for _, listener := range listener {
 				frontendName := b.topManager.getFrontendName(listener.VirtualListenerName)
-				routeValueName := listener.Key().String() + "/" + routeKey.String()
+				listenerKeyName := listener.Key().String()
+				routeValueName := listenerKeyName + "/" + routeKey.String()
 				origin := maps.ResourceOrigin{Namespace: routeKey.Namespace, Name: routeValueName}
 				mapExact := mapsStorage.GetPathExactMapFile(frontendName)
 				mapPrefix := mapsStorage.GetPathPrefixMapFile(frontendName)
 				mapRegex := mapsStorage.GetPathRegexMapFile(frontendName)
+				mapListenerHostPathExact := mapsStorage.GetListenerHostPathExactMapFile(frontendName)
+				mapListenerHostPathPrefix := mapsStorage.GetListenerHostPathPrefixMapFile(frontendName)
 
 				switch route.TreeStatus.Status {
 				case store.StatusUnchanged:
 					continue
 				case store.StatusUpserted:
-					err := b.onUpsertedHTTPRoute(origin, routeValueName, route, mapExact, mapPrefix, mapRegex)
+					err := b.onUpsertedHTTPRoute(origin, listenerKeyName, routeValueName, route, mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix)
 					errs.Add(err)
 				case store.StatusDeleted:
-					err := b.onDeletedHTTPRoute(origin, route, mapExact, mapPrefix, mapRegex)
+					err := b.onDeletedHTTPRoute(origin, route, mapExact, mapPrefix, mapRegex, mapListenerHostPathExact, mapListenerHostPathPrefix)
 					errs.Add(err)
 				}
 			}
@@ -509,7 +514,8 @@ func (b *RouteMgrImpl) runtimeMapSync() error {
 				b.topManager.logger.LogAttrs(context.Background(), slog.LevelDebug, "map [runtime] skipping as mapID is empty", slog.String("map", mapData.Path.FileName))
 				continue
 			}
-			for entryKey, entryValue := range mapData.Entries {
+			for _, entryKey := range maps.SortedEntryKeys(mapData.Entries) {
+				entryValue := mapData.Entries[entryKey]
 				key := escapeSlashForRuntime(entryKey.Hostname)
 				if entryKey.Path != "" {
 					key += entryKey.Path
