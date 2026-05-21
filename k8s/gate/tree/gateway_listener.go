@@ -439,9 +439,12 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 	}
 
 	if shouldProgramm {
-		// If the Gateway k8s resource already has a listener Programmed condition  Status!=Pending and the same
-		// ObservedGeneration as the gateway, do not reset the status to Pending.
-		// Probable cause is a startup phase where HAProxy is already programmed.
+		// If the Gateway k8s resource already has a successful listener Programmed
+		// condition with the same ObservedGeneration as the gateway, do not reset
+		// the status to Pending. Probable cause is a startup phase where HAProxy is
+		// already programmed. Failed Programmed conditions are not preserved here:
+		// once listener checks become valid again, feedback from the next HAProxy
+		// apply cycle must refresh the condition.
 		existingProgrammed := false
 		for _, listenerStatus := range treeGw.K8sResource.Status.Listeners {
 			if listenerStatus.Name != l.K8sResource.Name {
@@ -451,8 +454,8 @@ func (l *Listener) BuildConditions(treeGw *Gateway) {
 				if cond.Type != string(gatewayv1.ListenerConditionProgrammed) {
 					continue
 				}
-				if cond.Status == metav1.ConditionUnknown {
-					// If the condition is in Unknown status, we consider that the listener is not programmed
+				if cond.Status != metav1.ConditionTrue || cond.Reason != string(gatewayv1.ListenerReasonProgrammed) {
+					// If the condition is not successful, we consider that the listener is not programmed
 					// and we set the condition to Pending to trigger a status update when the controller will process this listener.
 					continue
 				}

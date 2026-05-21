@@ -15,9 +15,13 @@ package tree
 
 import (
 	"testing"
+	"time"
 
+	"github.com/haproxytech/haproxy-unified-gateway/k8s/gate/conditions/generic"
 	objtypes "github.com/haproxytech/haproxy-unified-gateway/k8s/gate/object-types"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -201,5 +205,108 @@ func Test_hostnameConflicts(t *testing.T) {
 				t.Errorf("hostnameConflicts() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestListenerBuildConditionsDoesNotPreserveStaleInvalidProgrammedWhenChecksBecomeValid(t *testing.T) {
+	gatewayCreatedAt := metav1.NewTime(time.Now().Add(-time.Hour))
+	gatewayGeneration := int64(7)
+	listenerName := gatewayv1.SectionName("rtc-https")
+	programmedType := generic.ConditionType(gatewayv1.ListenerConditionProgrammed)
+
+	gw := &Gateway{K8sResource: &gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:         "hug-gateways",
+			Name:              "shared-gateway",
+			Generation:        gatewayGeneration,
+			CreationTimestamp: gatewayCreatedAt,
+		},
+		Status: gatewayv1.GatewayStatus{Listeners: []gatewayv1.ListenerStatus{{
+			Name: listenerName,
+			Conditions: []metav1.Condition{{
+				Type:               string(gatewayv1.ListenerConditionProgrammed),
+				Status:             metav1.ConditionFalse,
+				Reason:             string(gatewayv1.ListenerReasonInvalid),
+				Message:            "Listener is invalid",
+				ObservedGeneration: gatewayGeneration,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			}},
+		}}},
+	}}
+	listener := &Listener{
+		Owner: client.ObjectKey{Namespace: "hug-gateways", Name: "shared-gateway"},
+		K8sResource: gatewayv1.Listener{
+			Name:     listenerName,
+			Protocol: gatewayv1.HTTPSProtocolType,
+			Port:     443,
+		},
+		Conditions:          make(generic.Conditions),
+		CheckRouteGroupKind: CheckResult{Valid: true},
+		CheckProtocol:       CheckResult{Valid: true},
+		CheckSecret:         CheckResult{Valid: true},
+		CheckConflict:       CheckResult{Valid: true},
+	}
+
+	listener.BuildConditions(gw)
+
+	programmed, ok := listener.Conditions.GetCondition(programmedType)
+	if !ok {
+		t.Fatal("Programmed condition not found")
+	}
+	if programmed.Status != metav1.ConditionUnknown || programmed.Reason != string(gatewayv1.ListenerReasonPending) {
+		t.Fatalf("Programmed = %s/%s, want Unknown/Pending after listener checks became valid", programmed.Status, programmed.Reason)
+	}
+	if !listener.Valid {
+		t.Fatal("listener should be valid after checks pass")
+	}
+}
+
+func TestListenerBuildConditionsPreservesSameGenerationProgrammedTrue(t *testing.T) {
+	gatewayCreatedAt := metav1.NewTime(time.Now().Add(-time.Hour))
+	gatewayGeneration := int64(8)
+	listenerName := gatewayv1.SectionName("https")
+	programmedType := generic.ConditionType(gatewayv1.ListenerConditionProgrammed)
+
+	gw := &Gateway{K8sResource: &gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:         "hug-gateways",
+			Name:              "shared-gateway",
+			Generation:        gatewayGeneration,
+			CreationTimestamp: gatewayCreatedAt,
+		},
+		Status: gatewayv1.GatewayStatus{Listeners: []gatewayv1.ListenerStatus{{
+			Name: listenerName,
+			Conditions: []metav1.Condition{{
+				Type:               string(gatewayv1.ListenerConditionProgrammed),
+				Status:             metav1.ConditionTrue,
+				Reason:             string(gatewayv1.ListenerReasonProgrammed),
+				Message:            "Listener is programmed in Haproxy",
+				ObservedGeneration: gatewayGeneration,
+				LastTransitionTime: metav1.NewTime(time.Now()),
+			}},
+		}}},
+	}}
+	listener := &Listener{
+		Owner: client.ObjectKey{Namespace: "hug-gateways", Name: "shared-gateway"},
+		K8sResource: gatewayv1.Listener{
+			Name:     listenerName,
+			Protocol: gatewayv1.HTTPSProtocolType,
+			Port:     443,
+		},
+		Conditions:          make(generic.Conditions),
+		CheckRouteGroupKind: CheckResult{Valid: true},
+		CheckProtocol:       CheckResult{Valid: true},
+		CheckSecret:         CheckResult{Valid: true},
+		CheckConflict:       CheckResult{Valid: true},
+	}
+
+	listener.BuildConditions(gw)
+
+	programmed, ok := listener.Conditions.GetCondition(programmedType)
+	if !ok {
+		t.Fatal("Programmed condition not found")
+	}
+	if programmed.Status != metav1.ConditionTrue || programmed.Reason != string(gatewayv1.ListenerReasonProgrammed) {
+		t.Fatalf("Programmed = %s/%s, want True/Programmed", programmed.Status, programmed.Reason)
 	}
 }
